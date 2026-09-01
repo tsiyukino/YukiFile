@@ -6,3 +6,5 @@
 //!
 //! Modules are added here as the layers in
 //! `docs/decisions/2026-09-01_v1-scope-and-build-order.md` are built.
+
+pub mod store;
