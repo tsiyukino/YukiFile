@@ -1,0 +1,2959 @@
+[
+ {
+  "from": ".AASHAREE/TRINKETS/Endeavor_v1.0.4",
+  "to": "Accessory/Endeavor_v1.0.4",
+  "kind": "Accessory",
+  "avatars": [],
+  "title": "09_Endeavor",
+  "vendor": "[KURAKU.lab]",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [
+   ".AASHAREE/TRINKETS/Endeavor_v1.0.4.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".LAPWING/TRINKET/SLAY_Nekomimi_for_Lapwing.unitypackage",
+  "to": "Accessory/SLAY_Nekomimi_for_Lapwing.unitypackage",
+  "kind": "Accessory",
+  "avatars": [
+   "lapwing"
+  ],
+  "title": "Nekomimi for Lapwing",
+  "vendor": "SLAY",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [
+   ".LAPWING/TRINKET/SLAY_Nekomimi_for_Lapwing.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".MANUKA/Clothes/Mummy's veil.unitypackage",
+  "to": "Accessory/Mummy's veil.unitypackage",
+  "kind": "Accessory",
+  "avatars": [
+   "manuka"
+  ],
+  "title": "Mummy's Veil",
+  "vendor": "Surin",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Clothes/Yugi_Miyo_Cat_Lingery",
+  "to": "Clothing/Yugi_Miyo_Cat_Lingery",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "【ユギ & ミヨ用】猫ランジェリー - Neko Lingerie",
+  "vendor": "seele",
+  "url": "https://booth.pm/ja/items/4365968",
+  "price": 1480,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Yugi Muzzle/[Yugi.Miyo]FOR PET_ver1.1",
+  "to": "Accessory/[Yugi.Miyo]FOR PET_ver1.1",
+  "kind": "Accessory",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "FOR PET (muzzle)",
+  "vendor": "Natelier -ﾅﾄﾘｴ-",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".Trinkets/Chain glasses.unitypackage",
+  "to": "Accessory/Chain glasses.unitypackage",
+  "kind": "Accessory",
+  "avatars": [],
+  "title": "Chain glasses",
+  "vendor": null,
+  "url": null,
+  "price": null,
+  "status": "NOT-FOUND",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".Trinkets/FVeil.unitypackage",
+  "to": "Accessory/FVeil.unitypackage",
+  "kind": "Accessory",
+  "avatars": [],
+  "title": "FVeil",
+  "vendor": "ikshop",
+  "url": "https://ikshop.booth.pm/",
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".Trinkets/JHP_chocker",
+  "to": "Accessory/JHP_chocker",
+  "kind": "Accessory",
+  "avatars": [],
+  "title": "JHP Chocker",
+  "vendor": "Shin (Discord Shin#3096)",
+  "url": null,
+  "price": null,
+  "status": "contact-only",
+  "archives": [],
+  "variants": [],
+  "source_type": "discord"
+ },
+ {
+  "from": ".Trinkets/NitroRoundGlasses_by_Sohvi",
+  "to": "Accessory/NitroRoundGlasses_by_Sohvi",
+  "kind": "Accessory",
+  "avatars": [],
+  "title": "Round Glasses",
+  "vendor": "Sohvi",
+  "url": "https://sohvi.gumroad.com/l/roundglasses",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "source_type": "gumroad"
+ },
+ {
+  "from": ".Trinkets/Oyasumisan_glasses",
+  "to": "Accessory/Oyasumisan_glasses",
+  "kind": "Accessory",
+  "avatars": [],
+  "title": "Oyasumisan glasses",
+  "vendor": "wotapacchin",
+  "url": "https://wotapacchin.booth.pm/",
+  "price": null,
+  "status": "vendor-confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "url found on disk (mojibake tail)"
+ },
+ {
+  "from": ".Trinkets/Wing_Halo",
+  "to": "Accessory/Wing_Halo",
+  "kind": "Accessory",
+  "avatars": [
+   "moe"
+  ],
+  "title": "Galaxy halo / Wing Halo",
+  "vendor": "Galaxy halo",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".Trinkets/_Aconite0101_Goth_Accessories_Pack",
+  "to": "Accessory/_Aconite0101_Goth_Accessories_Pack",
+  "kind": "Accessory",
+  "avatars": [],
+  "title": "[3D Model] ⛧Goth Accessories Pack ♰ ゴシック アクセサリー (PB)",
+  "vendor": "Aconite0101 Works.",
+  "url": "https://booth.pm/en/items?tags%5B%5D=Aconite",
+  "price": 300,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".Trinkets/digital_halo_hud_maker",
+  "to": "Gimmick/digital_halo_hud_maker",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "デジタル天使の輪メーカー (Digital Halo Maker)",
+  "vendor": "だまこや",
+  "url": "https://booth.pm/ja/items/3825060",
+  "price": 2000,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".Trinkets/エネ_Earring_ver1.2",
+  "to": "Accessory/エネ_Earring_ver1.2",
+  "kind": "Accessory",
+  "avatars": [],
+  "title": "【PB対応】【VRChat用】アクセサリー イヤリング",
+  "vendor": "Ene Collection",
+  "url": "https://booth.pm/ja/items/3143286",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "T2 Collar - FULL PACK.unitypackage",
+  "to": "Accessory/T2 Collar - FULL PACK.unitypackage",
+  "kind": "Accessory",
+  "avatars": [],
+  "title": "Elite T2 Collars 【PACIFIA WARES】 FULL PACK",
+  "vendor": "PACIFIA 🞮 Virtual Shop",
+  "url": "https://artsyglitch.booth.pm/items/4941896",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".APLUGINS/DynamicGesture_1.1.5.unitypackage",
+  "to": "Animation/DynamicGesture_1.1.5.unitypackage",
+  "kind": "Animation",
+  "avatars": [
+   "chiffon",
+   "manuka",
+   "mizuki",
+   "moe",
+   "selestia"
+  ],
+  "title": "DynamicGesture",
+  "vendor": "Triturbo",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "GoLoco.v.1.8.3",
+  "to": "Animation/GoLoco.v.1.8.3",
+  "kind": "Animation",
+  "avatars": [],
+  "title": "GoGoLoco",
+  "vendor": "franada",
+  "url": "https://franada.booth.pm/",
+  "price": null,
+  "status": "probable",
+  "archives": [],
+  "variants": [],
+  "note": "well-known free/paid locomotion system"
+ },
+ {
+  "from": "HoverMotion_U2.1.0",
+  "to": "Animation/HoverMotion_U2.1.0",
+  "kind": "Animation",
+  "avatars": [],
+  "title": "Hover Motion",
+  "vendor": "STUDIO_MOCA",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "[PURUPURU]  birdcage AFK.unitypackage",
+  "to": "Gimmick/[PURUPURU]  birdcage AFK.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "birdcage AFK",
+  "vendor": "PURUPURU",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-filename",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "[tsiyukino] SpeechBubble.unitypackage",
+  "to": "Gimmick/[tsiyukino] SpeechBubble.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "Speech Bubble",
+  "vendor": "tsiyukino",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "hoverwalkanim",
+  "to": "Animation/hoverwalkanim",
+  "kind": "Animation",
+  "avatars": [],
+  "title": "VRC向けホバー移動モーション",
+  "vendor": "@karekitsune",
+  "url": null,
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "name+author decoded from Shift-JIS readme.txt",
+  "source_type": "twitter"
+ },
+ {
+  "from": "BDSM/Gagak_GagSet_Texture.zip",
+  "to": "NSFW/BDSM/BodyTexture/Gagak_GagSet_Texture.zip",
+  "kind": "NSFW/BDSM/BodyTexture",
+  "avatars": [],
+  "title": "Gag Set texture",
+  "vendor": "Gagak06's Storehouse",
+  "url": "https://gagak06.booth.pm/",
+  "price": null,
+  "status": "probable",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "BDSM/Gagak_GagSet_v1.21 adjust Manuka FaceStrap.unitypackage",
+  "to": "NSFW/BDSM/Accessory/Gagak_GagSet_v1.21 adjust Manuka FaceStrap.unitypackage",
+  "kind": "NSFW/BDSM/Accessory",
+  "avatars": [
+   "airi",
+   "kikyo",
+   "manuka",
+   "moe",
+   "selestia",
+   "shinano"
+  ],
+  "title": "Gag Set v1.21",
+  "vendor": "Gagak06's Storehouse",
+  "url": "https://gagak06.booth.pm/",
+  "price": null,
+  "status": "confirmed",
+  "archives": [
+   "BDSM/Gagak_GagSet_v1.21_adjust_Manuka_FaceStrap.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": "BDSM/Gagak_GagSet_v2.01_Update_Weight.zip",
+  "to": "NSFW/BDSM/Accessory/Gagak_GagSet_v2.01_Update_Weight.zip",
+  "kind": "NSFW/BDSM/Accessory",
+  "avatars": [
+   "airi",
+   "kikyo",
+   "manuka",
+   "milltina",
+   "moe",
+   "selestia",
+   "shinano"
+  ],
+  "title": "Gag Set v2.0",
+  "vendor": "Gagak06's Storehouse",
+  "url": "https://booth.pm/en/items/5962566",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "BDSM/Gagak_Gagset_2.01",
+  "to": "NSFW/BDSM/Accessory/Gagak_Gagset_2.01",
+  "kind": "NSFW/BDSM/Accessory",
+  "avatars": [
+   "airi",
+   "kikyo",
+   "manuka",
+   "milltina",
+   "moe",
+   "selestia",
+   "shinano"
+  ],
+  "title": "Gag Set v2.0 [ 8 Avatars ]",
+  "vendor": "Gagak06's Storehouse",
+  "url": "https://booth.pm/en/items/5962566",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "BDSM/Gagak_Whip_v1.0",
+  "to": "NSFW/BDSM/Gimmick/Gagak_Whip_v1.0",
+  "kind": "NSFW/BDSM/Gimmick",
+  "avatars": [],
+  "title": "Whip",
+  "vendor": "Gagak06's Storehouse",
+  "url": "https://gagak06.booth.pm/",
+  "price": null,
+  "status": "confirmed",
+  "archives": [
+   "BDSM/Gagak_Whip_v1.0.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": "BDSM/HangSystem_v1.0.0",
+  "to": "NSFW/BDSM/Gimmick/HangSystem_v1.0.0",
+  "kind": "NSFW/BDSM/Gimmick",
+  "avatars": [],
+  "title": "【VRChatアバターギミック】HangSystem",
+  "vendor": "ZeroFactory",
+  "url": "https://booth.pm/ja/items/5677883",
+  "price": 1000,
+  "status": "confirmed",
+  "archives": [
+   "BDSM/HangSystem_v1.0.0.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": "BDSM/PB_Bondage_System_v1.03",
+  "to": "NSFW/BDSM/Gimmick/PB_Bondage_System_v1.03",
+  "kind": "NSFW/BDSM/Gimmick",
+  "avatars": [
+   "kikyo",
+   "lasyusha",
+   "manuka",
+   "moe",
+   "selestia",
+   "sio"
+  ],
+  "title": "PB Bondage System",
+  "vendor": "YaokiSubWork",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [
+   "BDSM/PB_Bondage_System_v1.03.rar"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/BeroarN_Marycia_ver1.3.0.zip",
+  "to": "Bases/BeroarN_Marycia_ver1.3.0.zip",
+  "kind": "Bases",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "Marycia マリシア - オリジナル3Dモデル",
+  "vendor": "BeroarN",
+  "url": "https://brn.booth.pm/items/6305948",
+  "price": 8000,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/BeroarN_Marycia_ver1.5.1",
+  "to": "Bases/BeroarN_Marycia_ver1.5.1",
+  "kind": "Bases",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "Marycia マリシア - オリジナル3Dモデル #Marycia3D",
+  "vendor": "BeroarN",
+  "url": "https://brn.booth.pm/items/6305948",
+  "price": 8000,
+  "status": "confirmed",
+  "archives": [
+   ".AVATARS/BeroarN_Marycia_ver1.5.1.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/Ikimono",
+  "to": "Bases/Ikimono",
+  "kind": "Bases",
+  "avatars": [
+   "ikimono"
+  ],
+  "title": "Ikimono",
+  "vendor": "Ikimono",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [
+   ".AVATARS/Ikimono.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/Kipfel",
+  "to": "Bases/Kipfel",
+  "kind": "Bases",
+  "avatars": [
+   "kipfel"
+  ],
+  "title": "キプフェル Kipfel / オリジナル3Dモデル",
+  "vendor": "もち山金魚 (MOCHIYAMA)",
+  "url": "https://mukumi.booth.pm/items/5813187",
+  "price": 5500,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/Kipfel_1.1.0.zip",
+  "to": "Bases/Kipfel_1.1.0.zip",
+  "kind": "Bases",
+  "avatars": [
+   "kipfel"
+  ],
+  "title": "キプフェル Kipfel / オリジナル3Dモデル",
+  "vendor": "もち山金魚 (MOCHIYAMA)",
+  "url": "https://mukumi.booth.pm/items/5813187",
+  "price": 5500,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/Kuroneko_Ver1.0黒猫弐号.zip",
+  "to": "Bases/Kuroneko_Ver1.0黒猫弐号.zip",
+  "kind": "Bases",
+  "avatars": [
+   "kuroneko"
+  ],
+  "title": "【オリジナル3Dモデル】黒猫弐号",
+  "vendor": "杵つき餅工房 (キネツキ)",
+  "url": "https://booth.pm/ja/items/6344128",
+  "price": 5000,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/Lapwing_1.0.10",
+  "to": "Bases/Lapwing_1.0.10",
+  "kind": "Bases",
+  "avatars": [
+   "lapwing"
+  ],
+  "title": "Lapwing",
+  "vendor": "久 (kujishift)",
+  "url": "https://booth.pm/ja/items/4993931",
+  "price": null,
+  "status": "confirmed",
+  "archives": [
+   ".AVATARS/Lapwing_1.0.10.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/MANUKA.unitypackage",
+  "to": "Bases/MANUKA.unitypackage",
+  "kind": "Bases",
+  "avatars": [
+   "manuka"
+  ],
+  "title": "オリジナル3Dモデル「マヌカ」",
+  "vendor": "STUDIO JINGO",
+  "url": "https://booth.pm/ja/items/5058077",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/Miminoko 1.05",
+  "to": "Bases/Miminoko 1.05",
+  "kind": "Bases",
+  "avatars": [
+   "miminoko"
+  ],
+  "title": "👂みみのこ -V2.0【VRC向け3Dモデル】",
+  "vendor": "𝐒𝐚𝐡𝐤𝐞𝐭 (さふけっと)",
+  "url": "https://sahkert.booth.pm/items/6199796",
+  "price": 5500,
+  "status": "confirmed",
+  "archives": [
+   ".AVATARS/Miminoko 1.05.rar"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/RIRU_v1.01.zip",
+  "to": "Bases/RIRU_v1.01.zip",
+  "kind": "Bases",
+  "avatars": [
+   "riru"
+  ],
+  "title": "RIRU",
+  "vendor": "IKUSIA",
+  "url": "https://paryi.booth.pm/",
+  "price": null,
+  "status": "vendor-confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/Sailor_girl_1.0",
+  "to": "Bases/Sailor_girl_1.0",
+  "kind": "Bases",
+  "avatars": [],
+  "title": "퍼블릭 배포 아바타 (Korean public-distribution avatar)",
+  "vendor": null,
+  "url": null,
+  "price": 0,
+  "status": "free-distribution",
+  "archives": [],
+  "variants": [],
+  "note": "not a Booth purchase; Korean free public avatar"
+ },
+ {
+  "from": ".AVATARS/Shinano_ver1.02",
+  "to": "Bases/Shinano_ver1.02",
+  "kind": "Bases",
+  "avatars": [
+   "kikyo",
+   "shinano"
+  ],
+  "title": "オリジナル3Dモデル「しなの」",
+  "vendor": "ポンデロニウム研究所",
+  "url": "https://booth.pm/ja/items/6106863",
+  "price": null,
+  "status": "confirmed",
+  "archives": [
+   ".AVATARS/Shinano_ver1.02.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/YUGI_MIYO",
+  "to": "Bases/YUGI_MIYO",
+  "kind": "Bases",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "オリジナル3Dモデル「ユギ」「ミヨ」",
+  "vendor": "Saki#",
+  "url": "https://booth.pm/ja/items/4358508",
+  "price": 6000,
+  "status": "confirmed",
+  "archives": [
+   ".AVATARS/YUGI_MIYO.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/ch05_NanaseNoir_1.41.zip",
+  "to": "Bases/ch05_NanaseNoir_1.41.zip",
+  "kind": "Bases",
+  "avatars": [
+   "nanase"
+  ],
+  "title": "オリジナル3Dモデル『ナナセ・ノワール -Nanase Noir-』",
+  "vendor": "ステラー工房 (steller_labo)",
+  "url": "https://steller.booth.pm/items/5827815",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/ch05_NanaseNoir_PSD.zip",
+  "to": "Bases/ch05_NanaseNoir_PSD.zip",
+  "kind": "Bases",
+  "avatars": [
+   "nanase"
+  ],
+  "title": "ナナセ・ノワール PSD素材",
+  "vendor": "ステラー工房 (steller_labo)",
+  "url": "https://steller.booth.pm/",
+  "price": null,
+  "status": "probable",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/ramiella-pcquest",
+  "to": "Bases/ramiella-pcquest",
+  "kind": "Bases",
+  "avatars": [
+   "ramiella"
+  ],
+  "title": "Ramiella (PC/Quest)",
+  "vendor": "WeFixUrProblem",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": [],
+  "note": "bundles PoiyomiToon as dependency"
+ },
+ {
+  "from": ".AVATARS/rurune v1.0.0",
+  "to": "Bases/rurune v1.0.0",
+  "kind": "Bases",
+  "avatars": [
+   "rurune"
+  ],
+  "title": "サメっ子オリジナル3Dモデル「rurune」-ルルネ-",
+  "vendor": "IKUSIA (Paryi)",
+  "url": "https://booth.pm/ja/items/5957830",
+  "price": 6000,
+  "status": "confirmed",
+  "archives": [
+   ".AVATARS/rurune_v1.0.0.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/usasaki_2.31",
+  "to": "Bases/usasaki_2.31",
+  "kind": "Bases",
+  "avatars": [
+   "usasaki"
+  ],
+  "title": "うささき Usasaki / オリジナル3Dモデル",
+  "vendor": "もち山金魚 (MOCHIYAMA)",
+  "url": "https://booth.pm/ja/items/3550881",
+  "price": 5000,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "Airi_Ver1.00",
+  "to": "Bases/Airi_Ver1.00",
+  "kind": "Bases",
+  "avatars": [
+   "airi"
+  ],
+  "title": "オリジナル3Dモデル「愛莉」Ver.1.01",
+  "vendor": "キュビクローゼット (Kyubi closet)",
+  "url": "https://kyubihome.booth.pm/",
+  "price": 5500,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "ShirayukiTenshi_v1",
+  "to": "Bases/ShirayukiTenshi_v1",
+  "kind": "Bases",
+  "avatars": [
+   "shirayuki"
+  ],
+  "title": "白雪天使【オリジナル3Dモデル】",
+  "vendor": "おみせです",
+  "url": "https://hiehieck.booth.pm/items/5438970",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".AASHAREE/TEXTURES/EYE/111 B&W Eye Texture 31 Avatars #PIT_booth",
+  "to": "BodyTexture/111 B&W Eye Texture 31 Avatars #PIT_booth",
+  "kind": "BodyTexture",
+  "avatars": [
+   "airi",
+   "alue",
+   "bokusei",
+   "chiffon",
+   "chocolat",
+   "hanka",
+   "kanata",
+   "kikyo",
+   "kipfel",
+   "komano",
+   "kuuta",
+   "lasyusha",
+   "lime",
+   "mafuyu",
+   "mamehinata",
+   "manuka",
+   "mao",
+   "marycia",
+   "milfy",
+   "milltina",
+   "minase",
+   "moe",
+   "rei",
+   "rui",
+   "rurune",
+   "selestia",
+   "shinano",
+   "shinra",
+   "shuan",
+   "sio"
+  ],
+  "title": "111 B&W Eye Texture 31 Avatars",
+  "vendor": "PIT (#PIT_booth)",
+  "url": null,
+  "price": null,
+  "status": "vendor-partial",
+  "archives": [],
+  "variants": [],
+  "note": "shop tag #PIT_booth; exact item not located"
+ },
+ {
+  "from": ".KIPFEL/Kipfel_REMEMBER_ME",
+  "to": "BodyTexture/Kipfel_REMEMBER_ME",
+  "kind": "BodyTexture",
+  "avatars": [
+   "kipfel"
+  ],
+  "title": "【キプフェル専用】REMEMBER ME Eye Texture for Kipfel",
+  "vendor": "おちゃかなしょっぷ -Shop Ochakana-",
+  "url": "https://booth.pm/ja/items/5912285",
+  "price": null,
+  "status": "confirmed",
+  "archives": [
+   ".KIPFEL/Kipfel_REMEMBER_ME.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".LAPWING/TEXTURE/Peeping_eye",
+  "to": "BodyTexture/Peeping_eye",
+  "kind": "BodyTexture",
+  "avatars": [
+   "lapwing"
+  ],
+  "title": "【Lapwing】Peeping Eye Texture",
+  "vendor": "M_vrc",
+  "url": "https://mvrc.booth.pm/items/6293197",
+  "price": null,
+  "status": "confirmed",
+  "archives": [
+   ".LAPWING/TEXTURE/Peeping_eye.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".MANUKA/Texture/Updated! Manuka make up + body texture + Nipple",
+  "to": "BodyTexture/Updated! Manuka make up + body texture + Nipple",
+  "kind": "BodyTexture",
+  "avatars": [
+   "manuka"
+  ],
+  "title": "Manuka make up + body texture + Nipple",
+  "vendor": null,
+  "url": null,
+  "price": null,
+  "status": "NOT-FOUND",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MANUKA/Texture/manuka injure texture",
+  "to": "BodyTexture/manuka injure texture",
+  "kind": "BodyTexture",
+  "avatars": [
+   "manuka"
+  ],
+  "title": "[マヌカ] 傷だらけのテクスチャ manuka injure body texture",
+  "vendor": "mintprsv",
+  "url": "https://mintprsv.booth.pm/",
+  "price": 100,
+  "status": "confirmed",
+  "archives": [
+   ".MANUKA/Texture/manuka_injure_texture.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".MARYCIA/TEXTURES/【Maryciaマリシア】こねこのしたメイク【texture】",
+  "to": "BodyTexture/【Maryciaマリシア】こねこのしたメイク【texture】",
+  "kind": "BodyTexture",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "【Marycia:マリシア】こねこのしたメイク",
+  "vendor": "ATELIER NOAH",
+  "url": "https://niwakaya.booth.pm/",
+  "price": 500,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MARYCIA/TEXTURES/まろやかアイズ_アイテクスチャ_ver1.0",
+  "to": "BodyTexture/まろやかアイズ_アイテクスチャ_ver1.0",
+  "kind": "BodyTexture",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "まろやかアイズ アイテクスチャ",
+  "vendor": null,
+  "url": null,
+  "price": null,
+  "status": "NOT-FOUND",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Texture/Full skin",
+  "to": "BodyTexture/Full skin",
+  "kind": "BodyTexture",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "YUGI_MIYO Full skin textures",
+  "vendor": "cy",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Texture/YUGI&MIYO-Makeup&Eyetexture",
+  "to": "BodyTexture/YUGI&MIYO-Makeup&Eyetexture",
+  "kind": "BodyTexture",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "『ユギ&ミヨ, YUGI&MIYO』メイク テクスチャ Make Up Texture (VRC)",
+  "vendor": "紅炎KOUEN",
+  "url": "https://booth.pm/ja/items/4389996",
+  "price": 400,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Texture/Yugi and Miyo Cyberpunk Tectures",
+  "to": "BodyTexture/Yugi and Miyo Cyberpunk Tectures",
+  "kind": "BodyTexture",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "Cyberpunk YUGI&MIYO - Eyes+Makeup+Cyber Mask / Body Tex",
+  "vendor": "NO39",
+  "url": "https://no39.booth.pm/",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "shop URL printed on the product's own promo image"
+ },
+ {
+  "from": ".MIYOYUGI/Texture/yugimiyoNSFWBody",
+  "to": "NSFW/BodyTexture/yugimiyoNSFWBody",
+  "kind": "NSFW/BodyTexture",
+  "avatars": [
+   "yugimiyo"
+  ],
+  "title": "ユギミヨ専用肌テクスチャ (NSFW body)",
+  "vendor": "ひなぴ@ (Twitter @napitter_at)",
+  "url": null,
+  "price": null,
+  "status": "confirmed",
+  "archives": [
+   ".MIYOYUGI/Texture/yugimiyoNSFWBody.zip"
+  ],
+  "variants": [],
+  "note": "author + license read from bundled Reedme_ja page images",
+  "source_type": "twitter"
+ },
+ {
+  "from": ".SHINANO/Texture/【しなの】MAKEUP",
+  "to": "BodyTexture/【しなの】MAKEUP",
+  "kind": "BodyTexture",
+  "avatars": [
+   "shinano"
+  ],
+  "title": "Shinano makeup texture",
+  "vendor": "Konoyo",
+  "url": "https://anoyode.booth.pm/",
+  "price": null,
+  "status": "vendor-confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "multiple Shinano makeup products by this shop; exact item ambiguous"
+ },
+ {
+  "from": ".AASHAREE/CLOTHS/AW KLASSIK MAID",
+  "to": "Clothing/AW KLASSIK MAID",
+  "kind": "Clothing",
+  "avatars": [
+   "lapwing",
+   "marycia",
+   "shinano",
+   "tsuyuna"
+  ],
+  "title": "AW: KLASSIK MAID #VEILWORKS",
+  "vendor": "VEILWORKS (TEALRICHOR)",
+  "url": "https://veilworks.booth.pm/items/8471577",
+  "price": 4600,
+  "status": "confirmed",
+  "archives": [
+   ".AASHAREE/CLOTHS/AW KLASSIK MAID.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".AASHAREE/CLOTHS/Cross_Maid_Fullset",
+  "to": "Clothing/Cross_Maid_Fullset",
+  "kind": "Clothing",
+  "avatars": [
+   "airi",
+   "kikyo",
+   "manuka",
+   "milltina",
+   "moe",
+   "selestia",
+   "shinano",
+   "shinra",
+   "sio"
+  ],
+  "title": "【10アバター対応】Cross Maid",
+  "vendor": "GLAY Unknown",
+  "url": "https://booth.pm/ja/search/Cross%20Maid",
+  "price": null,
+  "status": "partial-need-exact-url",
+  "archives": [
+   ".AASHAREE/CLOTHS/Cross_Maid_Fullset.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".AASHAREE/CLOTHS/SheerFoldTowel_FULLSET.zip",
+  "to": "Clothing/SheerFoldTowel_FULLSET.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "airi",
+   "chiffon",
+   "chocolat",
+   "cian",
+   "curishia",
+   "eku",
+   "emistia",
+   "eruqyuna",
+   "ichigo",
+   "kikyo",
+   "kumaly",
+   "lime",
+   "limilia",
+   "lumina",
+   "mafuyu",
+   "manuka",
+   "mayo",
+   "mikomia",
+   "milfy",
+   "milltina",
+   "mizuki",
+   "moe",
+   "nagi",
+   "rurune",
+   "selestia",
+   "shinano",
+   "sio",
+   "yrisphere"
+  ],
+  "title": "SheerFoldTowel シアーフォールドタオル",
+  "vendor": "SKYMY Workshop",
+  "url": "https://booth.pm/ja/items/8414866",
+  "price": 900,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [
+   "1_SheerFoldTowel_Texture_and_Material_v1.0",
+   "2_SheerFoldTowel_Airi_v1.0",
+   "2_SheerFoldTowel_CURISHIA_v1.0",
+   "2_SheerFoldTowel_EMISTIA_v1.0",
+   "2_SheerFoldTowel_ERUQYUNA2_LIMILIA_v1.0",
+   "2_SheerFoldTowel_Ichigo_v1.0",
+   "2_SheerFoldTowel_Kikyo_v1.0",
+   "2_SheerFoldTowel_Kumaly_v1.0",
+   "2_SheerFoldTowel_Lumina_v1.0",
+   "2_SheerFoldTowel_Mafuyu_Cian_v1.0",
+   "2_SheerFoldTowel_Manuka_v1.0",
+   "2_SheerFoldTowel_Mayo_v1.0",
+   "2_SheerFoldTowel_Mikomia_v1.0",
+   "2_SheerFoldTowel_Milfy_Eku_v1.0",
+   "2_SheerFoldTowel_Milltina_FC_v1.0",
+   "2_SheerFoldTowel_Milltina_v1.0",
+   "2_SheerFoldTowel_Mizuki_Rurune_v1.0",
+   "2_SheerFoldTowel_Moe_v1.0",
+   "2_SheerFoldTowel_Nagi_v1.0",
+   "2_SheerFoldTowel_Selestia_v1.0",
+   "2_SheerFoldTowel_Shinano_v1.0",
+   "2_SheerFoldTowel_Sio_v1.0",
+   "2_SheerFoldTowel_YRISPHERE_v1.0",
+   "2_SheerFold_Lime_Chiffon_Chocolat_Plum_v1.0"
+  ]
+ },
+ {
+  "from": ".AASHAREE/CLOTHS/昼星と黄昏 Daystar and Twilight",
+  "to": "Clothing/昼星と黄昏 Daystar and Twilight",
+  "kind": "Clothing",
+  "avatars": [
+   "karin",
+   "kikyo",
+   "lime",
+   "manuka",
+   "maya",
+   "moe",
+   "selestia",
+   "shinra"
+  ],
+  "title": "昼星と黄昏 (Daystar and Twilight) [10 Avatars]",
+  "vendor": "CYCR (Cyber Critter)",
+  "url": "https://booth.pm/ja/items/5322477",
+  "price": 1800,
+  "status": "confirmed",
+  "archives": [
+   ".AASHAREE/CLOTHS/昼星と黄昏 Daystar and Twilight.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".LAPWING/Cloths/LC005_BeNatural_Lapwing_1_00.zip",
+  "to": "Clothing/LC005_BeNatural_Lapwing_1_00.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "lapwing"
+  ],
+  "title": "▸ BE NATURAL ◂【9Avatars】",
+  "vendor": "Lulls",
+  "url": "https://booth.pm/ja/items/8264237",
+  "price": 2900,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".LAPWING/Cloths/Labcoat_lapwing.zip",
+  "to": "Clothing/Labcoat_lapwing.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "lapwing"
+  ],
+  "title": "【Lapwing専用】白衣コーデセット",
+  "vendor": "pontene",
+  "url": "https://booth.pm/ja/items/7202034",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "duplicate of Labcoat_ver1.1"
+ },
+ {
+  "from": ".LAPWING/Cloths/Labcoat_ver1.1",
+  "to": "Clothing/Labcoat_ver1.1",
+  "kind": "Clothing",
+  "avatars": [],
+  "title": "【Lapwing専用】白衣コーデセット",
+  "vendor": "pontene",
+  "url": "https://booth.pm/ja/items/7202034",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".LAPWING/Cloths/Labyrinth_Lapwing_ver1.0",
+  "to": "Clothing/Labyrinth_Lapwing_ver1.0",
+  "kind": "Clothing",
+  "avatars": [
+   "lapwing"
+  ],
+  "title": "Labyrinth【Lapwing/Marycia/しなの】",
+  "vendor": "pontene",
+  "url": "https://pontene.booth.pm/",
+  "price": 1500,
+  "status": "confirmed",
+  "archives": [
+   ".LAPWING/Cloths/Labyrinth_Lapwing_ver1.0.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".LAPWING/Cloths/NoirRuffle_Lapwing_ver1.0",
+  "to": "Clothing/NoirRuffle_Lapwing_ver1.0",
+  "kind": "Clothing",
+  "avatars": [
+   "lapwing"
+  ],
+  "title": "Noir Ruffle【Lapwing/Marycia/しなの/Lowtus】",
+  "vendor": "pontene",
+  "url": "https://pontene.booth.pm/",
+  "price": 1300,
+  "status": "confirmed",
+  "archives": [
+   ".LAPWING/Cloths/NoirRuffle_Lapwing_ver1.0.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".LAPWING/Cloths/OC001_ver1.00",
+  "to": "Clothing/OC001_ver1.00",
+  "kind": "Clothing",
+  "avatars": [
+   "lapwing"
+  ],
+  "title": "[Lapwing] OC001",
+  "vendor": "MARX",
+  "url": "https://booth.pm/ja/items/6159089",
+  "price": 1300,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MAFUYU/ArtemisSailorFullset.zip",
+  "to": "Clothing/ArtemisSailorFullset.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "airi",
+   "chiffon",
+   "chocolat",
+   "karin",
+   "lime",
+   "mafuyu",
+   "manuka",
+   "maya",
+   "milfy",
+   "milltina",
+   "moe",
+   "shinano",
+   "shinra"
+  ],
+  "title": "Artemis Sailor Fullset (AS-grace-)",
+  "vendor": "SilverSpace",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MANUKA/Clothes/Meira",
+  "to": "Clothing/Meira",
+  "kind": "Clothing",
+  "avatars": [
+   "manuka",
+   "meira"
+  ],
+  "title": "✨【18アバター対応】Meira｜Lumina対応＆前面PBアップデート✨",
+  "vendor": "cherry neru",
+  "url": "https://booth.pm/ja/items/6971758",
+  "price": 3800,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "18 avatars; user owns Manuka variant + accessories + material PSD"
+ },
+ {
+  "from": ".MANUKA/Clothes/Meira_Manuka_Ver.1.01.zip",
+  "to": "Clothing/Meira_Manuka_Ver.1.01.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "manuka",
+   "meira"
+  ],
+  "title": "Meira (Manuka variant)",
+  "vendor": "cherry neru",
+  "url": "https://booth.pm/ja/items/6971758",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "same_product_as": ".MANUKA/Clothes/Meira"
+ },
+ {
+  "from": ".MARYCIA/CLOTHS/ChillCharm",
+  "to": "Clothing/ChillCharm",
+  "kind": "Clothing",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "Chill Charm (part of『マリシア-Marycia-対応』outfit 5set)",
+  "vendor": "HB_shop",
+  "url": "https://booth.pm/ja/items/6539893",
+  "price": 4400,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MARYCIA/CLOTHS/Hollow",
+  "to": "Clothing/Hollow",
+  "kind": "Clothing",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "✩˚｡ Hollow ｡˚✩ 【25アバター対応】",
+  "vendor": "BlueKuma",
+  "url": "https://booth.pm/ja/items/7414326",
+  "price": 1090,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "product covers 25 avatars; user owns Marycia variant only"
+ },
+ {
+  "from": ".MARYCIA/CLOTHS/LC005_BeNatural_Marycia_1_00",
+  "to": "Clothing/LC005_BeNatural_Marycia_1_00",
+  "kind": "Clothing",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "▸ BE NATURAL ◂【9Avatars】",
+  "vendor": "Lulls",
+  "url": "https://booth.pm/ja/items/8264237",
+  "price": 2900,
+  "status": "confirmed",
+  "archives": [
+   ".MARYCIA/CLOTHS/LC005_BeNatural_Marycia_1_00.zip"
+  ],
+  "variants": [],
+  "same_product_as": ".LAPWING/Cloths/LC005_BeNatural_Lapwing_1_00.zip"
+ },
+ {
+  "from": ".MARYCIA/CLOTHS/LMS Gloves_Ring v1.32.unitypackage",
+  "to": "Accessory/LMS Gloves_Ring v1.32.unitypackage",
+  "kind": "Accessory",
+  "avatars": [
+   "hanka",
+   "komano",
+   "kuuta",
+   "lapwing",
+   "lasyusha",
+   "marycia",
+   "minase",
+   "rei",
+   "shinano",
+   "shinra"
+  ],
+  "title": "LMS Gloves & Ring",
+  "vendor": "BLVK",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MARYCIA/CLOTHS/Marycia_MaidWear_250121",
+  "to": "Clothing/Marycia_MaidWear_250121",
+  "kind": "Clothing",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "Marycia MaidWear",
+  "vendor": "[es]",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [
+   ".MARYCIA/CLOTHS/女仆装Marycia_MaidWear_250121.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".MARYCIA/CLOTHS/Nepeta Marycia",
+  "to": "Clothing/Nepeta Marycia",
+  "kind": "Clothing",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "Nepeta",
+  "vendor": "BeroarN",
+  "url": "https://brn.booth.pm/items/6305948",
+  "price": null,
+  "status": "vendor-confirmed",
+  "archives": [
+   ".MARYCIA/CLOTHS/Nepeta Marycia.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Clothes/Casual wear",
+  "to": "Clothing/Casual wear",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "Sport Swimsuit & Lace Swimsuit & Casual Wear",
+  "vendor": "Qrochairo Store",
+  "url": "https://booth.pm/ja/items/1564788",
+  "price": 400,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "same_product_as": ".MIYOYUGI/Clothes/Lace Swimsuit"
+ },
+ {
+  "from": ".MIYOYUGI/Clothes/Lace Lingerie",
+  "to": "Clothing/Lace Lingerie",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "Lace Lingerie for Yugi & Miyo",
+  "vendor": "seele",
+  "url": "https://booth.pm/ja/items/4365968",
+  "price": 1480,
+  "status": "probable",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Clothes/Lace Swimsuit",
+  "to": "Clothing/Lace Swimsuit",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "Sport Swimsuit & Lace Swimsuit & Casual Wear",
+  "vendor": "Qrochairo Store",
+  "url": "https://booth.pm/ja/items/1564788",
+  "price": 400,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Clothes/Leather jacket.zip",
+  "to": "Clothing/Leather jacket.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "yugimiyo"
+  ],
+  "title": "YUGIMIYO fur leather jacket PLUS pack",
+  "vendor": "Chocolate rice",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Clothes/MoonlightChoir_Yugi_v1.0",
+  "to": "Clothing/MoonlightChoir_Yugi_v1.0",
+  "kind": "Clothing",
+  "avatars": [
+   "yugi"
+  ],
+  "title": "MoonlightChoir",
+  "vendor": "MoonlightChoir",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Clothes/N017_YUGIMIYO_SleevelessBlouse&KrissVector",
+  "to": "Clothing/N017_YUGIMIYO_SleevelessBlouse&KrissVector",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugimiyo"
+  ],
+  "title": "N017 Sleeveless Blouse & Kriss Vector",
+  "vendor": "Rin",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Clothes/TECK PACKAGE",
+  "to": "Clothing/TECK PACKAGE",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "LITTLE MONSTER TECH PACKAGE",
+  "vendor": "EXTENSION CLOTHING",
+  "url": "https://booth.pm/ja/items/4604168",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "folder name 'TECK' is a typo for TECH"
+ },
+ {
+  "from": ".MIYOYUGI/Clothes/Yugi Bikini Full Set",
+  "to": "Clothing/Yugi Bikini Full Set",
+  "kind": "Clothing",
+  "avatars": [
+   "yugi"
+  ],
+  "title": "Succubus Bikini / Maid Bikini set",
+  "vendor": "_Zero#",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Clothes/エネ_Yugi_and_Mito_Tactical_maid_v1.1.unitypackage",
+  "to": "Clothing/エネ_Yugi_and_Mito_Tactical_maid_v1.1.unitypackage",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "Tactical maid",
+  "vendor": "Ene Collection",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".SHINANO/Cloths/Asmodeus_Shinano",
+  "to": "Clothing/Asmodeus_Shinano",
+  "kind": "Clothing",
+  "avatars": [
+   "airi",
+   "shinano"
+  ],
+  "title": "【複数アバター対応】Asmodeus【VRChat想定】",
+  "vendor": "Ornament Corpse",
+  "url": "https://booth.pm/ja/items/6082952",
+  "price": 1800,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".SHINANO/Cloths/LC005_BeNatural_Shinano_1_00.zip",
+  "to": "Clothing/LC005_BeNatural_Shinano_1_00.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "shinano"
+  ],
+  "title": "▸ BE NATURAL ◂【9Avatars】",
+  "vendor": "Lulls",
+  "url": "https://booth.pm/ja/items/8264237",
+  "price": 2900,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "same_product_as": ".LAPWING/Cloths/LC005_BeNatural_Lapwing_1_00.zip"
+ },
+ {
+  "from": ".SHINANO/Cloths/NectarMaid_Shinano",
+  "to": "Clothing/NectarMaid_Shinano",
+  "kind": "Clothing",
+  "avatars": [
+   "shinano"
+  ],
+  "title": "【9アバター対応】NectarMaid【VRChat向け衣装モデル】",
+  "vendor": "Ecila",
+  "url": "https://booth.pm/ja/items/7135295",
+  "price": 1400,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".SHINANO/Cloths/Scallop_Shinano",
+  "to": "Clothing/Scallop_Shinano",
+  "kind": "Clothing",
+  "avatars": [
+   "shinano"
+  ],
+  "title": "【複数アバター対応】Scallop【VRChat想定】",
+  "vendor": "Ornament Corpse",
+  "url": "https://booth.pm/ja/items/6009269",
+  "price": 1600,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "17 avatars supported"
+ },
+ {
+  "from": ".SHINANO/Cloths/Shinano_BunnyWrapp",
+  "to": "Clothing/Shinano_BunnyWrapp",
+  "kind": "Clothing",
+  "avatars": [
+   "selestia",
+   "shinano"
+  ],
+  "title": "BunnyWrapp (Ornament Corpse Shinano lineup)",
+  "vendor": "Ornament Corpse",
+  "url": "https://ornamentcorpse.booth.pm/",
+  "price": null,
+  "status": "vendor-confirmed",
+  "archives": [
+   ".SHINANO/Cloths/Shinano_BunnyWrapp.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".SHINANO/Cloths/Shinano_Melt",
+  "to": "Clothing/Shinano_Melt",
+  "kind": "Clothing",
+  "avatars": [
+   "shinano"
+  ],
+  "title": "【複数アバター対応】Melt【VRChat想定】",
+  "vendor": "Ornament Corpse",
+  "url": "https://booth.pm/ja/items/5864602",
+  "price": 1600,
+  "status": "confirmed",
+  "archives": [
+   ".SHINANO/Cloths/Shinano_Melt.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".APLUGINS/DMCustom_PCS_v1.9.1",
+  "to": "NSFW/Gimmick/DMCustom_PCS_v1.9.1",
+  "kind": "NSFW/Gimmick",
+  "avatars": [],
+  "title": "【VRC ギミック】Penetration Contact System (PCS)",
+  "vendor": "Dismay Custom",
+  "url": "https://dismay.booth.pm/items/5001027",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".APLUGINS/DexCloneSystemRC3.4.3.unitypackage",
+  "to": "Gimmick/DexCloneSystemRC3.4.3.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "DexCloneSystem (avatar clone gimmick)",
+  "vendor": "DexCloneSystem",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".APLUGINS/ToggleAssistant-0.12.0.unitypackage",
+  "to": "Editor/ToggleAssistant-0.12.0.unitypackage",
+  "kind": "Editor",
+  "avatars": [],
+  "title": "Toggle Assistant",
+  "vendor": null,
+  "url": null,
+  "price": null,
+  "status": "probable-oss",
+  "archives": [],
+  "variants": [],
+  "note": "likely VPM/GitHub tool, not Booth"
+ },
+ {
+  "from": ".APLUGINS/VRChatAvatarToolkit-2.1.2.unitypackage",
+  "to": "Editor/VRChatAvatarToolkit-2.1.2.unitypackage",
+  "kind": "Editor",
+  "avatars": [],
+  "title": "VRChat Avatar Toolkit",
+  "vendor": null,
+  "url": null,
+  "price": null,
+  "status": "probable-oss",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".APLUGINS/animationrepathing_v1.0.1.unitypackage",
+  "to": "Editor/animationrepathing_v1.0.1.unitypackage",
+  "kind": "Editor",
+  "avatars": [],
+  "title": "Animation Repathing",
+  "vendor": null,
+  "url": null,
+  "price": null,
+  "status": "probable-oss",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".APLUGINS/com.anatawa12.avatar-optimizer-1.8.7.zip",
+  "to": "Editor/com.anatawa12.avatar-optimizer-1.8.7.zip",
+  "kind": "Editor",
+  "avatars": [],
+  "title": "Avatar Optimizer",
+  "vendor": "anatawa12",
+  "url": "https://vpm.anatawa12.com/avatar-optimizer/",
+  "price": 0,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "open source, VPM package"
+ },
+ {
+  "from": ".APLUGINS/lilToon_1.x.x.zip",
+  "to": "Editor/lilToon_1.x.x.zip",
+  "kind": "Editor",
+  "avatars": [],
+  "title": "lilToon",
+  "vendor": "lilLab",
+  "url": "https://booth.pm/ja/items/3087170",
+  "price": 0,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Clothes/Yugi_Miyo_Santa",
+  "to": "Clothing/Yugi_Miyo_Santa",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "Shengdai (Santa) for Yugi & Miyo",
+  "vendor": "shengdai",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": [],
+  "note": "bundles lilToon 1.3.6 as dependency"
+ },
+ {
+  "from": ".Trinkets/【avatar】饰品-猫发卡/NekoHairPin_v1.0",
+  "to": "Accessory/NekoHairPin_v1.0",
+  "kind": "Accessory",
+  "avatars": [],
+  "title": "NekoHairPin 猫发卡",
+  "vendor": "0001cacao",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": [],
+  "note": "bundles lilToon 1.2.9 as dependency"
+ },
+ {
+  "from": "Light_System_v.1.1",
+  "to": "Gimmick/Light_System_v.1.1",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "Light System",
+  "vendor": "Light System",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "Satania style cigarette gimmick_v1.0.7/さたにあ式タバコギミック",
+  "to": "Gimmick/さたにあ式タバコギミック",
+  "kind": "Gimmick",
+  "avatars": [
+   "grus",
+   "karin",
+   "kikyo",
+   "lapwing",
+   "lime",
+   "manuka",
+   "maya",
+   "minase",
+   "moe",
+   "selestia",
+   "shinra",
+   "usasaki"
+  ],
+  "title": "さたにあ式タバコギミック (Tabako System)",
+  "vendor": "さたにあしょっぴんぐ",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".APLUGINS/FACS.Utilities.24.05.03.unitypackage",
+  "to": "Editor/FACS.Utilities.24.05.03.unitypackage",
+  "kind": "Editor",
+  "avatars": [],
+  "title": "FACS Utilities",
+  "vendor": null,
+  "url": null,
+  "price": null,
+  "status": "probable-oss",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/YUGIMIYO_FT_v1.0.unitypackage",
+  "to": "FaceTracking/YUGIMIYO_FT_v1.0.unitypackage",
+  "kind": "FaceTracking",
+  "avatars": [
+   "miyo",
+   "yugi",
+   "yugimiyo"
+  ],
+  "title": "YUGI&MIYO Face Tracking",
+  "vendor": "Gamja",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [
+   ".AVATARS/YUGIMIYO_FT_v1.0.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".AVATARS/ch05_NanaseNoir_1.2",
+  "to": "Bases/ch05_NanaseNoir_1.2",
+  "kind": "Bases",
+  "avatars": [
+   "nanase"
+  ],
+  "title": "オリジナル3Dモデル『ナナセ・ノワール -Nanase Noir-』",
+  "vendor": "ステラー工房 (steller_labo)",
+  "url": "https://steller.booth.pm/items/5827815",
+  "price": null,
+  "status": "confirmed",
+  "archives": [
+   ".AVATARS/ch05_NanaseNoir_1.2.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".MARYCIA/Marycia_v1.5.0_-_Face_Tracking_Add-on",
+  "to": "FaceTracking/Marycia_v1.5.0_-_Face_Tracking_Add-on",
+  "kind": "FaceTracking",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "Marycia Face Tracking Add-on",
+  "vendor": "Hash's Things / Pawlygon",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Texture/FacialExpression",
+  "to": "BodyTexture/FacialExpression",
+  "kind": "BodyTexture",
+  "avatars": [],
+  "title": "YM Facial Expression Pack (50)",
+  "vendor": "YuuStore",
+  "url": null,
+  "price": null,
+  "status": "probable",
+  "archives": [],
+  "variants": [],
+  "note": "same product as the YuuStore pack"
+ },
+ {
+  "from": "[YuuStore] YM_Facial_Expression_Pack (50).unitypackage",
+  "to": "Animation/[YuuStore] YM_Facial_Expression_Pack (50).unitypackage",
+  "kind": "Animation",
+  "avatars": [],
+  "title": "YM Facial Expression Pack (50)",
+  "vendor": "YuuStore",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".APLUGINS/DMCustom_PCS_v1.8.0.2.zip",
+  "to": "NSFW/Gimmick/DMCustom_PCS_v1.8.0.2.zip",
+  "kind": "NSFW/Gimmick",
+  "avatars": [],
+  "title": "【VRC ギミック】Penetration Contact System (PCS)",
+  "vendor": "Dismay Custom",
+  "url": "https://dismay.booth.pm/items/5001027",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".APLUGINS/DPS-SPS",
+  "to": "NSFW/BodyPart/DPS-SPS",
+  "kind": "NSFW/BodyPart",
+  "avatars": [
+   "airi",
+   "karin",
+   "kikyo",
+   "kokoa",
+   "lime",
+   "manuka",
+   "maya",
+   "moe",
+   "selestia",
+   "shinano",
+   "sio"
+  ],
+  "title": "N式ちんちん ver5.33 + Raliv DPS",
+  "vendor": "Noru's shop / Raliv",
+  "url": "https://booth.pm/ja/items/5438106",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".APLUGINS/IKEHUD",
+  "to": "NSFW/Gimmick/IKEHUD",
+  "kind": "NSFW/Gimmick",
+  "avatars": [],
+  "title": "IkeHUD",
+  "vendor": "Ikeiwa",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [
+   ".APLUGINS/IKEHUD.rar"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".APLUGINS/PetPackage.unitypackage",
+  "to": "Gimmick/PetPackage.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "PetPackage (based on VRLabs Follower + Raycast Prefab)",
+  "vendor": "oofdesu / VRLabs",
+  "url": "https://github.com/VRLabs/Follower",
+  "price": 0,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "credited in bundled Credits.txt; open source"
+ },
+ {
+  "from": ".B_AFK/VRSuyaAFK3",
+  "to": "Animation/VRSuyaAFK3",
+  "kind": "Animation",
+  "avatars": [
+   "anon",
+   "grus",
+   "karin",
+   "kikyo",
+   "kokoa",
+   "lapwing",
+   "lime",
+   "mamehinata",
+   "manuka",
+   "maya",
+   "minase",
+   "miyo",
+   "moe",
+   "rindo",
+   "rue",
+   "selestia",
+   "shinra",
+   "usasaki",
+   "yugi"
+  ],
+  "title": "VRChat AFK 3種セット",
+  "vendor": "VRSuya",
+  "url": "https://vrsuya.booth.pm/items/4197129",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".B_AFK/ikitaHoloLogoFixed.unitypackage",
+  "to": "Gimmick/ikitaHoloLogoFixed.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "ikita Holo Logo",
+  "vendor": "ikita",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".LAPWING/Cloths/Poeny_Lapwing.unitypackage",
+  "to": "Clothing/Poeny_Lapwing.unitypackage",
+  "kind": "Clothing",
+  "avatars": [
+   "lapwing"
+  ],
+  "title": "Poeny (Peony)",
+  "vendor": "ベテル[Betel]",
+  "url": "https://betelshop.booth.pm/",
+  "price": null,
+  "status": "vendor-confirmed",
+  "archives": [
+   ".LAPWING/Cloths/Poeny_Lapwing.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".MANUKA/Clothes/manuka_v1.0.zip",
+  "to": "Accessory/manuka_v1.0.zip",
+  "kind": "Accessory",
+  "avatars": [
+   "manuka"
+  ],
+  "title": "Mummy's Veil (Manuka)",
+  "vendor": "Surin",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MANUKA/Texture/Manuka's_R-18_Parts",
+  "to": "NSFW/BodyPart/Manuka's_R-18_Parts",
+  "kind": "NSFW/BodyPart",
+  "avatars": [
+   "manuka"
+  ],
+  "title": "Manuka's R-18 Parts",
+  "vendor": "Atelier_Verso",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [
+   ".MANUKA/Texture/Manuka_s_R-18_Parts.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".MARYCIA/CLOTHS/16. #0009 Marycia.unitypackage",
+  "to": "Clothing/16. #0009 Marycia.unitypackage",
+  "kind": "Clothing",
+  "avatars": [
+   "marycia",
+   "shinano"
+  ],
+  "title": "#0009 Casual Office hour",
+  "vendor": "_Applause",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Texture/Pussy_Yugi&Miyo_YamaBUTA",
+  "to": "NSFW/BodyPart/Pussy_Yugi&Miyo_YamaBUTA",
+  "kind": "NSFW/BodyPart",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "Pussy for Yugi & Miyo",
+  "vendor": "YamaBUTA",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-filename",
+  "archives": [
+   ".MIYOYUGI/Texture/Pussy_Yugi&Miyo_YamaBUTA.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".MyScripts/Kiss_Prevent_System",
+  "to": "Gimmick/Kiss_Prevent_System",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "Kiss Prevent System",
+  "vendor": "YukiSet",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [
+   ".MyScripts/Kiss_Prevent_System.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".RIRU/RIRU_FTsetting_v1.01.zip",
+  "to": "FaceTracking/RIRU_FTsetting_v1.01.zip",
+  "kind": "FaceTracking",
+  "avatars": [
+   "riru"
+  ],
+  "title": "RIRU Face Tracking setting (FermataFT)",
+  "vendor": "FermataFT",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".SHINANO/Cloths/Metaphor_for_shinano.unitypackage",
+  "to": "Clothing/Metaphor_for_shinano.unitypackage",
+  "kind": "Clothing",
+  "avatars": [
+   "shinano"
+  ],
+  "title": "Metaphor",
+  "vendor": "Untitled01",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".SHINANO/Cloths/mininurse_ver1.1_Shinano.unitypackage",
+  "to": "Clothing/mininurse_ver1.1_Shinano.unitypackage",
+  "kind": "Clothing",
+  "avatars": [
+   "shinano"
+  ],
+  "title": "MiniNurse",
+  "vendor": "ToyCats",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".Weapon/IRREGULARS_Blade001_KUGINASABLADE_V1_1.zip",
+  "to": "Gimmick/IRREGULARS_Blade001_KUGINASABLADE_V1_1.zip",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "IRREGULARS Blade001 KUGINASA BLADE",
+  "vendor": "IRREGULARS",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "CameraPath",
+  "to": "Gimmick/CameraPath",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "Camera Path (LiveLink)",
+  "vendor": "_DX",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": [],
+  "note": "avatar-attached; can be anchored in world"
+ },
+ {
+  "from": "Coffin_v2.00",
+  "to": "Gimmick/Coffin_v2.00",
+  "kind": "Gimmick",
+  "avatars": [
+   "coffin"
+  ],
+  "title": "Coffin v2.00",
+  "vendor": "ikshop",
+  "url": "https://ikshop.booth.pm/",
+  "price": null,
+  "status": "vendor-confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "DroneSystemV1.2",
+  "to": "Gimmick/DroneSystemV1.2",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "Drone System",
+  "vendor": "Dorone",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "Head deformation system Ver.1.3.1",
+  "to": "Gimmick/Head deformation system Ver.1.3.1",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "Head deformation system",
+  "vendor": "rescery",
+  "url": "https://rescery.booth.pm/items/3855458",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "url found on disk"
+ },
+ {
+  "from": "Music Player 2.0.3.unitypackage",
+  "to": "E:/Unity/VRChat/.Resources/World/Music Player 2.0.3.unitypackage",
+  "kind": "_MoveToWorld",
+  "avatars": [],
+  "title": "Music Player | VRChat World Prefab",
+  "vendor": "Vowgan VR",
+  "url": "https://booth.pm/en/items/2269058",
+  "price": 0,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "WORLD prefab, not an avatar asset"
+ },
+ {
+  "from": "PFCDroneKit.unitypackage",
+  "to": "Gimmick/PFCDroneKit.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "PFC Drone Kit",
+  "vendor": "PFC",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "RealKissSystemV1.2.0",
+  "to": "Gimmick/RealKissSystemV1.2.0",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "RealKissSystem リアルキスシステム【VRChat】",
+  "vendor": "すーぱーねこや (SuperNekoya)",
+  "url": "https://superneko.booth.pm/items/5354575",
+  "price": 1000,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "RealKissSystemV1.4.0",
+  "to": "Gimmick/RealKissSystemV1.4.0",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "RealKissSystem リアルキスシステム【VRChat】",
+  "vendor": "すーぱーねこや (SuperNekoya)",
+  "url": "https://superneko.booth.pm/items/5354575",
+  "price": 1000,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "Saber Blade Katana",
+  "to": "Gimmick/Saber Blade Katana",
+  "kind": "Gimmick",
+  "avatars": [
+   "kanata"
+  ],
+  "title": "Saber Blade Katana",
+  "vendor": null,
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "SelestiaKiss-M",
+  "to": "Gimmick/SelestiaKiss-M",
+  "kind": "Gimmick",
+  "avatars": [
+   "selestia"
+  ],
+  "title": "Selestia Kiss (M)",
+  "vendor": "VRLabs",
+  "url": "https://github.com/VRLabs",
+  "price": 0,
+  "status": "probable",
+  "archives": [],
+  "variants": [],
+  "note": "VRLabs ships free open-source VRChat systems"
+ },
+ {
+  "from": "VirtualLens2-v2.12.3",
+  "to": "Gimmick/VirtualLens2-v2.12.3",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "VirtualLens2",
+  "vendor": "logilabo",
+  "url": "https://logilabo.booth.pm/",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "url found on disk"
+ },
+ {
+  "from": "ecchi_mouth_fullset",
+  "to": "NSFW/BodyPart/ecchi_mouth_fullset",
+  "kind": "NSFW/BodyPart",
+  "avatars": [
+   "chiffon",
+   "kikyo",
+   "manuka",
+   "moe",
+   "rindo",
+   "selestia"
+  ],
+  "title": "ecchi mouth fullset",
+  "vendor": null,
+  "url": null,
+  "price": null,
+  "status": "NOT-FOUND",
+  "archives": [],
+  "variants": [],
+  "note": "6 per-avatar packages; no readme, no vendor path"
+ },
+ {
+  "from": "luka8375_SafeSpace_V1_Personal.unitypackage",
+  "to": "Gimmick/luka8375_SafeSpace_V1_Personal.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "SafeSpace (VRChat Shader & Particle Filter)",
+  "vendor": "KleineLuka 🌺",
+  "url": "https://booth.pm/ja/items/4268159",
+  "price": 800,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".AASHAREE/HAIR/Flowing_Lily",
+  "to": "Hair/Flowing_Lily",
+  "kind": "Hair",
+  "avatars": [
+   "airi",
+   "chocolat",
+   "manuka",
+   "milfy",
+   "milltina",
+   "shinano",
+   "sio"
+  ],
+  "title": "Flowing Lily",
+  "vendor": "隣の店",
+  "url": null,
+  "price": 1000,
+  "status": "probable",
+  "archives": [
+   ".AASHAREE/HAIR/Flowing_Lily.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".AASHAREE/HAIR/NocturnalTwin_v1.0.2.zip",
+  "to": "Hair/NocturnalTwin_v1.0.2.zip",
+  "kind": "Hair",
+  "avatars": [
+   "airi",
+   "chiffon",
+   "eku",
+   "kikyo",
+   "kipfel",
+   "lime",
+   "manuka",
+   "marycia",
+   "milfy",
+   "milltina",
+   "selestia",
+   "shinano",
+   "shinra",
+   "sio"
+  ],
+  "title": "【VRC Hair】Nocturnal Twin",
+  "vendor": "亜空間ゼウス",
+  "url": "https://booth.pm/ja/items/7585197",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".AASHAREE/HAIR/SukkiriShortHair",
+  "to": "Hair/SukkiriShortHair",
+  "kind": "Hair",
+  "avatars": [
+   "chocolat",
+   "manuka",
+   "milfy",
+   "milltina",
+   "rurune",
+   "shinano",
+   "shinra",
+   "sio"
+  ],
+  "title": "Sukkiri Short Hair",
+  "vendor": "muu",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [
+   ".AASHAREE/HAIR/SukkiriShortHair.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".AASHAREE/HAIR/Wolf Float",
+  "to": "Hair/Wolf Float",
+  "kind": "Hair",
+  "avatars": [
+   "airi",
+   "binah",
+   "chiffon",
+   "chocolat",
+   "kaguya",
+   "kikyo",
+   "kumaly",
+   "lime",
+   "lumina",
+   "manuka",
+   "marycia",
+   "mayo",
+   "milfy",
+   "milltina",
+   "misaki",
+   "moe",
+   "mumus",
+   "nagi",
+   "ririka",
+   "rize",
+   "rurune",
+   "selestia",
+   "shinano",
+   "shinra",
+   "sio"
+  ],
+  "title": "【23アバター対応】Wolf Float Hair",
+  "vendor": "Pirouette",
+  "url": "https://booth.pm/ja/items/6467347",
+  "price": 1200,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".AASHAREE/HAIR/__FullPack_Bunny_Angel_Hair_V1.0.zip",
+  "to": "Hair/__FullPack_Bunny_Angel_Hair_V1.0.zip",
+  "kind": "Hair",
+  "avatars": [
+   "airi",
+   "chiffon",
+   "chocolat",
+   "eku",
+   "kumaly",
+   "manuka",
+   "mayo",
+   "milfy",
+   "milltina",
+   "rurune",
+   "shinano"
+  ],
+  "title": "[VRC Hair】ʚ Bunny Angel Hair ɞ [13アバター対応]",
+  "vendor": "MariYuri",
+  "url": "https://booth.pm/ja/items/8524503",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".KIPFEL/hamanosis_Matinee_and_Soiree",
+  "to": "Hair/hamanosis_Matinee_and_Soiree",
+  "kind": "Hair",
+  "avatars": [],
+  "title": "マチネとソワレ 【髪型2種セット / ボブ＆ポニーテール】",
+  "vendor": "はまのしす -hamanosis-",
+  "url": "https://hamanosis.booth.pm/items/5908548",
+  "price": 1000,
+  "status": "confirmed",
+  "archives": [
+   ".KIPFEL/hamanosis_Matinee_and_Soiree.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".KIPFEL/mochi_bob1.0",
+  "to": "Hair/mochi_bob1.0",
+  "kind": "Hair",
+  "avatars": [
+   "kipfel"
+  ],
+  "title": "もちボブ for Kipfel",
+  "vendor": "meron-farm",
+  "url": "https://booth.pm/ja/items/5896830",
+  "price": 300,
+  "status": "confirmed",
+  "archives": [
+   ".KIPFEL/mochi_bob1.0.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".LAPWING/Hair/LowPonytail-1.04",
+  "to": "Hair/LowPonytail-1.04",
+  "kind": "Hair",
+  "avatars": [
+   "grus",
+   "lapwing"
+  ],
+  "title": "[Grus/Lapwing] Low Ponytail",
+  "vendor": "uNya2屋",
+  "url": "https://unya28.booth.pm/items/5848934",
+  "price": 800,
+  "status": "confirmed",
+  "archives": [
+   ".LAPWING/Hair/LowPonytail-1.04.zip"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".MARYCIA/HAIR/Marycia's hair.zip",
+  "to": "Hair/Marycia's hair.zip",
+  "kind": "Hair",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "Marycia hair (fullette + YuruTwin)",
+  "vendor": null,
+  "url": null,
+  "price": null,
+  "status": "user-folder",
+  "archives": [],
+  "variants": [
+   "YuruTwin",
+   "fullette"
+  ],
+  "note": "user-made folder containing two separate hair products"
+ },
+ {
+  "from": ".MARYCIA/HAIR/Silky_wolf_v1.0.zip",
+  "to": "Hair/Silky_wolf_v1.0.zip",
+  "kind": "Hair",
+  "avatars": [
+   "kikyo",
+   "kipfel",
+   "lapwing",
+   "lasyusha",
+   "lumina",
+   "manuka",
+   "marycia",
+   "mayo",
+   "milltina",
+   "misaki",
+   "rurune",
+   "selestia",
+   "shinano"
+  ],
+  "title": "Silky wolf",
+  "vendor": "冬蟲工房",
+  "url": "https://utoty.booth.pm/",
+  "price": 900,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [
+   "01.Unitypackage",
+   "04.fbx"
+  ]
+ },
+ {
+  "from": ".MIYOYUGI/Hair/AmeShort.unitypackage",
+  "to": "Hair/AmeShort.unitypackage",
+  "kind": "Hair",
+  "avatars": [
+   "karin",
+   "kikyo",
+   "maya",
+   "miyo",
+   "rindo",
+   "selestia",
+   "yugi"
+  ],
+  "title": "あめショートヘア (AmeShort)",
+  "vendor": "SpaceModelCreation",
+  "url": "https://booth.pm/ja/items/4222130",
+  "price": 900,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Hair/MoaHalfTwin.unitypackage",
+  "to": "Hair/MoaHalfTwin.unitypackage",
+  "kind": "Hair",
+  "avatars": [
+   "karin",
+   "kikyo",
+   "maya",
+   "miyo",
+   "selestia",
+   "yugi"
+  ],
+  "title": "モアハーフツインテール",
+  "vendor": "SpaceModelCreation",
+  "url": "https://booth.pm/ja/items/4557128",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Hair/Wolf_layered_Hair.unitypackage",
+  "to": "Hair/Wolf_layered_Hair.unitypackage",
+  "kind": "Hair",
+  "avatars": [
+   "grus",
+   "kikyo",
+   "mamehinata",
+   "maya",
+   "miyo",
+   "selestia",
+   "yugi"
+  ],
+  "title": "Wolf layered Hair",
+  "vendor": "Chocolate rice",
+  "url": "https://booth.pm/en/items/4555041",
+  "price": 800,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MochiFitter/BeroarN_Marycia_MochiFitterProfile_ver0.1[1].unitypackage",
+  "to": "MochiFitter/BeroarN_Marycia_MochiFitterProfile_ver0.1[1].unitypackage",
+  "kind": "MochiFitter",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "MochiFitter Profile: Marycia",
+  "vendor": "BeroarN",
+  "url": null,
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "direction": "bidirectional"
+ },
+ {
+  "from": ".MochiFitter/BlenderTools",
+  "to": "MochiFitter/BlenderTools",
+  "kind": "MochiFitter",
+  "avatars": [],
+  "title": "Blender 4.0.2 + robust-weight-transfer (MochiFitter runtime deps)",
+  "vendor": "Blender Foundation / upstream",
+  "url": null,
+  "price": 0,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "not a purchased product; runtime dependency of MochiFitter"
+ },
+ {
+  "from": ".MochiFitter/MochiFitter60r.zip",
+  "to": "MochiFitter/MochiFitter60r.zip",
+  "kind": "MochiFitter",
+  "avatars": [
+   "kikyo",
+   "manuka",
+   "shinano"
+  ],
+  "title": "もちふぃった～ (MochiFitter) 本体",
+  "vendor": "Nine Gates",
+  "url": "https://booth.pm/ja/items/7657840",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MochiFitter/MochiFitterProfile_Lapwing_1.1",
+  "to": "MochiFitter/MochiFitterProfile_Lapwing_1.1",
+  "kind": "MochiFitter",
+  "avatars": [
+   "lapwing"
+  ],
+  "title": "MochiFitter Profile: Lapwing",
+  "vendor": "(avatar shop distributed)",
+  "url": null,
+  "price": null,
+  "status": "confirmed",
+  "archives": [
+   ".MochiFitter/MochiFitterProfile_Lapwing_1.1.zip"
+  ],
+  "variants": [],
+  "direction": "bidirectional"
+ },
+ {
+  "from": ".MochiFitter/MochiFitterProfile_MafuyuAndCianV1_1_2.zip",
+  "to": "MochiFitter/MochiFitterProfile_MafuyuAndCianV1_1_2.zip",
+  "kind": "MochiFitter",
+  "avatars": [
+   "cian",
+   "mafuyu"
+  ],
+  "title": "MochiFitter Profile: Mafuyu & Cian",
+  "vendor": "(avatar shop distributed)",
+  "url": null,
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "direction": "bidirectional"
+ },
+ {
+  "from": ".MochiFitter/MochiFitterProfile_YUGIMIYO_Kikka_v3",
+  "to": "MochiFitter/MochiFitterProfile_YUGIMIYO_Kikka_v3",
+  "kind": "MochiFitter",
+  "avatars": [
+   "kikka",
+   "yugimiyo"
+  ],
+  "title": "MochiFitter Profile: YUGIMIYO (Kikka)",
+  "vendor": "(avatar shop distributed)",
+  "url": null,
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "direction": "receive-only"
+ },
+ {
+  "from": ".MochiFitter/MochiFitter_ForRiru_1.0.0.unitypackage",
+  "to": "MochiFitter/MochiFitter_ForRiru_1.0.0.unitypackage",
+  "kind": "MochiFitter",
+  "avatars": [
+   "riru"
+  ],
+  "title": "MochiFitter Profile: RIRU",
+  "vendor": "(avatar shop distributed)",
+  "url": null,
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "direction": "bidirectional"
+ },
+ {
+  "from": "NSFW/N-type dildo pack forSPS_REV2v1.1",
+  "to": "NSFW/BodyPart/N-type dildo pack forSPS_REV2v1.1",
+  "kind": "NSFW/BodyPart",
+  "avatars": [],
+  "title": "N式超多機能ディルドセットforDPS＆SPS",
+  "vendor": "Noru's shop",
+  "url": "https://norushop.booth.pm/items/5537637",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "NSFW/N-type penis forSPSVer5.42",
+  "to": "NSFW/BodyPart/N-type penis forSPSVer5.42",
+  "kind": "NSFW/BodyPart",
+  "avatars": [
+   "airi",
+   "chiffon",
+   "chocolat",
+   "karin",
+   "kikyo",
+   "kokoa",
+   "lime",
+   "manuka",
+   "maya",
+   "milltina",
+   "mizuki",
+   "moe",
+   "rindo",
+   "selestia",
+   "shinano",
+   "sio"
+  ],
+  "title": "26アバター対応 SPS＆DPS対応N式ちんちんver5.4～",
+  "vendor": "Noru's shop",
+  "url": "https://booth.pm/ja/items/5438106",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "NSFW/NSFW.Locomotion-v1.8.3-NSFW-1.1.1-Full.unitypackage",
+  "to": "NSFW/Animation/NSFW.Locomotion-v1.8.3-NSFW-1.1.1-Full.unitypackage",
+  "kind": "NSFW/Animation",
+  "avatars": [],
+  "title": "GoGoLoco NSFW Locomotion",
+  "vendor": "GoGo (franada) + NSFW addon",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "NSFW/N式　精液＆お潮＆おしっこパーティクルセット  【MA対応】押すと出る！MilkSystem（パーティクル付！！）",
+  "to": "NSFW/Gimmick/N式　精液＆お潮＆おしっこパーティクルセット  【MA対応】押すと出る！MilkSystem（パーティクル付！！）",
+  "kind": "NSFW/Gimmick",
+  "avatars": [
+   "sio"
+  ],
+  "title": "N式 液体セット / MilkSystem",
+  "vendor": "Noru's shop",
+  "url": "https://norushop.booth.pm/",
+  "price": null,
+  "status": "vendor-confirmed",
+  "archives": [
+   "NSFW/N式　精液＆お潮＆おしっこパーティクルセット  【MA対応】押すと出る！MilkSystem（パーティクル付！！）.rar"
+  ],
+  "variants": []
+ },
+ {
+  "from": "NSFW/N式ディルドパックforSPS_REV2v1.1.zip",
+  "to": "NSFW/BodyPart/N式ディルドパックforSPS_REV2v1.1.zip",
+  "kind": "NSFW/BodyPart",
+  "avatars": [],
+  "title": "N式超多機能ディルドセットforDPS＆SPS",
+  "vendor": "Noru's shop",
+  "url": "https://norushop.booth.pm/items/5537637",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": "NSFW/SexPositionVer1.2.1",
+  "to": "NSFW/Animation/SexPositionVer1.2.1",
+  "kind": "NSFW/Animation",
+  "avatars": [],
+  "title": "VirtualLove (Sex Position)",
+  "vendor": "UniSakiStudio",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [
+   "NSFW/sex position_Ver1.2.1.rar"
+  ],
+  "variants": []
+ },
+ {
+  "from": ".APLUGINS/ABT_1.2.2.zip",
+  "to": "Gimmick/ABT_1.2.2.zip",
+  "kind": "Gimmick",
+  "avatars": [],
+  "title": "ABT (Avatar Bone Tool)",
+  "vendor": "AntennaShop Necocoya",
+  "url": "https://necocoya.booth.pm/items/1634088",
+  "price": null,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "url found on disk"
+ },
+ {
+  "from": ".MAFUYU/宵袖逆バニー【9アバター対応】.7z",
+  "to": "Clothing/宵袖逆バニー【9アバター対応】.7z",
+  "kind": "Clothing",
+  "avatars": [],
+  "title": "【9アバター対応】宵袖逆バニー✨🐇",
+  "vendor": "#yakuzisworkshop",
+  "url": "https://booth.pm/ja/items/8080393",
+  "price": 1000,
+  "status": "confirmed",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MANUKA/Texture/Manuka make up body nipple(V1.0).zip",
+  "to": "BodyTexture/Manuka make up body nipple(V1.0).zip",
+  "kind": "BodyTexture",
+  "avatars": [
+   "manuka"
+  ],
+  "title": "Manuka make up + body texture + Nipple",
+  "vendor": null,
+  "url": null,
+  "price": null,
+  "status": "duplicate",
+  "archives": [],
+  "variants": [],
+  "note": "zip contains the 'Updated!' folder - same product",
+  "same_product_as": ".MANUKA/Texture/Updated! Manuka make up + body texture + Nipple"
+ },
+ {
+  "from": ".MARYCIA/TEXTURES/Pretty Marycia eyes_ver1.0.zip",
+  "to": "BodyTexture/Pretty Marycia eyes_ver1.0.zip",
+  "kind": "BodyTexture",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "まろやかアイズ アイテクスチャ ver1.0",
+  "vendor": null,
+  "url": null,
+  "price": null,
+  "status": "duplicate",
+  "archives": [],
+  "variants": [],
+  "note": "zip contains the まろやかアイズ folder - same product, mislabeled filename",
+  "same_product_as": ".MARYCIA/TEXTURES/まろやかアイズ_アイテクスチャ_ver1.0"
+ },
+ {
+  "from": ".MARYCIA/TEXTURES/_Maryciaマリシア_こねこのしたメイク_texture__2.zip",
+  "to": "BodyTexture/_Maryciaマリシア_こねこのしたメイク_texture__2.zip",
+  "kind": "BodyTexture",
+  "avatars": [
+   "marycia"
+  ],
+  "title": "【Marycia:マリシア】こねこのしたメイク",
+  "vendor": "ATELIER NOAH",
+  "url": "https://niwakaya.booth.pm/",
+  "price": 500,
+  "status": "confirmed",
+  "archives": [],
+  "variants": [],
+  "note": "duplicate archive"
+ },
+ {
+  "from": ".MIYOYUGI/Clothes/Trench coat YUGI.rar",
+  "to": "Clothing/Trench coat YUGI.rar",
+  "kind": "Clothing",
+  "avatars": [
+   "yugi"
+  ],
+  "title": "Trench coat for YUGI",
+  "vendor": null,
+  "url": null,
+  "price": null,
+  "status": "NOT-FOUND",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".MIYOYUGI/Makeup/YugiMiyoMakeUp.zip",
+  "to": "BodyTexture/YugiMiyoMakeUp.zip",
+  "kind": "BodyTexture",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "title": "『ユギ&ミヨ』メイク テクスチャ Make Up Texture (VRC)",
+  "vendor": "紅炎KOUEN",
+  "url": "https://booth.pm/ja/items/4389996",
+  "price": 400,
+  "status": "probable",
+  "archives": [],
+  "variants": []
+ },
+ {
+  "from": ".SHINANO/Cloths/Metaphor_for_material.unitypackage",
+  "to": "Clothing/Metaphor_for_material.unitypackage",
+  "kind": "Clothing",
+  "avatars": [],
+  "title": "Metaphor (materials)",
+  "vendor": "Untitled01",
+  "url": null,
+  "price": null,
+  "status": "vendor-from-package",
+  "archives": [],
+  "variants": []
+ }
+]

@@ -1,0 +1,2288 @@
+[
+ {
+  "path": ".AASHAREE/CLOTHS/AW KLASSIK MAID",
+  "kind": "Accessory",
+  "avatars": [
+   "lapwing",
+   "marycia",
+   "shinano",
+   "tsuyuna"
+  ],
+  "booth": [],
+  "archives": [
+   ".AASHAREE/CLOTHS/AW KLASSIK MAID.zip"
+  ],
+  "nfiles": 19,
+  "vendor": ""
+ },
+ {
+  "path": ".AASHAREE/CLOTHS/Cross_Maid_Fullset",
+  "kind": "Clothing",
+  "avatars": [
+   "airi",
+   "kikyo",
+   "manuka",
+   "milltina",
+   "moe",
+   "selestia",
+   "shinano",
+   "shinra",
+   "sio"
+  ],
+  "booth": [],
+  "archives": [
+   ".AASHAREE/CLOTHS/Cross_Maid_Fullset.zip"
+  ],
+  "nfiles": 14,
+  "vendor": "Cross"
+ },
+ {
+  "path": ".AASHAREE/CLOTHS/SheerFoldTowel_FULLSET.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "airi",
+   "chiffon",
+   "chocolat",
+   "cian",
+   "curishia",
+   "eku",
+   "emistia",
+   "eruqyuna",
+   "ichigo",
+   "kikyo",
+   "kumaly",
+   "lime",
+   "limilia",
+   "lumina",
+   "mafuyu",
+   "manuka",
+   "mayo",
+   "mikomia",
+   "milfy",
+   "milltina",
+   "mizuki",
+   "moe",
+   "nagi",
+   "rurune",
+   "selestia",
+   "shinano",
+   "sio",
+   "yrisphere"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "SheerFoldTowel",
+  "variants": [
+   "1_SheerFoldTowel_Texture_and_Material_v1.0",
+   "2_SheerFoldTowel_Airi_v1.0",
+   "2_SheerFoldTowel_CURISHIA_v1.0",
+   "2_SheerFoldTowel_EMISTIA_v1.0",
+   "2_SheerFoldTowel_ERUQYUNA2_LIMILIA_v1.0",
+   "2_SheerFoldTowel_Ichigo_v1.0",
+   "2_SheerFoldTowel_Kikyo_v1.0",
+   "2_SheerFoldTowel_Kumaly_v1.0",
+   "2_SheerFoldTowel_Lumina_v1.0",
+   "2_SheerFoldTowel_Mafuyu_Cian_v1.0",
+   "2_SheerFoldTowel_Manuka_v1.0",
+   "2_SheerFoldTowel_Mayo_v1.0",
+   "2_SheerFoldTowel_Mikomia_v1.0",
+   "2_SheerFoldTowel_Milfy_Eku_v1.0",
+   "2_SheerFoldTowel_Milltina_FC_v1.0",
+   "2_SheerFoldTowel_Milltina_v1.0",
+   "2_SheerFoldTowel_Mizuki_Rurune_v1.0",
+   "2_SheerFoldTowel_Moe_v1.0",
+   "2_SheerFoldTowel_Nagi_v1.0",
+   "2_SheerFoldTowel_Selestia_v1.0",
+   "2_SheerFoldTowel_Shinano_v1.0",
+   "2_SheerFoldTowel_Sio_v1.0",
+   "2_SheerFoldTowel_YRISPHERE_v1.0",
+   "2_SheerFold_Lime_Chiffon_Chocolat_Plum_v1.0"
+  ]
+ },
+ {
+  "path": ".AASHAREE/CLOTHS/昼星と黄昏 Daystar and Twilight",
+  "kind": "Clothing",
+  "avatars": [
+   "karin",
+   "kikyo",
+   "lime",
+   "manuka",
+   "maya",
+   "moe",
+   "selestia",
+   "shinra"
+  ],
+  "booth": [],
+  "archives": [
+   ".AASHAREE/CLOTHS/昼星と黄昏 Daystar and Twilight.zip"
+  ],
+  "nfiles": 15,
+  "vendor": ""
+ },
+ {
+  "path": ".AASHAREE/HAIR/Flowing_Lily",
+  "kind": "Hair",
+  "avatars": [
+   "airi",
+   "chocolat",
+   "manuka",
+   "milfy",
+   "milltina",
+   "shinano",
+   "sio"
+  ],
+  "booth": [],
+  "archives": [
+   ".AASHAREE/HAIR/Flowing_Lily.zip"
+  ],
+  "nfiles": 20,
+  "vendor": "Flowing"
+ },
+ {
+  "path": ".AASHAREE/HAIR/NocturnalTwin_v1.0.2.zip",
+  "kind": "Hair",
+  "avatars": [
+   "airi",
+   "chiffon",
+   "eku",
+   "kikyo",
+   "kipfel",
+   "lime",
+   "manuka",
+   "marycia",
+   "milfy",
+   "milltina",
+   "selestia",
+   "shinano",
+   "shinra",
+   "sio"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "NocturnalTwin"
+ },
+ {
+  "path": ".AASHAREE/HAIR/SukkiriShortHair",
+  "kind": "Hair",
+  "avatars": [
+   "chocolat",
+   "manuka",
+   "milfy",
+   "milltina",
+   "rurune",
+   "shinano",
+   "shinra",
+   "sio"
+  ],
+  "booth": [],
+  "archives": [
+   ".AASHAREE/HAIR/SukkiriShortHair.zip"
+  ],
+  "nfiles": 12,
+  "vendor": ""
+ },
+ {
+  "path": ".AASHAREE/HAIR/Wolf Float",
+  "kind": "Hair",
+  "avatars": [
+   "airi",
+   "binah",
+   "chiffon",
+   "chocolat",
+   "kaguya",
+   "kikyo",
+   "kumaly",
+   "lime",
+   "lumina",
+   "manuka",
+   "marycia",
+   "mayo",
+   "milfy",
+   "milltina",
+   "misaki",
+   "moe",
+   "mumus",
+   "nagi",
+   "ririka",
+   "rize",
+   "rurune",
+   "selestia",
+   "shinano",
+   "shinra",
+   "sio"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 5,
+  "vendor": ""
+ },
+ {
+  "path": ".AASHAREE/HAIR/__FullPack_Bunny_Angel_Hair_V1.0.zip",
+  "kind": "Hair",
+  "avatars": [
+   "airi",
+   "chiffon",
+   "chocolat",
+   "eku",
+   "kumaly",
+   "manuka",
+   "mayo",
+   "milfy",
+   "milltina",
+   "rurune",
+   "shinano"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".AASHAREE/TEXTURES/EYE/111 B&W Eye Texture 31 Avatars #PIT_booth",
+  "kind": "BodyTexture",
+  "avatars": [
+   "airi",
+   "alue",
+   "bokusei",
+   "chiffon",
+   "chocolat",
+   "hanka",
+   "kanata",
+   "kikyo",
+   "kipfel",
+   "komano",
+   "kuuta",
+   "lasyusha",
+   "lime",
+   "mafuyu",
+   "mamehinata",
+   "manuka",
+   "mao",
+   "marycia",
+   "milfy",
+   "milltina",
+   "minase",
+   "moe",
+   "rei",
+   "rui",
+   "rurune",
+   "selestia",
+   "shinano",
+   "shinra",
+   "shuan",
+   "sio"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 33,
+  "vendor": ""
+ },
+ {
+  "path": ".AASHAREE/TRINKETS/Endeavor_v1.0.4",
+  "kind": "Accessory",
+  "avatars": [],
+  "booth": [],
+  "archives": [
+   ".AASHAREE/TRINKETS/Endeavor_v1.0.4.zip"
+  ],
+  "nfiles": 1,
+  "vendor": "Endeavor"
+ },
+ {
+  "path": ".APLUGINS/ABT_1.2.2.zip",
+  "kind": "REVIEW",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "ABT"
+ },
+ {
+  "path": ".APLUGINS/DMCustom_PCS_v1.8.0.2.zip",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "DMCustom"
+ },
+ {
+  "path": ".APLUGINS/DMCustom_PCS_v1.9.1",
+  "kind": "Editor",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 6,
+  "vendor": "DMCustom"
+ },
+ {
+  "path": ".APLUGINS/DPS-SPS",
+  "kind": "Gimmick",
+  "avatars": [
+   "airi",
+   "karin",
+   "kikyo",
+   "kokoa",
+   "lime",
+   "manuka",
+   "maya",
+   "moe",
+   "selestia",
+   "shinano",
+   "sio"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 2,
+  "vendor": ""
+ },
+ {
+  "path": ".APLUGINS/DexCloneSystemRC3.4.3.unitypackage",
+  "kind": "Editor",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".APLUGINS/DynamicGesture_1.1.5.unitypackage",
+  "kind": "Animation",
+  "avatars": [
+   "chiffon",
+   "manuka",
+   "mizuki",
+   "moe",
+   "selestia"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "DynamicGesture"
+ },
+ {
+  "path": ".APLUGINS/FACS.Utilities.24.05.03.unitypackage",
+  "kind": "FaceTracking",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".APLUGINS/IKEHUD",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [],
+  "archives": [
+   ".APLUGINS/IKEHUD.rar"
+  ],
+  "nfiles": 3,
+  "vendor": ""
+ },
+ {
+  "path": ".APLUGINS/PetPackage.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".APLUGINS/ToggleAssistant-0.12.0.unitypackage",
+  "kind": "Editor",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".APLUGINS/VRChatAvatarToolkit-2.1.2.unitypackage",
+  "kind": "Editor",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".APLUGINS/animationrepathing_v1.0.1.unitypackage",
+  "kind": "Editor",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "animationrepathing"
+ },
+ {
+  "path": ".APLUGINS/com.anatawa12.avatar-optimizer-1.8.7.zip",
+  "kind": "Editor",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".APLUGINS/lilToon_1.x.x.zip",
+  "kind": "Editor",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "lilToon"
+ },
+ {
+  "path": ".AVATARS/BeroarN_Marycia_ver1.3.0.zip",
+  "kind": "Bases",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "BeroarN"
+ },
+ {
+  "path": ".AVATARS/BeroarN_Marycia_ver1.5.1",
+  "kind": "Bases",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [
+   "https://brn.booth.pm"
+  ],
+  "archives": [
+   ".AVATARS/BeroarN_Marycia_ver1.5.1.zip"
+  ],
+  "nfiles": 8,
+  "vendor": "BeroarN"
+ },
+ {
+  "path": ".AVATARS/Ikimono",
+  "kind": "Bases",
+  "avatars": [
+   "ikimono"
+  ],
+  "booth": [],
+  "archives": [
+   ".AVATARS/Ikimono.zip"
+  ],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".AVATARS/Kipfel",
+  "kind": "Bases",
+  "avatars": [
+   "kipfel"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 113,
+  "vendor": ""
+ },
+ {
+  "path": ".AVATARS/Kipfel_1.1.0.zip",
+  "kind": "Bases",
+  "avatars": [
+   "kipfel"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "Kipfel"
+ },
+ {
+  "path": ".AVATARS/Kuroneko_Ver1.0黒猫弐号.zip",
+  "kind": "Bases",
+  "avatars": [
+   "kuroneko"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "Kuroneko"
+ },
+ {
+  "path": ".AVATARS/Lapwing_1.0.10",
+  "kind": "Bases",
+  "avatars": [
+   "lapwing"
+  ],
+  "booth": [
+   "https://kujishift.booth.pm/"
+  ],
+  "archives": [
+   ".AVATARS/Lapwing_1.0.10.zip"
+  ],
+  "nfiles": 6,
+  "vendor": "Lapwing"
+ },
+ {
+  "path": ".AVATARS/MANUKA.unitypackage",
+  "kind": "Bases",
+  "avatars": [
+   "manuka"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".AVATARS/Miminoko 1.05",
+  "kind": "Bases",
+  "avatars": [
+   "miminoko"
+  ],
+  "booth": [],
+  "archives": [
+   ".AVATARS/Miminoko 1.05.rar"
+  ],
+  "nfiles": 6,
+  "vendor": ""
+ },
+ {
+  "path": ".AVATARS/RIRU_v1.01.zip",
+  "kind": "Bases",
+  "avatars": [
+   "riru"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "RIRU"
+ },
+ {
+  "path": ".AVATARS/Sailor_girl_1.0",
+  "kind": "Bases",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 3,
+  "vendor": "Sailor"
+ },
+ {
+  "path": ".AVATARS/Shinano_ver1.02",
+  "kind": "Bases",
+  "avatars": [
+   "kikyo",
+   "shinano"
+  ],
+  "booth": [],
+  "archives": [
+   ".AVATARS/Shinano_ver1.02.zip"
+  ],
+  "nfiles": 78,
+  "vendor": "Shinano"
+ },
+ {
+  "path": ".AVATARS/YUGIMIYO_FT_v1.0.unitypackage",
+  "kind": "FaceTracking",
+  "avatars": [
+   "miyo",
+   "yugi",
+   "yugimiyo"
+  ],
+  "booth": [],
+  "archives": [
+   ".AVATARS/YUGIMIYO_FT_v1.0.zip"
+  ],
+  "nfiles": 1,
+  "vendor": "YUGIMIYO"
+ },
+ {
+  "path": ".AVATARS/YUGI_MIYO",
+  "kind": "Bases",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [
+   ".AVATARS/YUGI_MIYO.zip"
+  ],
+  "nfiles": 35,
+  "vendor": "YUGI"
+ },
+ {
+  "path": ".AVATARS/ch05_NanaseNoir_1.2",
+  "kind": "FaceTracking",
+  "avatars": [
+   "nanase"
+  ],
+  "booth": [
+   "https://booth.pm/ja/items/4424448"
+  ],
+  "archives": [
+   ".AVATARS/ch05_NanaseNoir_1.2.zip"
+  ],
+  "nfiles": 77,
+  "vendor": "ch05"
+ },
+ {
+  "path": ".AVATARS/ch05_NanaseNoir_1.41.zip",
+  "kind": "Bases",
+  "avatars": [
+   "nanase"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "ch05"
+ },
+ {
+  "path": ".AVATARS/ch05_NanaseNoir_PSD.zip",
+  "kind": "Bases",
+  "avatars": [
+   "nanase"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "ch05"
+ },
+ {
+  "path": ".AVATARS/ramiella-pcquest",
+  "kind": "Bases",
+  "avatars": [
+   "ramiella"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 3,
+  "vendor": ""
+ },
+ {
+  "path": ".AVATARS/rurune v1.0.0",
+  "kind": "Bases",
+  "avatars": [
+   "rurune"
+  ],
+  "booth": [],
+  "archives": [
+   ".AVATARS/rurune_v1.0.0.zip"
+  ],
+  "nfiles": 34,
+  "vendor": ""
+ },
+ {
+  "path": ".AVATARS/usasaki_2.31",
+  "kind": "Bases",
+  "avatars": [
+   "usasaki"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 35,
+  "vendor": "usasaki"
+ },
+ {
+  "path": ".B_AFK/VRSuyaAFK3",
+  "kind": "Gimmick",
+  "avatars": [
+   "anon",
+   "grus",
+   "karin",
+   "kikyo",
+   "kokoa",
+   "lapwing",
+   "lime",
+   "mamehinata",
+   "manuka",
+   "maya",
+   "minase",
+   "miyo",
+   "moe",
+   "rindo",
+   "rue",
+   "selestia",
+   "shinra",
+   "usasaki",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 10,
+  "vendor": ""
+ },
+ {
+  "path": ".B_AFK/ikitaHoloLogoFixed.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".KIPFEL/Kipfel_REMEMBER_ME",
+  "kind": "Clothing",
+  "avatars": [
+   "kipfel"
+  ],
+  "booth": [],
+  "archives": [
+   ".KIPFEL/Kipfel_REMEMBER_ME.zip"
+  ],
+  "nfiles": 2,
+  "vendor": "Kipfel"
+ },
+ {
+  "path": ".KIPFEL/hamanosis_Matinee_and_Soiree",
+  "kind": "Hair",
+  "avatars": [],
+  "booth": [
+   "https://hamanosis.booth.pm/",
+   "https://hamanosis.booth.pm/items/5908548"
+  ],
+  "archives": [
+   ".KIPFEL/hamanosis_Matinee_and_Soiree.zip"
+  ],
+  "nfiles": 4,
+  "vendor": "hamanosis"
+ },
+ {
+  "path": ".KIPFEL/mochi_bob1.0",
+  "kind": "Hair",
+  "avatars": [
+   "kipfel"
+  ],
+  "booth": [],
+  "archives": [
+   ".KIPFEL/mochi_bob1.0.zip"
+  ],
+  "nfiles": 3,
+  "vendor": "mochi"
+ },
+ {
+  "path": ".LAPWING/Cloths/LC005_BeNatural_Lapwing_1_00.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "lapwing"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "LC005"
+ },
+ {
+  "path": ".LAPWING/Cloths/Labcoat_lapwing.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "lapwing"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "Labcoat"
+ },
+ {
+  "path": ".LAPWING/Cloths/Labcoat_ver1.1",
+  "kind": "Clothing",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "Labcoat"
+ },
+ {
+  "path": ".LAPWING/Cloths/Labyrinth_Lapwing_ver1.0",
+  "kind": "Clothing",
+  "avatars": [
+   "lapwing"
+  ],
+  "booth": [],
+  "archives": [
+   ".LAPWING/Cloths/Labyrinth_Lapwing_ver1.0.zip"
+  ],
+  "nfiles": 5,
+  "vendor": "Labyrinth"
+ },
+ {
+  "path": ".LAPWING/Cloths/NoirRuffle_Lapwing_ver1.0",
+  "kind": "Clothing",
+  "avatars": [
+   "lapwing"
+  ],
+  "booth": [],
+  "archives": [
+   ".LAPWING/Cloths/NoirRuffle_Lapwing_ver1.0.zip"
+  ],
+  "nfiles": 2,
+  "vendor": "NoirRuffle"
+ },
+ {
+  "path": ".LAPWING/Cloths/OC001_ver1.00",
+  "kind": "Clothing",
+  "avatars": [
+   "lapwing"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 14,
+  "vendor": "OC001"
+ },
+ {
+  "path": ".LAPWING/Cloths/Poeny_Lapwing.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [
+   "lapwing"
+  ],
+  "booth": [],
+  "archives": [
+   ".LAPWING/Cloths/Poeny_Lapwing.zip"
+  ],
+  "nfiles": 1,
+  "vendor": "Poeny"
+ },
+ {
+  "path": ".LAPWING/Hair/LowPonytail-1.04",
+  "kind": "Hair",
+  "avatars": [
+   "grus",
+   "lapwing"
+  ],
+  "booth": [
+   "https://unya28.booth.pm/items/5848934"
+  ],
+  "archives": [
+   ".LAPWING/Hair/LowPonytail-1.04.zip"
+  ],
+  "nfiles": 11,
+  "vendor": ""
+ },
+ {
+  "path": ".LAPWING/TEXTURE/Peeping_eye",
+  "kind": "BodyTexture",
+  "avatars": [
+   "lapwing"
+  ],
+  "booth": [],
+  "archives": [
+   ".LAPWING/TEXTURE/Peeping_eye.zip"
+  ],
+  "nfiles": 6,
+  "vendor": "Peeping"
+ },
+ {
+  "path": ".LAPWING/TRINKET/SLAY_Nekomimi_for_Lapwing.unitypackage",
+  "kind": "Accessory",
+  "avatars": [
+   "lapwing"
+  ],
+  "booth": [],
+  "archives": [
+   ".LAPWING/TRINKET/SLAY_Nekomimi_for_Lapwing.zip"
+  ],
+  "nfiles": 1,
+  "vendor": "SLAY"
+ },
+ {
+  "path": ".MAFUYU/ArtemisSailorFullset.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "airi",
+   "chiffon",
+   "chocolat",
+   "karin",
+   "lime",
+   "mafuyu",
+   "manuka",
+   "maya",
+   "milfy",
+   "milltina",
+   "moe",
+   "shinano",
+   "shinra"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MAFUYU/宵袖逆バニー【9アバター対応】.7z",
+  "kind": "REVIEW",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MANUKA/Clothes/Meira",
+  "kind": "Clothing",
+  "avatars": [
+   "manuka",
+   "meira"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 12,
+  "vendor": ""
+ },
+ {
+  "path": ".MANUKA/Clothes/Meira_Manuka_Ver.1.01.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "manuka",
+   "meira"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "Meira"
+ },
+ {
+  "path": ".MANUKA/Clothes/Mummy's veil.unitypackage",
+  "kind": "Accessory",
+  "avatars": [
+   "manuka"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MANUKA/Clothes/manuka_v1.0.zip",
+  "kind": "Gimmick",
+  "avatars": [
+   "manuka"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "manuka"
+ },
+ {
+  "path": ".MANUKA/Texture/Manuka make up body nipple(V1.0).zip",
+  "kind": "REVIEW",
+  "avatars": [
+   "manuka"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MANUKA/Texture/Manuka's_R-18_Parts",
+  "kind": "Gimmick",
+  "avatars": [
+   "manuka"
+  ],
+  "booth": [],
+  "archives": [
+   ".MANUKA/Texture/Manuka_s_R-18_Parts.zip"
+  ],
+  "nfiles": 9,
+  "vendor": ""
+ },
+ {
+  "path": ".MANUKA/Texture/Updated! Manuka make up + body texture + Nipple",
+  "kind": "BodyTexture",
+  "avatars": [
+   "manuka"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 4,
+  "vendor": ""
+ },
+ {
+  "path": ".MANUKA/Texture/manuka injure texture",
+  "kind": "BodyTexture",
+  "avatars": [
+   "manuka"
+  ],
+  "booth": [],
+  "archives": [
+   ".MANUKA/Texture/manuka_injure_texture.zip"
+  ],
+  "nfiles": 2,
+  "vendor": ""
+ },
+ {
+  "path": ".MARYCIA/CLOTHS/16. #0009 Marycia.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [
+   "marycia",
+   "shinano"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MARYCIA/CLOTHS/ChillCharm",
+  "kind": "Clothing",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 2,
+  "vendor": ""
+ },
+ {
+  "path": ".MARYCIA/CLOTHS/Hollow",
+  "kind": "Clothing",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 2,
+  "vendor": ""
+ },
+ {
+  "path": ".MARYCIA/CLOTHS/LC005_BeNatural_Marycia_1_00",
+  "kind": "Clothing",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [],
+  "archives": [
+   ".MARYCIA/CLOTHS/LC005_BeNatural_Marycia_1_00.zip"
+  ],
+  "nfiles": 6,
+  "vendor": "LC005"
+ },
+ {
+  "path": ".MARYCIA/CLOTHS/LMS Gloves_Ring v1.32.unitypackage",
+  "kind": "Clothing",
+  "avatars": [
+   "hanka",
+   "komano",
+   "kuuta",
+   "lapwing",
+   "lasyusha",
+   "marycia",
+   "minase",
+   "rei",
+   "shinano",
+   "shinra"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MARYCIA/CLOTHS/Marycia_MaidWear_250121",
+  "kind": "Clothing",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [
+   "https://brn.booth.pm/items/6305948"
+  ],
+  "archives": [
+   ".MARYCIA/CLOTHS/女仆装Marycia_MaidWear_250121.zip"
+  ],
+  "nfiles": 4,
+  "vendor": "Marycia"
+ },
+ {
+  "path": ".MARYCIA/CLOTHS/Nepeta Marycia",
+  "kind": "Clothing",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [
+   "https://brn.booth.pm/items/6305948"
+  ],
+  "archives": [
+   ".MARYCIA/CLOTHS/Nepeta Marycia.zip"
+  ],
+  "nfiles": 10,
+  "vendor": ""
+ },
+ {
+  "path": ".MARYCIA/HAIR/Marycia's hair.zip",
+  "kind": "Hair",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "",
+  "variants": [
+   "YuruTwin",
+   "fullette"
+  ]
+ },
+ {
+  "path": ".MARYCIA/HAIR/Silky_wolf_v1.0.zip",
+  "kind": "Hair",
+  "avatars": [
+   "kikyo",
+   "kipfel",
+   "lapwing",
+   "lasyusha",
+   "lumina",
+   "manuka",
+   "marycia",
+   "mayo",
+   "milltina",
+   "misaki",
+   "rurune",
+   "selestia",
+   "shinano"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "Silky",
+  "variants": [
+   "01.Unitypackage",
+   "04.fbx"
+  ]
+ },
+ {
+  "path": ".MARYCIA/Marycia_v1.5.0_-_Face_Tracking_Add-on",
+  "kind": "FaceTracking",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 3,
+  "vendor": "Marycia"
+ },
+ {
+  "path": ".MARYCIA/TEXTURES/Pretty Marycia eyes_ver1.0.zip",
+  "kind": "REVIEW",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MARYCIA/TEXTURES/_Maryciaマリシア_こねこのしたメイク_texture__2.zip",
+  "kind": "REVIEW",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MARYCIA/TEXTURES/【Maryciaマリシア】こねこのしたメイク【texture】",
+  "kind": "BodyTexture",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 14,
+  "vendor": ""
+ },
+ {
+  "path": ".MARYCIA/TEXTURES/まろやかアイズ_アイテクスチャ_ver1.0",
+  "kind": "BodyTexture",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 22,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Clothes/Casual wear",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 3,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Clothes/Lace Lingerie",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 2,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Clothes/Lace Swimsuit",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [
+   "https://booth.pm/ja/items/1564788",
+   "https://booth.pm/ja/items/2207020"
+  ],
+  "archives": [],
+  "nfiles": 3,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Clothes/Leather jacket.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "yugimiyo"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Clothes/MoonlightChoir_Yugi_v1.0",
+  "kind": "Clothing",
+  "avatars": [
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 3,
+  "vendor": "MoonlightChoir"
+ },
+ {
+  "path": ".MIYOYUGI/Clothes/N017_YUGIMIYO_SleevelessBlouse&KrissVector",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugimiyo"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 15,
+  "vendor": "N017"
+ },
+ {
+  "path": ".MIYOYUGI/Clothes/TECK PACKAGE",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 2,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Clothes/Trench coat YUGI.rar",
+  "kind": "REVIEW",
+  "avatars": [
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Clothes/Yugi Bikini Full Set",
+  "kind": "Clothing",
+  "avatars": [
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 3,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Clothes/Yugi_Miyo_Cat_Lingery",
+  "kind": "Accessory",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 5,
+  "vendor": "Yugi"
+ },
+ {
+  "path": ".MIYOYUGI/Clothes/Yugi_Miyo_Santa",
+  "kind": "Editor",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 9,
+  "vendor": "Yugi"
+ },
+ {
+  "path": ".MIYOYUGI/Clothes/エネ_Yugi_and_Mito_Tactical_maid_v1.1.unitypackage",
+  "kind": "Clothing",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Hair/AmeShort.unitypackage",
+  "kind": "Hair",
+  "avatars": [
+   "karin",
+   "kikyo",
+   "maya",
+   "miyo",
+   "rindo",
+   "selestia",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Hair/MoaHalfTwin.unitypackage",
+  "kind": "Hair",
+  "avatars": [
+   "karin",
+   "kikyo",
+   "maya",
+   "miyo",
+   "selestia",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Hair/Wolf_layered_Hair.unitypackage",
+  "kind": "Hair",
+  "avatars": [
+   "grus",
+   "kikyo",
+   "mamehinata",
+   "maya",
+   "miyo",
+   "selestia",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "Wolf"
+ },
+ {
+  "path": ".MIYOYUGI/Makeup/YugiMiyoMakeUp.zip",
+  "kind": "REVIEW",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Texture/FacialExpression",
+  "kind": "FaceTracking",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Texture/Full skin",
+  "kind": "BodyTexture",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [
+   "https://booth.pm/ja/items/4358508"
+  ],
+  "archives": [],
+  "nfiles": 10,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Texture/Pussy_Yugi&Miyo_YamaBUTA",
+  "kind": "Gimmick",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [
+   "https://as025886.booth.pm/items/4358508",
+   "https://yamabuta.booth.pm/"
+  ],
+  "archives": [
+   ".MIYOYUGI/Texture/Pussy_Yugi&Miyo_YamaBUTA.zip"
+  ],
+  "nfiles": 7,
+  "vendor": "Pussy"
+ },
+ {
+  "path": ".MIYOYUGI/Texture/YUGI&MIYO-Makeup&Eyetexture",
+  "kind": "BodyTexture",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [
+   "https://booth.pm/ja/items/4358508"
+  ],
+  "archives": [],
+  "nfiles": 15,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Texture/Yugi and Miyo Cyberpunk Tectures",
+  "kind": "BodyTexture",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 68,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Texture/yugimiyoNSFWBody",
+  "kind": "BodyTexture",
+  "avatars": [
+   "yugimiyo"
+  ],
+  "booth": [],
+  "archives": [
+   ".MIYOYUGI/Texture/yugimiyoNSFWBody.zip"
+  ],
+  "nfiles": 9,
+  "vendor": ""
+ },
+ {
+  "path": ".MIYOYUGI/Yugi Muzzle/[Yugi.Miyo]FOR PET_ver1.1",
+  "kind": "Accessory",
+  "avatars": [
+   "miyo",
+   "yugi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 4,
+  "vendor": "Yugi.Miyo"
+ },
+ {
+  "path": ".MochiFitter/BeroarN_Marycia_MochiFitterProfile_ver0.1[1].unitypackage",
+  "kind": "MochiFitter",
+  "avatars": [
+   "marycia"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "BeroarN"
+ },
+ {
+  "path": ".MochiFitter/BlenderTools",
+  "kind": "MochiFitter",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 2,
+  "vendor": ""
+ },
+ {
+  "path": ".MochiFitter/MochiFitter60r.zip",
+  "kind": "MochiFitter",
+  "avatars": [
+   "kikyo",
+   "manuka",
+   "shinano"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".MochiFitter/MochiFitterProfile_Lapwing_1.1",
+  "kind": "MochiFitter",
+  "avatars": [
+   "lapwing"
+  ],
+  "booth": [],
+  "archives": [
+   ".MochiFitter/MochiFitterProfile_Lapwing_1.1.zip"
+  ],
+  "nfiles": 1,
+  "vendor": "MochiFitterProfile"
+ },
+ {
+  "path": ".MochiFitter/MochiFitterProfile_MafuyuAndCianV1_1_2.zip",
+  "kind": "MochiFitter",
+  "avatars": [
+   "cian",
+   "mafuyu"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "MochiFitterProfile"
+ },
+ {
+  "path": ".MochiFitter/MochiFitterProfile_YUGIMIYO_Kikka_v3",
+  "kind": "MochiFitter",
+  "avatars": [
+   "kikka",
+   "yugimiyo"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 2,
+  "vendor": "MochiFitterProfile"
+ },
+ {
+  "path": ".MochiFitter/MochiFitter_ForRiru_1.0.0.unitypackage",
+  "kind": "MochiFitter",
+  "avatars": [
+   "riru"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "MochiFitter"
+ },
+ {
+  "path": ".MyScripts/Kiss_Prevent_System",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [],
+  "archives": [
+   ".MyScripts/Kiss_Prevent_System.zip"
+  ],
+  "nfiles": 3,
+  "vendor": "Kiss"
+ },
+ {
+  "path": ".RIRU/RIRU_FTsetting_v1.01.zip",
+  "kind": "Gimmick",
+  "avatars": [
+   "riru"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "RIRU"
+ },
+ {
+  "path": ".SHINANO/Cloths/Asmodeus_Shinano",
+  "kind": "Clothing",
+  "avatars": [
+   "airi",
+   "shinano"
+  ],
+  "booth": [
+   "https://booth.pm/ja/items/3681787",
+   "https://booth.pm/ja/items/4035411",
+   "https://booth.pm/ja/items/4667400",
+   "https://booth.pm/ja/items/5058077",
+   "https://kyubihome.booth.pm/items/6082686",
+   "https://ponderogen.booth.pm/items/6106863"
+  ],
+  "archives": [],
+  "nfiles": 24,
+  "vendor": "Asmodeus"
+ },
+ {
+  "path": ".SHINANO/Cloths/LC005_BeNatural_Shinano_1_00.zip",
+  "kind": "Clothing",
+  "avatars": [
+   "shinano"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "LC005"
+ },
+ {
+  "path": ".SHINANO/Cloths/Metaphor_for_material.unitypackage",
+  "kind": "REVIEW",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "Metaphor"
+ },
+ {
+  "path": ".SHINANO/Cloths/Metaphor_for_shinano.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [
+   "shinano"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "Metaphor"
+ },
+ {
+  "path": ".SHINANO/Cloths/NectarMaid_Shinano",
+  "kind": "Clothing",
+  "avatars": [
+   "shinano"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "NectarMaid"
+ },
+ {
+  "path": ".SHINANO/Cloths/Scallop_Shinano",
+  "kind": "Clothing",
+  "avatars": [
+   "shinano"
+  ],
+  "booth": [
+   "https://booth.pm/ja/items/3681787",
+   "https://booth.pm/ja/items/4035411",
+   "https://booth.pm/ja/items/4667400",
+   "https://booth.pm/ja/items/5058077",
+   "https://booth.pm/ja/items/5650156",
+   "https://ponderogen.booth.pm/items/6106863"
+  ],
+  "archives": [],
+  "nfiles": 24,
+  "vendor": "Scallop"
+ },
+ {
+  "path": ".SHINANO/Cloths/Shinano_BunnyWrapp",
+  "kind": "Clothing",
+  "avatars": [
+   "selestia",
+   "shinano"
+  ],
+  "booth": [
+   "https://booth.pm/ja/items/3681787",
+   "https://booth.pm/ja/items/4035411",
+   "https://booth.pm/ja/items/4667400",
+   "https://booth.pm/ja/items/4876459",
+   "https://booth.pm/ja/items/4951792",
+   "https://booth.pm/ja/items/5058077",
+   "https://booth.pm/ja/items/5132797",
+   "https://booth.pm/ja/items/5650156",
+   "https://komado.booth.pm/items/5354471",
+   "https://ponderogen.booth.pm/items/6106863"
+  ],
+  "archives": [
+   ".SHINANO/Cloths/Shinano_BunnyWrapp.zip"
+  ],
+  "nfiles": 29,
+  "vendor": "Shinano"
+ },
+ {
+  "path": ".SHINANO/Cloths/Shinano_Melt",
+  "kind": "Clothing",
+  "avatars": [
+   "shinano"
+  ],
+  "booth": [
+   "https://booth.pm/ja/items/3681787",
+   "https://booth.pm/ja/items/4035411",
+   "https://booth.pm/ja/items/4667400",
+   "https://booth.pm/ja/items/4707634",
+   "https://booth.pm/ja/items/4876459",
+   "https://booth.pm/ja/items/4951792",
+   "https://booth.pm/ja/items/5058077",
+   "https://booth.pm/ja/items/5132797",
+   "https://booth.pm/ja/items/5650156",
+   "https://booth.pm/ja/items/5842659",
+   "https://komado.booth.pm/items/5354471",
+   "https://ponderogen.booth.pm/items/6106863"
+  ],
+  "archives": [
+   ".SHINANO/Cloths/Shinano_Melt.zip"
+  ],
+  "nfiles": 24,
+  "vendor": "Shinano"
+ },
+ {
+  "path": ".SHINANO/Cloths/mininurse_ver1.1_Shinano.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [
+   "shinano"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "mininurse"
+ },
+ {
+  "path": ".SHINANO/Texture/【しなの】MAKEUP",
+  "kind": "BodyTexture",
+  "avatars": [
+   "shinano"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 2,
+  "vendor": ""
+ },
+ {
+  "path": ".Trinkets/Chain glasses.unitypackage",
+  "kind": "Accessory",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".Trinkets/FVeil.unitypackage",
+  "kind": "Accessory",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": ".Trinkets/JHP_chocker",
+  "kind": "Accessory",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 2,
+  "vendor": "JHP"
+ },
+ {
+  "path": ".Trinkets/NitroRoundGlasses_by_Sohvi",
+  "kind": "Accessory",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 11,
+  "vendor": "NitroRoundGlasses"
+ },
+ {
+  "path": ".Trinkets/Oyasumisan_glasses",
+  "kind": "Accessory",
+  "avatars": [],
+  "booth": [
+   "https://wotapacchin.booth.pm/"
+  ],
+  "archives": [],
+  "nfiles": 10,
+  "vendor": "Oyasumisan"
+ },
+ {
+  "path": ".Trinkets/Wing_Halo",
+  "kind": "Accessory",
+  "avatars": [
+   "moe"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 21,
+  "vendor": "Wing"
+ },
+ {
+  "path": ".Trinkets/_Aconite0101_Goth_Accessories_Pack",
+  "kind": "Accessory",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 13,
+  "vendor": ""
+ },
+ {
+  "path": ".Trinkets/digital_halo_hud_maker",
+  "kind": "Accessory",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 5,
+  "vendor": "digital"
+ },
+ {
+  "path": ".Trinkets/【avatar】饰品-猫发卡/NekoHairPin_v1.0",
+  "kind": "Editor",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 9,
+  "vendor": "NekoHairPin"
+ },
+ {
+  "path": ".Trinkets/エネ_Earring_ver1.2",
+  "kind": "Accessory",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 5,
+  "vendor": ""
+ },
+ {
+  "path": ".Weapon/IRREGULARS_Blade001_KUGINASABLADE_V1_1.zip",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "IRREGULARS"
+ },
+ {
+  "path": "Airi_Ver1.00",
+  "kind": "Hair",
+  "avatars": [
+   "airi"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 46,
+  "vendor": "Airi"
+ },
+ {
+  "path": "BDSM/Gagak_GagSet_Texture.zip",
+  "kind": "BDSM",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "Gagak"
+ },
+ {
+  "path": "BDSM/Gagak_GagSet_v1.21 adjust Manuka FaceStrap.unitypackage",
+  "kind": "BDSM",
+  "avatars": [
+   "airi",
+   "kikyo",
+   "manuka",
+   "moe",
+   "selestia",
+   "shinano"
+  ],
+  "booth": [],
+  "archives": [
+   "BDSM/Gagak_GagSet_v1.21_adjust_Manuka_FaceStrap.zip"
+  ],
+  "nfiles": 1,
+  "vendor": "Gagak"
+ },
+ {
+  "path": "BDSM/Gagak_GagSet_v2.01_Update_Weight.zip",
+  "kind": "BDSM",
+  "avatars": [
+   "airi",
+   "kikyo",
+   "manuka",
+   "milltina",
+   "moe",
+   "selestia",
+   "shinano"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "Gagak"
+ },
+ {
+  "path": "BDSM/Gagak_Gagset_2.01",
+  "kind": "BDSM",
+  "avatars": [
+   "airi",
+   "kikyo",
+   "manuka",
+   "milltina",
+   "moe",
+   "selestia",
+   "shinano"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 4,
+  "vendor": "Gagak"
+ },
+ {
+  "path": "BDSM/Gagak_Whip_v1.0",
+  "kind": "BDSM",
+  "avatars": [],
+  "booth": [],
+  "archives": [
+   "BDSM/Gagak_Whip_v1.0.zip"
+  ],
+  "nfiles": 2,
+  "vendor": "Gagak"
+ },
+ {
+  "path": "BDSM/HangSystem_v1.0.0",
+  "kind": "BDSM",
+  "avatars": [],
+  "booth": [],
+  "archives": [
+   "BDSM/HangSystem_v1.0.0.zip"
+  ],
+  "nfiles": 5,
+  "vendor": "HangSystem"
+ },
+ {
+  "path": "BDSM/PB_Bondage_System_v1.03",
+  "kind": "BDSM",
+  "avatars": [
+   "kikyo",
+   "lasyusha",
+   "manuka",
+   "moe",
+   "selestia",
+   "sio"
+  ],
+  "booth": [],
+  "archives": [
+   "BDSM/PB_Bondage_System_v1.03.rar"
+  ],
+  "nfiles": 7,
+  "vendor": "PB"
+ },
+ {
+  "path": "CameraPath",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 2,
+  "vendor": ""
+ },
+ {
+  "path": "Coffin_v2.00",
+  "kind": "Gimmick",
+  "avatars": [
+   "coffin"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 14,
+  "vendor": "Coffin"
+ },
+ {
+  "path": "DroneSystemV1.2",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 13,
+  "vendor": ""
+ },
+ {
+  "path": "GoLoco.v.1.8.3",
+  "kind": "Animation",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 2,
+  "vendor": ""
+ },
+ {
+  "path": "Head deformation system Ver.1.3.1",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [
+   "https://rescery.booth.pm/items/3855458"
+  ],
+  "archives": [],
+  "nfiles": 6,
+  "vendor": ""
+ },
+ {
+  "path": "HoverMotion_U2.1.0",
+  "kind": "Animation",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 5,
+  "vendor": "HoverMotion"
+ },
+ {
+  "path": "Light_System_v.1.1",
+  "kind": "Editor",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 4,
+  "vendor": "Light"
+ },
+ {
+  "path": "Music Player 2.0.3.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": "NSFW/N-type dildo pack forSPS_REV2v1.1",
+  "kind": "NSFW",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": "NSFW/N-type penis forSPSVer5.42",
+  "kind": "NSFW",
+  "avatars": [
+   "airi",
+   "chiffon",
+   "chocolat",
+   "karin",
+   "kikyo",
+   "kokoa",
+   "lime",
+   "manuka",
+   "maya",
+   "milltina",
+   "mizuki",
+   "moe",
+   "rindo",
+   "selestia",
+   "shinano",
+   "sio"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": "NSFW/NSFW.Locomotion-v1.8.3-NSFW-1.1.1-Full.unitypackage",
+  "kind": "NSFW",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": "NSFW/N式　精液＆お潮＆おしっこパーティクルセット  【MA対応】押すと出る！MilkSystem（パーティクル付！！）",
+  "kind": "NSFW",
+  "avatars": [
+   "sio"
+  ],
+  "booth": [],
+  "archives": [
+   "NSFW/N式　精液＆お潮＆おしっこパーティクルセット  【MA対応】押すと出る！MilkSystem（パーティクル付！！）.rar"
+  ],
+  "nfiles": 3,
+  "vendor": ""
+ },
+ {
+  "path": "NSFW/N式ディルドパックforSPS_REV2v1.1.zip",
+  "kind": "NSFW",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": "NSFW/SexPositionVer1.2.1",
+  "kind": "NSFW",
+  "avatars": [],
+  "booth": [],
+  "archives": [
+   "NSFW/sex position_Ver1.2.1.rar"
+  ],
+  "nfiles": 3,
+  "vendor": ""
+ },
+ {
+  "path": "PFCDroneKit.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": "RealKissSystemV1.2.0",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 2,
+  "vendor": ""
+ },
+ {
+  "path": "RealKissSystemV1.4.0",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 3,
+  "vendor": ""
+ },
+ {
+  "path": "Saber Blade Katana",
+  "kind": "Animation",
+  "avatars": [
+   "kanata"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 7,
+  "vendor": ""
+ },
+ {
+  "path": "Satania style cigarette gimmick_v1.0.7/さたにあ式タバコギミック",
+  "kind": "Editor",
+  "avatars": [
+   "grus",
+   "karin",
+   "kikyo",
+   "lapwing",
+   "lime",
+   "manuka",
+   "maya",
+   "minase",
+   "moe",
+   "selestia",
+   "shinra",
+   "usasaki"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 11,
+  "vendor": ""
+ },
+ {
+  "path": "SelestiaKiss-M",
+  "kind": "Gimmick",
+  "avatars": [
+   "selestia"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 4,
+  "vendor": ""
+ },
+ {
+  "path": "ShirayukiTenshi_v1",
+  "kind": "Hair",
+  "avatars": [
+   "shirayuki"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 42,
+  "vendor": "ShirayukiTenshi"
+ },
+ {
+  "path": "T2 Collar - FULL PACK.unitypackage",
+  "kind": "Accessory",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": ""
+ },
+ {
+  "path": "VirtualLens2-v2.12.3",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [
+   "https://logilabo.booth.pm/"
+  ],
+  "archives": [],
+  "nfiles": 5,
+  "vendor": ""
+ },
+ {
+  "path": "[PURUPURU]  birdcage AFK.unitypackage",
+  "kind": "Animation",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "PURUPURU"
+ },
+ {
+  "path": "[YuuStore] YM_Facial_Expression_Pack (50).unitypackage",
+  "kind": "FaceTracking",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "YuuStore"
+ },
+ {
+  "path": "[tsiyukino] SpeechBubble.unitypackage",
+  "kind": "Animation",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "tsiyukino"
+ },
+ {
+  "path": "ecchi_mouth_fullset",
+  "kind": "Gimmick",
+  "avatars": [
+   "chiffon",
+   "kikyo",
+   "manuka",
+   "moe",
+   "rindo",
+   "selestia"
+  ],
+  "booth": [],
+  "archives": [],
+  "nfiles": 6,
+  "vendor": "ecchi"
+ },
+ {
+  "path": "hoverwalkanim",
+  "kind": "Animation",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 8,
+  "vendor": ""
+ },
+ {
+  "path": "luka8375_SafeSpace_V1_Personal.unitypackage",
+  "kind": "Gimmick",
+  "avatars": [],
+  "booth": [],
+  "archives": [],
+  "nfiles": 1,
+  "vendor": "luka8375"
+ }
+]

@@ -1,0 +1,39 @@
+project: yukifile
+summary: >
+  A local-first library manager for files and folders. The core knows nothing
+  about what it stores; everything domain-specific arrives as a plugin that
+  declares properties, actions, panels and vocabularies.
+
+kind: desktop-app
+stack:
+  runtime: tauri
+  backend: rust
+  frontend: typescript + react
+  design_system: primer (@primer/react, @primer/primitives, @primer/octicons)
+  database: sqlite
+
+layout:
+  core: src-tauri/src
+  ui: src
+  builtin_plugins: plugins
+  docs: docs
+  seed: seed
+
+test:
+  rust: cargo test
+  ts: npm test
+
+conventions:
+  # Overrides and additions to ~/.claude/CLAUDE.md for this project.
+  - Core never imports from plugins. Enforced by a test, not by discipline.
+  - Built-in plugins use the same contribution API as third-party ones.
+    A built-in needing a special case in the core means the extension point
+    is wrong.
+  - Property values are stored under namespaced paths (`booth#1/title`).
+    Flattening happens on read, never on write.
+  - Anything that points at another object or a vocabulary term is an edge,
+    not a field.
+  - Offline is the default. Network calls happen only when the user presses
+    a button.
+
+status: planning
