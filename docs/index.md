@@ -23,8 +23,10 @@
 
 ## Reference
 
-Generated per module from the source. Nothing here yet — the first modules have
-not been written.
+Generated per module from the source.
+
+- [store.md](reference/store.md) — value paths and the flattening rule. The
+  rest of the store is not written yet.
 
 ## Seed
 
