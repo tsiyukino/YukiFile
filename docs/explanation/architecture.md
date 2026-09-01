@@ -40,12 +40,28 @@ carry both a Booth page and a Gumroad page without either winning.
 
 Reading flattens. The rule is one line: a bare field wins if it has a value;
 otherwise fall back to the first non-empty same-named field in property mount
-order. Flattening lives in the backend rather than the UI because search,
-sort and export all need it, and two implementations of one rule drift apart.
-The frontend gets the raw nested structure as well, and is free to render
-whatever it likes from it — showing the local title large with the shop title
-underneath, or picking whichever of two prices is lower. That kind of display
-logic stays in the frontend; the backend has no opinion about it.
+order. Mount order ranks property *instances* rather than property names — an
+object carrying both `booth#1` and `booth#2` needs the two ranked against each
+other — and the order belongs to the library, so two libraries can disagree
+about which shop they trust.
+
+Flattening lives in the backend rather than the UI because search, sort and
+export all need it, and two implementations of one rule drift apart. It keeps
+the values that lost: the winner is what search and export read, but the
+frontend is free to render whatever it likes from the ranked candidates —
+showing the local title large with the shop title underneath, or picking
+whichever of two prices is lower. That kind of display logic stays in the
+frontend; the backend has no opinion about it. Handing over the whole ranking
+rather than the winner alone is what keeps the frontend from growing a second
+copy of the rule.
+
+Resolution reports what it could not place, and the two reasons are not alike.
+A value under a property the library does not mount is routine — an object can
+carry values written by a plugin that is not installed right now, and they wait
+in storage until it is. A value whose path does not parse is corruption, and
+since `values.path` is written by the import contract and by plugins, nothing
+on the write side rules it out. Neither one stops the rest of the object from
+resolving.
 
 ## Facts and meanings
 

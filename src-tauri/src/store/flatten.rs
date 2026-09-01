@@ -1,7 +1,8 @@
-//! Resolving many stored values down to one value per field.
+//! Resolving many stored values down to the candidates for each field.
 //!
 //! Values are stored under namespaced paths, so one object can hold a local
-//! `title` alongside what two different shops call it. Reading has to pick one:
+//! `title` alongside what two different shops call it. Reading has to rank
+//! them:
 //!
 //! ```text
 //! title            "BE NATURAL (Lapwing)"   <- the local name wins
@@ -9,22 +10,28 @@
 //! gumroad#1/title  "BE NATURAL fullset"
 //! ```
 //!
-//! The rule is one line: a bare field wins if it has a value; otherwise take
-//! the first non-empty same-named field in mount order.
+//! The rule is one line: a bare field wins if it has a value; otherwise the
+//! first non-empty same-named field in mount order takes it.
 //!
-//! This runs in the backend rather than the frontend because search, sort and
-//! export all need it, and two implementations of one rule drift apart. The
-//! frontend still receives the raw values and is free to render both the local
-//! and the shop title; that is display logic and this module has no opinion
-//! about it.
+//! Resolution keeps the values that lost. Search, sort and export read the
+//! winner, but the UI is expected to show the local title large with the shop
+//! title underneath, and to offer whichever of two prices is lower — and the
+//! only way to do that without a second implementation of this rule living in
+//! the frontend is to hand over the ranked candidates rather than the winner
+//! alone. Which of them to display is the frontend's decision; this module has
+//! no opinion about it.
+//!
+//! This runs in the backend because search, sort and export all need it, and
+//! two implementations of one rule drift apart.
 //!
 //! Mount order arrives as an argument rather than being read from
-//! configuration, which keeps this a pure function. Order is per library, so
-//! the caller supplies the order belonging to the library being read.
+//! configuration, which keeps this a pure function. Order is per library, and
+//! it orders property *instances*, not property names: an object carrying both
+//! `booth#1` and `booth#2` needs the two ranked against each other.
 
 use std::collections::HashMap;
 
-use crate::store::path::ValuePath;
+use crate::store::path::{ParseError, ValuePath};
 
 /// One stored value, as it comes out of the `values` table.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -33,7 +40,14 @@ pub struct StoredValue {
     pub value: String,
 }
 
-/// Where a flattened value came from.
+/// A mounted property instance, in the order the library mounts it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Mount<'a> {
+    pub namespace: &'a str,
+    pub instance: u32,
+}
+
+/// Where a resolved value came from.
 ///
 /// The UI needs this to show that a title came from a shop rather than from
 /// the user, and change review needs it to scope a diff to `booth#1/price`
@@ -46,71 +60,142 @@ pub enum Origin<'a> {
     Mounted { namespace: &'a str, instance: u32 },
 }
 
-/// A field after resolution, with the value that won and where it came from.
+/// One candidate for a field, with where it came from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Resolved<'a> {
     pub value: &'a str,
     pub origin: Origin<'a>,
 }
 
-/// One value per field name.
-pub type FlatView<'a> = HashMap<&'a str, Resolved<'a>>;
-
-/// A mounted property instance, in the order the library mounts it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Mount<'a> {
-    pub namespace: &'a str,
-    pub instance: u32,
+/// A stored value that resolution could not place.
+///
+/// Skipping is not the same as absence, and the caller has to be able to tell
+/// them apart. An unmounted property is expected — an object may carry values
+/// written by a plugin that is not installed right now. An unparseable path is
+/// not expected: it means something wrote a malformed path, and the write side
+/// cannot rule that out while `values.path` is free text fed by the import
+/// contract and by plugins.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Skipped<'a> {
+    pub path: &'a str,
+    pub reason: SkipReason,
 }
 
-/// Apply the flattening rule.
+/// Why a stored value was not resolved.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SkipReason {
+    /// The path does not parse. This is corruption; surface it.
+    Malformed(ParseError),
+    /// The path names a property this library does not mount. Expected.
+    NotMounted,
+}
+
+/// The candidates for every field of one object, best first.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FlatView<'a> {
+    fields: HashMap<&'a str, Vec<Resolved<'a>>>,
+    skipped: Vec<Skipped<'a>>,
+}
+
+impl<'a> FlatView<'a> {
+    /// The winning value for a field, which is what search, sort and export
+    /// read.
+    pub fn value(&self, field: &str) -> Option<&'a str> {
+        self.candidates(field).first().map(|resolved| resolved.value)
+    }
+
+    /// The winning candidate, with its origin.
+    pub fn winner(&self, field: &str) -> Option<&Resolved<'a>> {
+        self.candidates(field).first()
+    }
+
+    /// Every candidate for a field, best first. Empty when the field has none.
+    pub fn candidates(&self, field: &str) -> &[Resolved<'a>] {
+        self.fields.get(field).map_or(&[], Vec::as_slice)
+    }
+
+    /// Every field that resolved to at least one value.
+    pub fn fields(&self) -> impl Iterator<Item = &'a str> + '_ {
+        self.fields.keys().copied()
+    }
+
+    /// Values that could not be placed. A `Malformed` entry here is a data
+    /// defect worth reporting; `NotMounted` is routine.
+    pub fn skipped(&self) -> &[Skipped<'a>] {
+        &self.skipped
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.fields.is_empty()
+    }
+}
+
+/// Apply the flattening rule, keeping the losing candidates and reporting
+/// what could not be placed.
 ///
-/// Unparseable paths and values belonging to a property the library does not
-/// mount are skipped: an object can carry values from a plugin that is not
-/// installed right now, and those must not surface as if they were current.
-/// They stay in storage untouched, so installing the plugin brings them back.
+/// Empty values are dropped rather than ranked: a blank is the absence of a
+/// value, not a candidate that happens to be short.
 pub fn flatten<'a>(values: &'a [StoredValue], mounts: &[Mount<'a>]) -> FlatView<'a> {
-    let mut flat: FlatView<'a> = HashMap::new();
-    // Rank by position so a later candidate only wins if it ranks lower.
     // Mount ranks start at 1, leaving 0 to the bare field, which outranks
-    // every mount.
+    // every mount. Sharing 0 would make the two tie, handing the decision to
+    // whatever order the database returned rows in.
     let rank: HashMap<(&str, u32), usize> = mounts
         .iter()
         .enumerate()
-        .map(|(i, m)| ((m.namespace, m.instance), i + 1))
+        .map(|(position, mount)| ((mount.namespace, mount.instance), position + 1))
         .collect();
 
-    // Tracks how good the current winner is. A bare field is unbeatable.
-    let mut best: HashMap<&str, usize> = HashMap::new();
+    let mut ranked: HashMap<&'a str, Vec<(usize, Resolved<'a>)>> = HashMap::new();
+    let mut skipped = Vec::new();
 
     for stored in values {
         if stored.value.is_empty() {
             continue;
         }
-        let Ok(path) = ValuePath::parse(&stored.path) else {
-            continue;
+        let path = match ValuePath::parse(&stored.path) {
+            Ok(path) => path,
+            Err(error) => {
+                skipped.push(Skipped {
+                    path: &stored.path,
+                    reason: SkipReason::Malformed(error),
+                });
+                continue;
+            }
         };
 
-        let (candidate_rank, origin) = match (path.namespace, path.instance) {
+        let (rank, origin) = match (path.namespace, path.instance) {
             (None, _) => (BARE, Origin::Bare),
-            (Some(namespace), Some(instance)) => {
-                let Some(&position) = rank.get(&(namespace, instance)) else {
+            (Some(namespace), Some(instance)) => match rank.get(&(namespace, instance)) {
+                Some(&position) => (position, Origin::Mounted { namespace, instance }),
+                None => {
+                    skipped.push(Skipped {
+                        path: &stored.path,
+                        reason: SkipReason::NotMounted,
+                    });
                     continue;
-                };
-                (position, Origin::Mounted { namespace, instance })
-            }
+                }
+            },
             // `parse` never yields a namespace without an instance.
             (Some(_), None) => continue,
         };
 
-        let incumbent = best.get(path.field).copied().unwrap_or(usize::MAX);
-        if candidate_rank < incumbent {
-            best.insert(path.field, candidate_rank);
-            flat.insert(path.field, Resolved { value: &stored.value, origin });
-        }
+        ranked
+            .entry(path.field)
+            .or_default()
+            .push((rank, Resolved { value: &stored.value, origin }));
     }
 
-    flat
+    let fields = ranked
+        .into_iter()
+        .map(|(field, mut candidates)| {
+            // Stable, so two values at the same rank keep storage order rather
+            // than swapping unpredictably between runs.
+            candidates.sort_by_key(|(rank, _)| *rank);
+            (field, candidates.into_iter().map(|(_, resolved)| resolved).collect())
+        })
+        .collect();
+
+    FlatView { fields, skipped }
 }
 
 /// Bare fields outrank every mount. Mount ranks start at 1.
@@ -129,7 +214,7 @@ mod tests {
     }
 
     fn value<'a>(flat: &FlatView<'a>, field: &str) -> &'a str {
-        flat.get(field).unwrap_or_else(|| panic!("{field} should be present")).value
+        flat.value(field).unwrap_or_else(|| panic!("{field} should be present"))
     }
 
     #[test]
@@ -140,7 +225,7 @@ mod tests {
         ];
         let flat = flatten(&values, &[mount("booth", 1)]);
         assert_eq!(value(&flat, "title"), "BE NATURAL (Lapwing)");
-        assert_eq!(flat["title"].origin, Origin::Bare);
+        assert_eq!(flat.winner("title").unwrap().origin, Origin::Bare);
     }
 
     #[test]
@@ -162,7 +247,7 @@ mod tests {
         let flat = flatten(&values, &[mount("booth", 1)]);
         assert_eq!(value(&flat, "title"), "> BE NATURAL <");
         assert_eq!(
-            flat["title"].origin,
+            flat.winner("title").unwrap().origin,
             Origin::Mounted { namespace: "booth", instance: 1 }
         );
     }
@@ -187,6 +272,7 @@ mod tests {
 
     #[test]
     fn mount_order_decides_between_two_instances_of_one_property() {
+        // Mount order ranks instances, not property names.
         let values = [stored("booth#1/price", "2900"), stored("booth#2/price", "2400")];
         let second_first = [mount("booth", 2), mount("booth", 1)];
         assert_eq!(value(&flatten(&values, &second_first), "price"), "2400");
@@ -197,6 +283,14 @@ mod tests {
         let values = [stored("booth#1/price", ""), stored("gumroad#1/price", "2400")];
         let mounts = [mount("booth", 1), mount("gumroad", 1)];
         assert_eq!(value(&flatten(&values, &mounts), "price"), "2400");
+    }
+
+    #[test]
+    fn an_empty_value_is_not_a_candidate() {
+        // A blank is the absence of a value, not a short candidate.
+        let values = [stored("booth#1/price", ""), stored("gumroad#1/price", "2400")];
+        let mounts = [mount("booth", 1), mount("gumroad", 1)];
+        assert_eq!(flatten(&values, &mounts).candidates("price").len(), 1);
     }
 
     #[test]
@@ -212,14 +306,6 @@ mod tests {
         let values = [stored("booth#1/price", "2900"), stored("gumroad#1/price", "2400")];
         let flat = flatten(&values, &[mount("gumroad", 1)]);
         assert_eq!(value(&flat, "price"), "2400");
-    }
-
-    #[test]
-    fn an_unparseable_path_is_skipped() {
-        let values = [stored("a/b/c", "junk"), stored("title", "mine")];
-        let flat = flatten(&values, &[]);
-        assert_eq!(value(&flat, "title"), "mine");
-        assert_eq!(flat.len(), 1);
     }
 
     #[test]
@@ -252,5 +338,111 @@ mod tests {
         assert_eq!(value(&flat, "url"), "https://booth.pm/ja/items/8264237");
         assert_eq!(value(&flat, "price"), "2900");
         assert_eq!(value(&flat, "category"), "clothing");
+    }
+
+    // --- candidates -------------------------------------------------------
+
+    #[test]
+    fn losing_candidates_are_kept_in_rank_order() {
+        // The frontend shows the local title large with the shop title
+        // underneath. It cannot do that from the winner alone, and deriving
+        // it from raw paths would be a second copy of this rule.
+        let values = [
+            stored("title", "BE NATURAL (Lapwing)"),
+            stored("booth#1/title", "> BE NATURAL <"),
+            stored("gumroad#1/title", "BE NATURAL fullset"),
+        ];
+        let flat = flatten(&values, &[mount("booth", 1), mount("gumroad", 1)]);
+
+        let titles: Vec<&str> = flat.candidates("title").iter().map(|c| c.value).collect();
+        assert_eq!(
+            titles,
+            ["BE NATURAL (Lapwing)", "> BE NATURAL <", "BE NATURAL fullset"]
+        );
+    }
+
+    #[test]
+    fn candidates_carry_their_origin() {
+        // "whichever of two prices is lower" needs to know which shop won.
+        let values = [stored("booth#1/price", "2900"), stored("gumroad#1/price", "2400")];
+        let flat = flatten(&values, &[mount("booth", 1), mount("gumroad", 1)]);
+
+        let origins: Vec<Origin> = flat.candidates("price").iter().map(|c| c.origin).collect();
+        assert_eq!(
+            origins,
+            [
+                Origin::Mounted { namespace: "booth", instance: 1 },
+                Origin::Mounted { namespace: "gumroad", instance: 1 },
+            ]
+        );
+    }
+
+    #[test]
+    fn the_winner_is_the_first_candidate() {
+        let values = [stored("booth#1/price", "2900"), stored("gumroad#1/price", "2400")];
+        let flat = flatten(&values, &[mount("gumroad", 1), mount("booth", 1)]);
+        assert_eq!(flat.value("price"), Some(flat.candidates("price")[0].value));
+        assert_eq!(flat.value("price"), Some("2400"));
+    }
+
+    #[test]
+    fn an_absent_field_has_no_candidates() {
+        let flat = flatten(&[], &[]);
+        assert_eq!(flat.value("title"), None);
+        assert!(flat.candidates("title").is_empty());
+    }
+
+    // --- skipped ----------------------------------------------------------
+
+    #[test]
+    fn a_malformed_path_is_reported_not_swallowed() {
+        // Corruption in values.path has to reach someone. The import contract
+        // and plugins both write this column.
+        let values = [stored("a/b/c", "junk"), stored("title", "mine")];
+        let flat = flatten(&values, &[]);
+
+        assert_eq!(value(&flat, "title"), "mine");
+        assert_eq!(
+            flat.skipped(),
+            [Skipped {
+                path: "a/b/c",
+                reason: SkipReason::Malformed(ParseError::TooManySegments)
+            }]
+        );
+    }
+
+    #[test]
+    fn a_malformed_path_does_not_stop_resolution() {
+        // One bad row must not take down a library view.
+        let values = [
+            stored("booth#0/price", "bad instance"),
+            stored("booth#1/price", "2900"),
+        ];
+        let flat = flatten(&values, &[mount("booth", 1)]);
+        assert_eq!(value(&flat, "price"), "2900");
+        assert_eq!(flat.skipped().len(), 1);
+    }
+
+    #[test]
+    fn an_unmounted_property_is_reported_as_routine() {
+        let values = [stored("booth#1/title", "shop")];
+        let flat = flatten(&values, &[]);
+        assert_eq!(
+            flat.skipped(),
+            [Skipped { path: "booth#1/title", reason: SkipReason::NotMounted }]
+        );
+    }
+
+    #[test]
+    fn nothing_is_skipped_when_everything_resolves() {
+        let values = [stored("title", "mine"), stored("booth#1/price", "2900")];
+        assert!(flatten(&values, &[mount("booth", 1)]).skipped().is_empty());
+    }
+
+    #[test]
+    fn an_empty_value_is_not_reported_as_skipped() {
+        // A blank is absence, not a defect worth surfacing.
+        let values = [stored("title", "")];
+        assert!(flatten(&values, &[]).skipped().is_empty());
     }
 }
