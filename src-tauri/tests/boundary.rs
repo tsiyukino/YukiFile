@@ -1,0 +1,156 @@
+//! The core must not know that any specific plugin exists.
+//!
+//! `docs.yml` states this as a convention and says it is enforced by a test
+//! rather than by discipline. This is that test. It is written before the core
+//! so that it constrains the core, rather than being written afterwards around
+//! whatever the core already does.
+//!
+//! What it checks today is the import direction: no file under `src-tauri/src`
+//! may name a plugin or reach into the plugin directory. The other two
+//! boundary rules from the plan — that the plugin command surface is an
+//! explicit allowlist, and that no built-in manifest declares a capability
+//! third parties cannot — have nothing to check until layer 4 builds the
+//! plugin host. They are recorded at the bottom of this file with the
+//! conditions that activate them, rather than added now as tests that pass
+//! because they inspect nothing.
+
+use std::fs;
+use std::path::{Path, PathBuf};
+
+/// Names the core is never allowed to mention. Plugin ids follow the
+/// `yukifile.<name>` form from the manifest example in the architecture doc;
+/// the bare directory name is listed too, since `plugins/pdf` is as much a
+/// reach across the boundary as `yukifile.pdf` is.
+const FORBIDDEN: &[&str] = &[
+    "yukifile.pdf",
+    "yukifile.vrc",
+    "yukifile.folder",
+    "yukifile.file",
+    "yukifile.archive",
+    "plugins/pdf",
+    "plugins/vrc",
+    "plugins/folder",
+    "plugins/file",
+    "plugins/archive",
+];
+
+fn core_src() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("src")
+}
+
+/// Every `.rs` file under the core source tree.
+fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
+    let entries = fs::read_dir(dir)
+        .unwrap_or_else(|e| panic!("cannot read {}: {e}", dir.display()));
+
+    for entry in entries {
+        let path = entry.expect("cannot read directory entry").path();
+        if path.is_dir() {
+            rust_files(&path, out);
+        } else if path.extension().is_some_and(|e| e == "rs") {
+            out.push(path);
+        }
+    }
+}
+
+/// Strip `//` and `/* */` comments so that a doc comment discussing the
+/// boundary does not trip the check. Without this, explaining the rule in a
+/// comment would break the rule.
+fn strip_comments(source: &str) -> String {
+    let mut out = String::with_capacity(source.len());
+    let mut chars = source.chars().peekable();
+    let mut in_block = false;
+
+    while let Some(c) = chars.next() {
+        if in_block {
+            if c == '*' && chars.peek() == Some(&'/') {
+                chars.next();
+                in_block = false;
+            }
+            continue;
+        }
+        match (c, chars.peek()) {
+            ('/', Some('/')) => {
+                for c in chars.by_ref() {
+                    if c == '\n' {
+                        out.push('\n');
+                        break;
+                    }
+                }
+            }
+            ('/', Some('*')) => {
+                chars.next();
+                in_block = true;
+            }
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+#[test]
+fn core_never_names_a_plugin() {
+    let mut files = Vec::new();
+    rust_files(&core_src(), &mut files);
+
+    assert!(
+        !files.is_empty(),
+        "found no source files under {} — the check would pass vacuously",
+        core_src().display()
+    );
+
+    let mut violations = Vec::new();
+
+    for file in &files {
+        let source = fs::read_to_string(file)
+            .unwrap_or_else(|e| panic!("cannot read {}: {e}", file.display()));
+        let code = strip_comments(&source);
+
+        for needle in FORBIDDEN {
+            if let Some(offset) = code.find(needle) {
+                let line = code[..offset].lines().count();
+                violations.push(format!(
+                    "{}:{} names `{}`",
+                    file.display(),
+                    line,
+                    needle
+                ));
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "the core reaches into plugins:\n  {}\n\n\
+         The core is an arbiter. If it needs to know about a specific plugin, \
+         the extension point is wrong and that is what should be fixed.",
+        violations.join("\n  ")
+    );
+}
+
+#[test]
+fn comment_stripping_does_not_hide_real_code() {
+    let source = r#"
+// plugins/pdf in a line comment
+/* plugins/vrc in a block comment */
+let id = "plugins/folder";
+"#;
+    let code = strip_comments(source);
+
+    assert!(!code.contains("plugins/pdf"), "line comment not stripped");
+    assert!(!code.contains("plugins/vrc"), "block comment not stripped");
+    assert!(
+        code.contains("plugins/folder"),
+        "stripping removed real code, which would make the boundary check blind"
+    );
+}
+
+// Not yet checkable, with the condition that activates each:
+//
+// * The Tauri command surface exposed to plugins is an explicit allowlist, so
+//   that widening it is always a visible diff. Activates when layer 4 adds
+//   `plugin/commands.rs`.
+//
+// * No built-in plugin manifest declares a capability the manifest schema does
+//   not define for third parties. Activates when layer 4 adds
+//   `plugin/manifest.rs` and layer 5 adds the first built-in manifest.
