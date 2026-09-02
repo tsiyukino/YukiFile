@@ -97,6 +97,34 @@ impl<'a> ValuePath<'a> {
     }
 }
 
+/// A reference to one mounted property instance: `booth#1`, no field.
+///
+/// This is what a pin holds — it names a source, not a value — so it is a
+/// namespace and an instance with nothing after them. Parsing it through
+/// `ValuePath` would fail, since a value path requires a field.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MountRef<'a> {
+    pub namespace: &'a str,
+    pub instance: u32,
+}
+
+impl<'a> MountRef<'a> {
+    /// Parse `booth#1`, or `booth` for the first instance.
+    pub fn parse(reference: &'a str) -> Result<Self, ParseError> {
+        if reference.contains('/') {
+            return Err(ParseError::TooManySegments);
+        }
+        let (namespace, instance) = split_instance(reference)?;
+        Ok(Self { namespace, instance })
+    }
+}
+
+impl fmt::Display for MountRef<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}#{}", self.namespace, self.instance)
+    }
+}
+
 impl fmt::Display for ValuePath<'_> {
     /// Round-trips through `parse`. An instance is always written out, so a
     /// path read as `booth/title` is stored back as `booth#1/title` and the
@@ -217,6 +245,42 @@ mod tests {
             assert_eq!(parsed.instance, instance, "instance of {path}");
             assert_eq!(parsed.field, field, "field of {path}");
         }
+    }
+
+    // --- MountRef ---------------------------------------------------------
+
+    #[test]
+    fn a_mount_reference_has_no_field() {
+        // This is what a pin holds: it names a source, not a value.
+        let reference = MountRef::parse("gumroad#1").expect("should parse");
+        assert_eq!(reference.namespace, "gumroad");
+        assert_eq!(reference.instance, 1);
+    }
+
+    #[test]
+    fn a_mount_reference_without_a_counter_is_the_first_instance() {
+        assert_eq!(MountRef::parse("booth"), MountRef::parse("booth#1"));
+    }
+
+    #[test]
+    fn a_mount_reference_round_trips() {
+        for reference in ["booth#1", "gumroad#2", "vrchat.clothing#1"] {
+            assert_eq!(MountRef::parse(reference).unwrap().to_string(), reference);
+        }
+    }
+
+    #[test]
+    fn a_value_path_is_not_a_mount_reference() {
+        // The two are different shapes and must not be parsed by one another.
+        assert_eq!(MountRef::parse("booth#1/title"), Err(ParseError::TooManySegments));
+        assert!(ValuePath::parse("booth#1").is_err());
+    }
+
+    #[test]
+    fn a_mount_reference_rejects_a_bad_instance() {
+        assert_eq!(MountRef::parse("booth#0"), Err(ParseError::BadInstance));
+        assert_eq!(MountRef::parse("booth#x"), Err(ParseError::BadInstance));
+        assert_eq!(MountRef::parse(""), Err(ParseError::Empty));
     }
 
     #[test]
