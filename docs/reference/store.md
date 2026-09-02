@@ -3,9 +3,10 @@
 Objects, the values hung on them, the edges between them, and the vocabularies
 those edges point at.
 
-Four modules exist so far. `path` and `flatten` are pure — they take what they
+Five modules exist so far. `path` and `flatten` are pure — they take what they
 need as arguments and touch no database, no filesystem and no clock. `schema`
-owns the database itself, and `id` owns the clock and the randomness.
+owns the database, `id` owns the clock and the randomness, and `values` is the
+one that reads and writes.
 
 ## store::path
 
@@ -309,6 +310,59 @@ Both halves are masked when composed, so a clock past 2109 or an `Entropy`
 returning more bits than the tail holds cannot corrupt the other half or push
 an id negative. SQLite integers are signed, and a negative id would sort before
 every existing row.
+
+## store::values
+
+Objects and the values hung on them. The first module that touches the
+database: it creates objects, normalises paths going in, and hands rows to
+`flatten` coming out.
+
+It decides no policy. Writing into an empty field just happens; overwriting a
+field that already holds something different is **reported, not applied**. What
+to do about that — a reviewable change set — belongs to a layer that knows what
+a change set is, and keeping the decision out of here is what lets one write
+path serve an AI import, another machine's export and a shop fetch without
+knowing which it is serving.
+
+`Values::new()` · `Values::with_ids(generator)` — the second takes an injected
+generator so a test can force an id collision.
+
+| method                                  | does                                       |
+|-----------------------------------------|--------------------------------------------|
+| `create_object(&conn)`                  | new object, retrying past an id collision  |
+| `set(&conn, object, path, value)`       | write into an empty field, else conflict   |
+| `overwrite(&conn, object, path, value)` | write regardless — for an accepted change  |
+| `get(&conn, object, path)`              | one stored value, by exact path            |
+| `rows(&conn, object)`                   | every stored value, unresolved             |
+
+`view(&rows, &mounts) -> FlatView` resolves. It is free rather than a method
+because it needs no generator, and the borrow makes the lifetime plain: the
+view points into the rows.
+
+`mount_order(&conn) -> Vec<(String, u32)>` reads this library's order. The
+shared-field list is not stored with it — that comes from each plugin's
+manifest, which the plugin host owns.
+
+### `Written` and `WriteError`
+
+`Written` says what happened: `Added` · `Unchanged` · `Replaced` · `Cleared`.
+An empty value clears the field rather than storing a blank, since a blank is
+the absence of a value and would leave a row resolution has to skip anyway.
+
+`WriteError::Conflict { existing, incoming }` carries both values, which is
+what the layer above turns into a change set entry. The others are `BadPath`,
+`NoSuchObject` and `Database`.
+
+### Path normalisation and id retries
+
+Paths are normalised on the way in, so `booth/title` and `booth#1/title` cannot
+both exist naming one value — the primary key compares strings, and without
+this it would not catch them.
+
+`create_object` retries a colliding id three times and then fails. Ids carry a
+random tail, so two objects made in the same millisecond can draw the same one
+and the primary key catches it. Retrying forever would turn a broken generator
+into a hang instead of an error.
 
 ## Not yet written
 

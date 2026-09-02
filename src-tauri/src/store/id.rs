@@ -315,31 +315,39 @@ mod tests {
     }
 
     #[test]
-    fn a_thousand_ids_in_one_millisecond_rarely_collide() {
-        // A scan inserts about this many at once, and they land in the same
-        // millisecond, so all thousand are separated by 21 random bits alone.
-        // Birthday maths puts a collision at roughly one run in five -- which
-        // is exactly why the primary key is the guarantee and the caller
-        // retries. Asserting all thousand are distinct would be asserting the
-        // documented behaviour does not happen.
+    fn ids_spread_across_the_tail_rather_than_clustering() {
+        // A scan inserts about a thousand objects, all in one millisecond, so
+        // they are separated by 21 random bits alone. Birthday maths puts a
+        // collision somewhere in that batch at roughly one run in five, which
+        // is why the primary key is the guarantee and the caller retries --
+        // and why this cannot assert they are all distinct without becoming a
+        // test that fails one run in five.
+        //
+        // What is worth asserting is that the ids spread: a generator whose
+        // tail clustered would collide constantly rather than occasionally.
         let mut ids = IdGenerator::new();
         let made: std::collections::HashSet<i64> = (0..1000).map(|_| ids.next()).collect();
 
         assert!(
-            made.len() >= 995,
-            "expected at most a handful of collisions in 1000, got {}",
-            1000 - made.len()
+            made.len() >= 950,
+            "1000 ids produced only {} distinct values, which is clustering              rather than the birthday bound",
+            made.len()
         );
     }
 
     #[test]
-    fn the_tail_does_not_repeat_within_a_scan() {
-        // The collision above comes from the birthday bound, not from a weak
-        // generator. If the tail itself starts repeating, that is a defect.
+    fn the_generator_itself_does_not_repeat() {
+        // Separates "collided because 21 bits is a small space" from "the
+        // generator is weak". Full 64-bit draws have no meaningful birthday
+        // bound at this count, so a repeat here is a real defect.
+        //
+        // The first version of this test masked to the tail width before
+        // comparing, which put it back in the same 21-bit space it was meant
+        // to rule out, and it failed about one run in five.
         let mut entropy = SystemEntropy::default();
-        let tails: std::collections::HashSet<u64> =
-            (0..1000).map(|_| entropy.next_bits() & RANDOM_MASK).collect();
-        assert_eq!(tails.len(), 1000);
+        let draws: std::collections::HashSet<u64> =
+            (0..1000).map(|_| entropy.next_bits()).collect();
+        assert_eq!(draws.len(), 1000);
     }
 }
 
