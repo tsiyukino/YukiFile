@@ -19,7 +19,8 @@ struct Migration {
 }
 
 /// Every migration, in order. Append; never edit one that has shipped.
-const MIGRATIONS: &[Migration] = &[Migration { version: 1, sql: V1 }];
+const MIGRATIONS: &[Migration] =
+    &[Migration { version: 1, sql: V1 }, Migration { version: 2, sql: V2 }];
 
 /// The version this build expects.
 pub fn latest_version() -> i64 {
@@ -128,9 +129,6 @@ fn apply(transaction: &Transaction<'_>, migration: &Migration) -> rusqlite::Resu
 }
 
 /// The database a library starts as.
-///
-/// Deferred to their own migrations rather than added here with no consumer:
-/// the change set tables, which layer 3 needs and layer 1 does not.
 const V1: &str = r#"
 -- An object is a thing in the library: a file, a folder, several of those, or
 -- a grouping with no location at all.
@@ -335,6 +333,8 @@ mod tests {
             tables(&connection),
             [
                 "aliases",
+                "changes",
+                "changesets",
                 "edges",
                 "history",
                 "mounts",
@@ -388,6 +388,109 @@ mod tests {
         connection
             .pragma_query_value(None, "foreign_keys", |row| row.get(0))
             .expect("read pragma")
+    }
+
+    #[test]
+    fn a_database_at_an_older_version_is_brought_forward() {
+        // The reason the mechanism was built at v1 rather than when it was
+        // first needed: this is the first time it runs for real, and it runs
+        // against a database that already holds data.
+        let mut connection = Connection::open_in_memory().expect("open");
+        prepare(&connection).expect("prepare");
+
+        // A library as v1 left it.
+        connection.execute_batch(V1).expect("v1 schema");
+        connection.execute_batch("PRAGMA user_version = 1").expect("stamp");
+        connection
+            .execute_batch(
+                "INSERT INTO objects (id) VALUES (42);
+                 INSERT INTO values_ (object_id, field_path, value)
+                 VALUES (42, 'title', 'BE NATURAL');",
+            )
+            .expect("seed data");
+
+        migrate(&mut connection).expect("migrate forward");
+
+        let version: i64 = connection
+            .pragma_query_value(None, "user_version", |row| row.get(0))
+            .expect("version");
+        assert_eq!(version, latest_version());
+
+        let title: String = connection
+            .query_row(
+                "SELECT value FROM values_ WHERE object_id = 42 AND field_path = 'title'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("the data survived");
+        assert_eq!(title, "BE NATURAL");
+
+        assert!(tables(&connection).contains(&"changesets".to_string()));
+    }
+
+    #[test]
+    fn a_change_belongs_to_one_field_of_one_object_in_one_set() {
+        let connection = db();
+        object(&connection, 1);
+        connection
+            .execute(
+                "INSERT INTO changesets (id, label, created) VALUES (1, 'import', 0)",
+                [],
+            )
+            .expect("set");
+        connection
+            .execute(
+                "INSERT INTO changes (changeset, object_id, field_path, new_value)
+                 VALUES (1, 1, 'title', 'first')",
+                [],
+            )
+            .expect("first");
+
+        let again = connection.execute(
+            "INSERT INTO changes (changeset, object_id, field_path, new_value)
+             VALUES (1, 1, 'title', 'second')",
+            [],
+        );
+        assert!(again.is_err(), "one field got two proposals in one set");
+    }
+
+    #[test]
+    fn accepted_is_a_flag_not_a_number() {
+        let connection = db();
+        object(&connection, 1);
+        connection
+            .execute("INSERT INTO changesets (id, label, created) VALUES (1, 'x', 0)", [])
+            .expect("set");
+
+        let bad = connection.execute(
+            "INSERT INTO changes (changeset, object_id, field_path, accepted)
+             VALUES (1, 1, 'title', 7)",
+            [],
+        );
+        assert!(bad.is_err());
+    }
+
+    #[test]
+    fn deleting_a_changeset_takes_its_changes() {
+        let connection = db();
+        object(&connection, 1);
+        connection
+            .execute("INSERT INTO changesets (id, label, created) VALUES (1, 'x', 0)", [])
+            .expect("set");
+        connection
+            .execute(
+                "INSERT INTO changes (changeset, object_id, field_path, new_value)
+                 VALUES (1, 1, 'title', 'x')",
+                [],
+            )
+            .expect("change");
+
+        connection.execute("DELETE FROM changesets WHERE id = 1", []).expect("delete");
+
+        let left: i64 = connection
+            .query_row("SELECT count(*) FROM changes", [], |row| row.get(0))
+            .expect("count");
+        assert_eq!(left, 0);
     }
 
     #[test]
@@ -915,3 +1018,51 @@ mod tests {
     }
 
 }
+
+/// Change sets: batches of proposed writes, reviewed before they apply.
+///
+/// Added as a migration rather than folded into v1, because layer 1 had no
+/// consumer for them and a table with no reader is a guess about what its
+/// reader will need. This is also the first real exercise of the migration
+/// mechanism, which is why it was built at v1 rather than at the moment it
+/// was first needed.
+const V2: &str = r#"
+-- One batch of proposals, from an import, a fetch, or another machine.
+--
+-- Source-agnostic on purpose: the question at review time is "do I want this
+-- value", not "who suggested it". A label says where it came from for a person
+-- reading the list, and nothing branches on it.
+CREATE TABLE changesets (
+    id       INTEGER PRIMARY KEY,
+    label    TEXT    NOT NULL,
+    created  INTEGER NOT NULL,
+    -- Set when the set has been applied, so a review screen can tell a
+    -- pending batch from a finished one without inspecting every entry.
+    applied  INTEGER
+) STRICT;
+
+-- One proposed write. Accepted entries apply; the rest stay for the record.
+--
+-- old_value is what the field held when the set was built. If it has changed
+-- since, the proposal was made against a value that no longer exists, and
+-- applying it blindly would overwrite a decision made in between.
+CREATE TABLE changes (
+    id          INTEGER PRIMARY KEY,
+    changeset   INTEGER NOT NULL REFERENCES changesets(id) ON DELETE CASCADE,
+    object_id   INTEGER NOT NULL REFERENCES objects(id) ON DELETE CASCADE,
+    field_path  TEXT    NOT NULL,
+    old_value   TEXT,
+    new_value   TEXT,
+    -- Why this was proposed. A classifier filed outfits as editor tools
+    -- because they bundled lilToon; the mistake was only visible once the
+    -- reasoning was.
+    reason      TEXT,
+    -- 0 or 1. Additions default to 1 since they are lossless; modifications
+    -- default to 0 because they overwrite something a person chose.
+    accepted    INTEGER NOT NULL DEFAULT 0 CHECK (accepted IN (0, 1)),
+    UNIQUE (changeset, object_id, field_path)
+) STRICT;
+
+CREATE INDEX changes_by_set ON changes (changeset);
+CREATE INDEX changesets_pending ON changesets (created) WHERE applied IS NULL;
+"#;

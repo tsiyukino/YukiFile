@@ -219,6 +219,30 @@ impl<C: Clock, E: Entropy> Values<C, E> {
         Ok(rows)
     }
 
+    /// The object holding this exact value at this field, if one does.
+    ///
+    /// Offered here rather than left to callers because the path has to be
+    /// normalised the same way on the way in and on the way out. A caller
+    /// querying `@import/key` against a stored `@import#1/key` matches
+    /// nothing and reads that as "not found", which is how an idempotent
+    /// import quietly stops being one.
+    pub fn find_by_value(
+        &self,
+        connection: &Connection,
+        field_path: &str,
+        value: &str,
+    ) -> Result<Option<i64>, WriteError> {
+        let normalised = normalise(field_path)?;
+        let object = connection
+            .query_row(
+                "SELECT object_id FROM values_ WHERE field_path = ?1 AND value = ?2",
+                params![normalised, value],
+                |row| row.get(0),
+            )
+            .optional()?;
+        Ok(object)
+    }
+
     fn require_object(&self, connection: &Connection, object: i64) -> Result<(), WriteError> {
         let exists: Option<i64> = connection
             .query_row("SELECT id FROM objects WHERE id = ?1", params![object], |row| row.get(0))

@@ -81,16 +81,21 @@ impl Document {
 
 /// One object: where it sits, what is hung on it, and what it points at.
 ///
-/// Matched on `paths`, which is what makes an import idempotent. An object
-/// with no path — a grouping — is matched on its identifier instead, since
-/// there is nothing else to match it by.
+/// Matched on `paths` first, then on `id`. A record naming a path the library
+/// already has is that object; one naming a path it does not have is matched
+/// by identifier, so importing the same document twice does not make two.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ObjectRecord {
     /// Locations, relative to the library root. Empty for a grouping.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub paths: Vec<String>,
-    /// A stable name for an object with no path, so a second import of the
-    /// same document updates the grouping rather than making another.
+    /// A stable name for this object across imports.
+    ///
+    /// Paths are the first thing matched on, but an import can name an object
+    /// that is not on disk yet — a product recorded before it is downloaded,
+    /// or a grouping, which has no path at all. Without an identifier those
+    /// match nothing on a second import and get created again, which is the
+    /// idempotence the contract promises going quietly wrong.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     /// Value paths to values: `title`, `booth#1/price`, `@pin/cover`. The same
