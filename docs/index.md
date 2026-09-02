@@ -46,8 +46,9 @@ Generated per module from the source.
 
 - [store.md](reference/store.md) — objects, values, edges, vocabularies,
   history, and the schema they live in.
-- [scan.md](reference/scan.md) — walking a library root. Factual typing and
-  reconciliation are not written yet.
+- [scan.md](reference/scan.md) — walking a library root, typing entries, and
+  working out what changed.
+- [commands.md](reference/commands.md) — heavy work a plugin calls into.
 
 ## Seed
 
