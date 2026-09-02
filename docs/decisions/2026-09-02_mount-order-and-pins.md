@@ -101,7 +101,13 @@ Pins survive re-fetching. A user who pinned the Gumroad cover keeps it when
 Booth is fetched again, which is the same guarantee namespaced paths give for
 titles: a decision already made is not re-litigated by a network call.
 
-A pin naming a source that no longer exists — the plugin was uninstalled, the
-instance unmounted — is ignored and falls through to mount order. It is not an
-error and it is not deleted, so reinstalling the plugin restores the choice.
-This matches how unmounted values behave in flattening.
+A pin can fail to act in two ways: the source it names is no longer mounted, or
+that source is mounted but does not share the field, so there is no ordering to
+override. Either way the field falls through to mount order and the pin is
+kept, so the choice returns when the plugin does.
+
+Neither case is silent. A pin is a deliberate write, and a write that is
+accepted, stored and then ignored without a word is the failure that made
+malformed value paths invisible before resolution started reporting them. Both
+are reported the same way, so a user who pins something that cannot take effect
+finds out rather than concluding the feature is broken.

@@ -110,44 +110,86 @@ pub enum SkipReason {
     Malformed(ParseError),
     /// The path names a property this library does not mount. Expected.
     NotMounted,
+    /// A pin naming a source that is not mounted. The field falls through to
+    /// mount order; the pin is kept, so reinstalling the plugin restores it.
+    PinNotMounted,
+    /// A pin on a field no mounted plugin shares. A field with a single source
+    /// has no ordering to override, so the pin can never take effect — and a
+    /// write that is accepted, stored and then ignored has to be visible.
+    PinOnUnsharedField,
 }
 
+/// Which mounted property instance a private field belongs to.
+pub type MountKey<'a> = (&'a str, u32);
+
 /// The sources for every field of one object, best first.
+///
+/// Shared fields and plugin-private fields are held apart rather than sharing
+/// a key space. The framework's object page renders the two differently — a
+/// shared field is one row with its sources listed, a private field belongs
+/// inside its plugin's region — and deciding which is which by looking for a
+/// `/` in a string would be this module handing back a job it already did.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FlatView<'a> {
-    fields: HashMap<&'a str, Vec<Source<'a>>>,
+    shared: HashMap<&'a str, Vec<Source<'a>>>,
+    private: HashMap<MountKey<'a>, HashMap<&'a str, &'a str>>,
     skipped: Vec<Skipped<'a>>,
 }
 
 impl<'a> FlatView<'a> {
-    /// The value shown first, which is what search, sort and export read.
+    /// The value shown first for a shared field, which is what search, sort
+    /// and export read.
     pub fn value(&self, field: &str) -> Option<&'a str> {
         self.primary(field).map(|source| source.value)
     }
 
-    /// The first source, with its origin.
+    /// The first source of a shared field, with its origin.
     pub fn primary(&self, field: &str) -> Option<&Source<'a>> {
         self.sources(field).first()
     }
 
-    /// Every source for a field, best first. Empty when the field has none.
+    /// Every source for a shared field, best first. Empty when it has none.
     pub fn sources(&self, field: &str) -> &[Source<'a>] {
-        self.fields.get(field).map_or(&[], Vec::as_slice)
+        self.shared.get(field).map_or(&[], Vec::as_slice)
     }
 
-    /// Every field that resolved to at least one source.
+    /// Every shared field that resolved to at least one source.
     pub fn fields(&self) -> impl Iterator<Item = &'a str> + '_ {
-        self.fields.keys().copied()
+        self.shared.keys().copied()
     }
 
-    /// Values that could not be placed. A `Malformed` entry is a data defect
-    /// worth reporting; `NotMounted` is routine.
+    /// One plugin-private field. These never join a bare name, so they are
+    /// addressed by the mount that owns them.
+    pub fn plugin_value(&self, mount: MountKey<'a>, field: &str) -> Option<&'a str> {
+        self.private.get(&mount)?.get(field).copied()
+    }
+
+    /// Every private field of one mount, for rendering that plugin's region.
+    pub fn plugin_fields(
+        &self,
+        mount: MountKey<'a>,
+    ) -> impl Iterator<Item = (&'a str, &'a str)> + '_ {
+        self.private
+            .get(&mount)
+            .into_iter()
+            .flat_map(|fields| fields.iter().map(|(name, value)| (*name, *value)))
+    }
+
+    /// Mounts that contributed at least one private field.
+    pub fn plugin_mounts(&self) -> impl Iterator<Item = MountKey<'a>> + '_ {
+        self.private.keys().copied()
+    }
+
+    /// Values that could not be placed. `Malformed`, `PinNotMounted` and
+    /// `PinOnUnsharedField` are defects worth surfacing; `NotMounted` is
+    /// routine.
     pub fn skipped(&self) -> &[Skipped<'a>] {
         &self.skipped
     }
 
+    /// True when nothing resolved, shared or private.
     pub fn is_empty(&self) -> bool {
-        self.fields.is_empty()
+        self.shared.is_empty() && self.private.is_empty()
     }
 }
 
@@ -156,20 +198,23 @@ impl<'a> FlatView<'a> {
 /// Empty values are dropped rather than ranked: a blank is the absence of a
 /// value, not a source that happens to be short.
 pub fn flatten<'a>(values: &'a [StoredValue], mounts: &[Mount<'a>]) -> FlatView<'a> {
-    let pins = collect_pins(values);
-
     // Ranks are PINNED < BARE < mounts, and no two may share a value: a tie
     // hands the decision to whatever order the database returned rows in,
     // which is not a decision anyone made.
-    let ranks: HashMap<(&str, u32), usize> = mounts
+    let mounted: HashMap<MountKey<'a>, (usize, &Mount<'a>)> = mounts
         .iter()
         .enumerate()
-        .map(|(position, mount)| ((mount.namespace, mount.instance), FIRST_MOUNT + position))
+        .map(|(position, mount)| {
+            ((mount.namespace, mount.instance), (FIRST_MOUNT + position, mount))
+        })
         .collect();
 
-    let mut ranked: HashMap<&'a str, Vec<(usize, Source<'a>)>> = HashMap::new();
+    let mut parsed = Vec::with_capacity(values.len());
+    let mut pins: HashMap<&'a str, MountKey<'a>> = HashMap::new();
     let mut skipped = Vec::new();
 
+    // One pass to parse, splitting pins from values. Parsing in both this and
+    // a separate pin pass would leave two places deciding what a pin is.
     for stored in values {
         if stored.value.is_empty() {
             continue;
@@ -184,86 +229,119 @@ pub fn flatten<'a>(values: &'a [StoredValue], mounts: &[Mount<'a>]) -> FlatView<
                 continue;
             }
         };
+
         if path.namespace == Some(PIN_NAMESPACE) {
-            continue; // already collected
-        }
-
-        let (key, rank, origin) = match (path.namespace, path.instance) {
-            (None, _) => (path.field, BARE, Origin::Bare),
-
-            (Some(namespace), Some(instance)) => {
-                let Some(mount) = find_mount(mounts, namespace, instance) else {
-                    skipped.push(Skipped {
-                        path: &stored.path,
-                        reason: SkipReason::NotMounted,
-                    });
-                    continue;
-                };
-                let origin = Origin::Mounted { namespace, instance };
-                let rank = ranks[&(namespace, instance)];
-
-                if mount.shares(path.field) {
-                    let rank = match pins.get(path.field) {
-                        Some(pinned) if *pinned == (namespace, instance) => PINNED,
-                        _ => rank,
-                    };
-                    (path.field, rank, origin)
-                } else {
-                    // Not shared: readable only through its own full path, so
-                    // it never joins the sources for the bare name.
-                    (stored.path.as_str(), rank, origin)
+            // A pin's value names a source, not a value path: `gumroad#1`.
+            match MountRef::parse(&stored.value) {
+                Ok(target) => {
+                    pins.insert(path.field, (target.namespace, target.instance));
                 }
+                Err(error) => skipped.push(Skipped {
+                    path: &stored.path,
+                    reason: SkipReason::Malformed(error),
+                }),
             }
+            continue;
+        }
+        parsed.push((stored, path));
+    }
 
+    let mut shared: HashMap<&'a str, Vec<(usize, Source<'a>)>> = HashMap::new();
+    let mut private: HashMap<MountKey<'a>, HashMap<&'a str, &'a str>> = HashMap::new();
+    let mut pins_landed: Vec<&'a str> = Vec::new();
+
+    for (stored, path) in parsed {
+        let (namespace, instance) = match (path.namespace, path.instance) {
+            (None, _) => {
+                shared
+                    .entry(path.field)
+                    .or_default()
+                    .push((BARE, Source { value: &stored.value, origin: Origin::Bare }));
+                continue;
+            }
+            (Some(namespace), Some(instance)) => (namespace, instance),
             // `parse` never yields a namespace without an instance.
             (Some(_), None) => continue,
         };
 
-        ranked.entry(key).or_default().push((rank, Source { value: &stored.value, origin }));
+        let Some(&(rank, mount)) = mounted.get(&(namespace, instance)) else {
+            skipped.push(Skipped { path: &stored.path, reason: SkipReason::NotMounted });
+            continue;
+        };
+
+        if !mount.shares(path.field) {
+            // Private to this plugin: never joins the sources for a bare name.
+            private.entry((namespace, instance)).or_default().insert(path.field, &stored.value);
+            continue;
+        }
+
+        let rank = match pins.get(path.field) {
+            Some(&pinned) if pinned == (namespace, instance) => {
+                pins_landed.push(path.field);
+                PINNED
+            }
+            _ => rank,
+        };
+        shared.entry(path.field).or_default().push((
+            rank,
+            Source { value: &stored.value, origin: Origin::Mounted { namespace, instance } },
+        ));
     }
 
-    let fields = ranked
+    report_ineffective_pins(&pins, &pins_landed, &mounted, values, &mut skipped);
+
+    let shared = shared
         .into_iter()
         .map(|(field, mut sources)| {
             // Stable, so equal ranks keep storage order rather than swapping
-            // between runs. Under the (object_id, path) primary key two values
-            // cannot tie, so this is defence rather than a live case.
+            // between runs. Under the (object_id, field_path) primary key two
+            // values cannot tie, so this is defence rather than a live case.
             sources.sort_by_key(|(rank, _)| *rank);
             (field, sources.into_iter().map(|(_, source)| source).collect())
         })
         .collect();
 
-    FlatView { fields, skipped }
+    FlatView { shared, private, skipped }
 }
 
-/// Pins name one source for one field: `@pin/cover = "gumroad#1"`.
+/// Report pins that were stored but could not act.
 ///
-/// A pin naming a source that is not mounted is ignored and the field falls
-/// through to mount order. It is not an error and it is not deleted, so
-/// reinstalling the plugin restores the choice.
-fn collect_pins<'a>(values: &'a [StoredValue]) -> HashMap<&'a str, (&'a str, u32)> {
-    values
-        .iter()
-        .filter_map(|stored| {
-            let path = ValuePath::parse(&stored.path).ok()?;
-            if path.namespace != Some(PIN_NAMESPACE) {
-                return None;
-            }
-            // The value names a source, not a value path: `gumroad#1`.
-            let pinned = MountRef::parse(&stored.value).ok()?;
-            Some((path.field, (pinned.namespace, pinned.instance)))
-        })
-        .collect()
+/// A pin is a write the user made deliberately. Accepting it, storing it, and
+/// then ignoring it without a word is the failure this module already fixed
+/// once for malformed paths; the two reasons a pin can miss get the same
+/// treatment. Neither is deleted, so the choice comes back if the plugin
+/// returns or the field becomes shared.
+fn report_ineffective_pins<'a>(
+    pins: &HashMap<&'a str, MountKey<'a>>,
+    landed: &[&'a str],
+    mounted: &HashMap<MountKey<'a>, (usize, &Mount<'a>)>,
+    values: &'a [StoredValue],
+    skipped: &mut Vec<Skipped<'a>>,
+) {
+    for (&field, target) in pins {
+        if landed.contains(&field) {
+            continue;
+        }
+        // Why it missed depends only on the source it named: either that
+        // source is gone, or it is present but does not contribute to this
+        // field. Whether the field has other sources is beside the point.
+        let reason = if mounted.contains_key(target) {
+            SkipReason::PinOnUnsharedField
+        } else {
+            SkipReason::PinNotMounted
+        };
+        if let Some(stored) = pin_row(values, field) {
+            skipped.push(Skipped { path: &stored.path, reason });
+        }
+    }
 }
 
-fn find_mount<'m, 'a>(
-    mounts: &'m [Mount<'a>],
-    namespace: &str,
-    instance: u32,
-) -> Option<&'m Mount<'a>> {
-    mounts
-        .iter()
-        .find(|mount| mount.namespace == namespace && mount.instance == instance)
+/// The stored row a pin came from, so the report can name its real path.
+fn pin_row<'a>(values: &'a [StoredValue], field: &str) -> Option<&'a StoredValue> {
+    values.iter().find(|stored| {
+        ValuePath::parse(&stored.path)
+            .is_ok_and(|path| path.namespace == Some(PIN_NAMESPACE) && path.field == field)
+    })
 }
 
 /// A pinned source outranks everything, including a bare field: it is an
@@ -440,7 +518,7 @@ mod tests {
         let flat = flatten(&values, &[shop("booth", 1)]);
 
         assert_eq!(flat.value("item_id"), None);
-        assert_eq!(flat.value("booth#1/item_id"), Some("8264237"));
+        assert_eq!(flat.plugin_value(("booth", 1), "item_id"), Some("8264237"));
     }
 
     #[test]
@@ -452,7 +530,7 @@ mod tests {
 
         assert_eq!(value(&flat, "note"), "mine");
         assert_eq!(flat.sources("note").len(), 1);
-        assert_eq!(flat.value("booth#1/note"), Some("theirs"));
+        assert_eq!(flat.plugin_value(("booth", 1), "note"), Some("theirs"));
     }
 
     #[test]
@@ -470,7 +548,7 @@ mod tests {
 
         assert_eq!(flat.value("price"), Some("2900"));
         assert_eq!(flat.value("shop_id"), None);
-        assert_eq!(flat.value("booth#1/shop_id"), Some("77"));
+        assert_eq!(flat.plugin_value(("booth", 1), "shop_id"), Some("77"));
     }
 
     #[test]
@@ -479,7 +557,7 @@ mod tests {
         let flat = flatten(&values, &[Mount::isolated("pdf", 1)]);
 
         assert_eq!(flat.value("pages"), None);
-        assert_eq!(flat.value("pdf#1/pages"), Some("12"));
+        assert_eq!(flat.plugin_value(("pdf", 1), "pages"), Some("12"));
     }
 
     // --- pins ------------------------------------------------------------
@@ -540,18 +618,6 @@ mod tests {
     }
 
     #[test]
-    fn a_pin_to_an_unmounted_source_falls_through() {
-        // The plugin was uninstalled. The choice is ignored, not an error and
-        // not deleted, so reinstalling restores it.
-        let values = [
-            stored("booth#1/cover", "booth.jpg"),
-            stored("@pin/cover", "gumroad#1"),
-        ];
-        let flat = flatten(&values, &[shop("booth", 1)]);
-        assert_eq!(value(&flat, "cover"), "booth.jpg");
-    }
-
-    #[test]
     fn a_pin_is_not_itself_a_field() {
         let values = [stored("booth#1/cover", "booth.jpg"), stored("@pin/cover", "booth#1")];
         let flat = flatten(&values, &[shop("booth", 1)]);
@@ -604,7 +670,9 @@ mod tests {
     #[test]
     fn an_unmounted_property_is_not_read() {
         let values = [stored("booth#1/title", "shop")];
-        assert!(flatten(&values, &[]).is_empty());
+        let flat = flatten(&values, &[]);
+        assert!(flat.is_empty());
+        assert_eq!(flat.value("title"), None);
     }
 
     #[test]
@@ -646,6 +714,142 @@ mod tests {
         assert_eq!(value(&flat, "url"), "https://booth.pm/ja/items/8264237");
         assert_eq!(value(&flat, "price"), "2900");
         // category is vrchat's own, not shared with anyone.
-        assert_eq!(value(&flat, "vrchat#1/category"), "clothing");
+        assert_eq!(flat.plugin_value(("vrchat", 1), "category"), Some("clothing"));
     }
+
+    // --- pins that cannot act --------------------------------------------
+
+    #[test]
+    fn a_pin_to_an_unmounted_source_is_reported() {
+        // The plugin was uninstalled. The field falls through, and the user
+        // hears about it rather than wondering why their choice stopped
+        // working.
+        let values = [
+            stored("booth#1/cover", "booth.jpg"),
+            stored("@pin/cover", "gumroad#1"),
+        ];
+        let flat = flatten(&values, &[shop("booth", 1)]);
+
+        assert_eq!(value(&flat, "cover"), "booth.jpg");
+        assert_eq!(
+            flat.skipped(),
+            [Skipped { path: "@pin/cover", reason: SkipReason::PinNotMounted }]
+        );
+    }
+
+    #[test]
+    fn a_pin_on_a_field_nobody_shares_is_reported() {
+        // item_id is Booth's own, so there is no ordering for a pin to
+        // override. Accepting the write and ignoring it forever is the
+        // failure this reporting exists to prevent.
+        let values = [
+            stored("booth#1/item_id", "111"),
+            stored("gumroad#1/item_id", "222"),
+            stored("@pin/item_id", "gumroad#1"),
+        ];
+        let flat = flatten(&values, &[shop("booth", 1), shop("gumroad", 1)]);
+
+        assert_eq!(flat.plugin_value(("booth", 1), "item_id"), Some("111"));
+        assert_eq!(flat.plugin_value(("gumroad", 1), "item_id"), Some("222"));
+        assert_eq!(
+            flat.skipped(),
+            [Skipped { path: "@pin/item_id", reason: SkipReason::PinOnUnsharedField }]
+        );
+    }
+
+    #[test]
+    fn a_pin_to_a_source_that_does_not_share_the_field_is_reported() {
+        // booth shares title; vrchat is mounted but shares nothing. Pinning
+        // title to vrchat can never take effect.
+        let values = [
+            stored("booth#1/title", "booth title"),
+            stored("vrchat#1/title", "vrc title"),
+            stored("@pin/title", "vrchat#1"),
+        ];
+        let flat = flatten(&values, &[shop("booth", 1), Mount::isolated("vrchat", 1)]);
+
+        assert_eq!(value(&flat, "title"), "booth title");
+        assert_eq!(
+            flat.skipped(),
+            [Skipped { path: "@pin/title", reason: SkipReason::PinOnUnsharedField }]
+        );
+    }
+
+    #[test]
+    fn a_pin_that_lands_is_not_reported() {
+        let values = [
+            stored("booth#1/cover", "booth.jpg"),
+            stored("gumroad#1/cover", "gumroad.jpg"),
+            stored("@pin/cover", "gumroad#1"),
+        ];
+        let flat = flatten(&values, &[shop("booth", 1), shop("gumroad", 1)]);
+
+        assert_eq!(value(&flat, "cover"), "gumroad.jpg");
+        assert!(flat.skipped().is_empty());
+    }
+
+    #[test]
+    fn a_malformed_pin_target_is_reported_as_corruption() {
+        let values = [
+            stored("booth#1/cover", "booth.jpg"),
+            stored("@pin/cover", "not a mount ref"),
+        ];
+        let flat = flatten(&values, &[shop("booth", 1)]);
+
+        assert_eq!(value(&flat, "cover"), "booth.jpg");
+        assert_eq!(flat.skipped().len(), 1);
+        assert!(matches!(flat.skipped()[0].reason, SkipReason::Malformed(_)));
+    }
+
+    // --- the two key spaces ----------------------------------------------
+
+    #[test]
+    fn shared_and_private_fields_do_not_share_a_key_space() {
+        // The object page renders the two differently, so telling them apart
+        // must not require parsing a string.
+        let values = [
+            stored("title", "mine"),
+            stored("booth#1/title", "shop"),
+            stored("booth#1/item_id", "8264237"),
+        ];
+        let flat = flatten(&values, &[shop("booth", 1)]);
+
+        let shared: Vec<&str> = flat.fields().collect();
+        assert_eq!(shared, ["title"]);
+
+        let mounts: Vec<MountKey> = flat.plugin_mounts().collect();
+        assert_eq!(mounts, [("booth", 1)]);
+
+        let private: Vec<(&str, &str)> = flat.plugin_fields(("booth", 1)).collect();
+        assert_eq!(private, [("item_id", "8264237")]);
+    }
+
+    #[test]
+    fn a_mount_with_no_private_fields_is_not_listed() {
+        let values = [stored("booth#1/title", "shop")];
+        let flat = flatten(&values, &[shop("booth", 1)]);
+        assert_eq!(flat.plugin_mounts().count(), 0);
+    }
+
+    #[test]
+    fn private_fields_of_two_instances_stay_apart() {
+        let values = [
+            stored("booth#1/item_id", "111"),
+            stored("booth#2/item_id", "222"),
+        ];
+        let flat = flatten(&values, &[shop("booth", 1), shop("booth", 2)]);
+
+        assert_eq!(flat.plugin_value(("booth", 1), "item_id"), Some("111"));
+        assert_eq!(flat.plugin_value(("booth", 2), "item_id"), Some("222"));
+    }
+
+    #[test]
+    fn an_object_with_only_private_fields_is_not_empty() {
+        let values = [stored("pdf#1/pages", "12")];
+        let flat = flatten(&values, &[Mount::isolated("pdf", 1)]);
+
+        assert!(!flat.is_empty());
+        assert_eq!(flat.fields().count(), 0);
+    }
+
 }

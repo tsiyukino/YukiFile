@@ -46,6 +46,8 @@ pub enum ParseError {
     BadInstance,
     /// A `#` appeared in the field rather than in the namespace.
     InstanceOnField,
+    /// A namespace or field contains whitespace, so it is not a name.
+    NotAName,
 }
 
 impl fmt::Display for ParseError {
@@ -55,6 +57,7 @@ impl fmt::Display for ParseError {
             Self::TooManySegments => "value path has more than one '/'",
             Self::BadInstance => "instance suffix is not a positive integer",
             Self::InstanceOnField => "instance suffix belongs on the namespace",
+            Self::NotAName => "namespace or field contains whitespace",
         };
         f.write_str(msg)
     }
@@ -76,12 +79,10 @@ impl<'a> ValuePath<'a> {
         if segments.next().is_some() {
             return Err(ParseError::TooManySegments);
         }
-        if field.is_empty() {
-            return Err(ParseError::Empty);
-        }
         if field.contains('#') {
             return Err(ParseError::InstanceOnField);
         }
+        check_name(field)?;
 
         let Some(namespace) = namespace else {
             return Ok(Self { namespace: None, instance: None, field });
@@ -143,20 +144,35 @@ impl fmt::Display for ValuePath<'_> {
 /// Split `booth#2` into `("booth", 2)`. A namespace with no `#` is instance 1.
 fn split_instance(namespace: &str) -> Result<(&str, u32), ParseError> {
     let Some((name, suffix)) = namespace.split_once('#') else {
-        return if namespace.is_empty() {
-            Err(ParseError::Empty)
-        } else {
-            Ok((namespace, 1))
-        };
+        check_name(namespace)?;
+        return Ok((namespace, 1));
     };
 
-    if name.is_empty() {
-        return Err(ParseError::Empty);
-    }
+    check_name(name)?;
     match suffix.parse::<u32>() {
         Ok(0) | Err(_) => Err(ParseError::BadInstance),
         Ok(instance) => Ok((name, instance)),
     }
+}
+
+/// A namespace or field name must be non-empty and free of whitespace.
+///
+/// Without this, anything at all parses as a namespace: `MountRef::parse` on
+/// a sentence returns it as a property name and instance 1, so a corrupt pin
+/// target reads as a plugin nobody has installed rather than as corruption.
+///
+/// The rule is deliberately loose otherwise. `.` occurs inside property type
+/// names (`vrchat.clothing`) and `@` opens the reserved namespaces (`@pin`),
+/// so only whitespace is rejected; `/` and `#` never reach here, having
+/// already been consumed as separators.
+fn check_name(name: &str) -> Result<(), ParseError> {
+    if name.is_empty() {
+        return Err(ParseError::Empty);
+    }
+    if name.chars().any(char::is_whitespace) {
+        return Err(ParseError::NotAName);
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -245,6 +261,27 @@ mod tests {
             assert_eq!(parsed.instance, instance, "instance of {path}");
             assert_eq!(parsed.field, field, "field of {path}");
         }
+    }
+
+    #[test]
+    fn names_reject_whitespace() {
+        // Without this a sentence parses as a property name, and a corrupt
+        // pin target reads as an uninstalled plugin rather than as junk.
+        use ParseError::NotAName;
+        assert_eq!(MountRef::parse("not a mount ref"), Err(NotAName));
+        assert_eq!(ValuePath::parse("a b/title"), Err(NotAName));
+        assert_eq!(ValuePath::parse("booth/my title"), Err(NotAName));
+        assert_eq!(ValuePath::parse("my title"), Err(NotAName));
+        assert_eq!(ValuePath::parse("booth#1/	tab"), Err(NotAName));
+    }
+
+    #[test]
+    fn names_still_allow_dots_and_the_reserved_prefix() {
+        // `.` occurs in property type names and `@` opens the reserved
+        // namespaces; only whitespace is rejected.
+        assert_eq!(parse("vrchat.clothing/parts").namespace, Some("vrchat.clothing"));
+        assert_eq!(parse("@pin/cover").namespace, Some("@pin"));
+        assert_eq!(MountRef::parse("vrchat.clothing#2").unwrap().instance, 2);
     }
 
     // --- MountRef ---------------------------------------------------------

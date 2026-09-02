@@ -3,7 +3,8 @@
     "allow": [
       "Bash(cargo test *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(python -)"
     ]
   }
 }

@@ -53,9 +53,15 @@ conflating them silently drops data.
 
 ### `ParseError`
 
-`Empty` · `TooManySegments` · `BadInstance` · `InstanceOnField`
+`Empty` · `TooManySegments` · `BadInstance` · `InstanceOnField` · `NotAName`
 
 Implements `Display` and `std::error::Error`.
+
+Namespaces and fields must be non-empty and free of whitespace. Without that
+rule anything at all parses as a namespace, and a corrupt pin target reads as a
+plugin nobody installed rather than as junk. `.` and `@` stay legal — property
+type names contain dots (`vrchat.clothing`) and the reserved namespaces start
+with `@` (`@pin`).
 
 ## store::flatten
 
@@ -95,9 +101,9 @@ declared, and only those fields join the sources for a bare name:
 Mount { namespace: "booth", instance: 1, shared: &["title", "price"] }
 ```
 
-`booth#1/title` becomes a source for `title`. `booth#1/item_id`, undeclared, is
-read through its full path — `flat.value("booth#1/item_id")` — and never
-appears under `item_id`.
+`booth#1/title` becomes a source for `title`. `booth#1/item_id`, undeclared,
+stays Booth's own: it is read through `flat.plugin_value(("booth", 1),
+"item_id")` and never appears under `item_id`.
 
 `Mount::isolated(namespace, instance)` builds a mount sharing nothing.
 
@@ -113,23 +119,47 @@ A pin overrides mount order for one field on one object:
 ```
 
 It reorders rather than discards — the other sources stay in the list, so the
-detail page can still show them. A pin naming a source that is not mounted is
-ignored and the field falls through to mount order; it is not an error and not
-deleted, so reinstalling the plugin restores the choice.
+detail page can still show them.
+
+A pin that cannot act is reported through `skipped()` rather than ignored. A
+pin is a deliberate write; accepting it, storing it and then never applying it
+without a word is the same failure malformed paths used to have. Two ways it
+can miss: the target plugin is gone (`PinNotMounted`), or the target is mounted
+but does not share that field, so there is no ordering to override
+(`PinOnUnsharedField`). Neither is deleted, so the choice returns when the
+plugin does.
 
 `PIN_NAMESPACE` is the reserved namespace (`@pin`). Pins never appear as fields
 of their own in the result.
 
 ### `FlatView<'a>`
 
+Shared fields and plugin-private fields are held apart rather than sharing one
+key space. The framework's object page renders them differently — a shared
+field is one row with its sources listed, a private field belongs inside its
+plugin's region — and deciding which is which by looking for a `/` in a string
+would hand back a job this module already did.
+
+Shared fields, addressed by bare name:
+
 | method            | returns                         | use                                |
 |-------------------|---------------------------------|------------------------------------|
 | `value(field)`    | `Option<&'a str>`               | the first value — search, sort, export |
 | `primary(field)`  | `Option<&Source<'a>>`           | the first source, with its origin  |
 | `sources(field)`  | `&[Source<'a>]`                 | every source, best first           |
-| `fields()`        | `impl Iterator<Item = &'a str>` | fields that resolved to something  |
-| `skipped()`       | `&[Skipped<'a>]`                | values that could not be placed    |
-| `is_empty()`      | `bool`                          | nothing resolved                   |
+| `fields()`        | `impl Iterator<Item = &'a str>` | shared fields that resolved        |
+
+Private fields, addressed by the mount that owns them
+(`MountKey<'a> = (&'a str, u32)`):
+
+| method                        | returns                                  |
+|-------------------------------|------------------------------------------|
+| `plugin_value(mount, field)`  | `Option<&'a str>`                        |
+| `plugin_fields(mount)`        | `impl Iterator<Item = (&'a str, &'a str)>` |
+| `plugin_mounts()`             | `impl Iterator<Item = MountKey<'a>>`     |
+
+And for both: `skipped()` returns what could not be placed, `is_empty()` is
+true when neither kind resolved.
 
 Keeping every source is what lets the frontend show the local title large with
 the shop titles underneath, or offer whichever of two prices is lower, without a
@@ -139,10 +169,12 @@ second implementation of the ranking rule living over there.
 
 `Skipped { path: &'a str, reason: SkipReason }`
 
-| reason                  | meaning                                           |
-|-------------------------|---------------------------------------------------|
-| `NotMounted`            | routine — a plugin that is not installed wrote it  |
-| `Malformed(ParseError)` | corruption — surface it                            |
+| reason                  | meaning                                            |
+|-------------------------|----------------------------------------------------|
+| `NotMounted`            | routine — a plugin that is not installed wrote it   |
+| `Malformed(ParseError)` | corruption — surface it                             |
+| `PinNotMounted`         | a pin whose target plugin is gone                   |
+| `PinOnUnsharedField`    | a pin on a field its target does not share          |
 
 An unmounted property is expected: an object can carry values written by a
 plugin that is not installed right now, and they must not surface as if they
