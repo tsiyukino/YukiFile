@@ -154,8 +154,11 @@ impl<C: Clock, E: Entropy> Values<C, E> {
     /// Write a value whether or not the field already holds one.
     ///
     /// This is what applying an accepted change set uses. It does not consult
-    /// history; recording the change is the caller's to do, in the same
-    /// transaction.
+    /// history; recording the change is the caller's to do, inside the
+    /// transaction it opened with [`schema::in_transaction`], so that a
+    /// failure part-way takes the value and its history record together.
+    ///
+    /// [`schema::in_transaction`]: crate::store::schema::in_transaction
     pub fn overwrite(
         &self,
         connection: &Connection,
@@ -263,18 +266,50 @@ pub fn view<'a>(rows: &'a [StoredValue], mounts: &[Mount<'a>]) -> FlatView<'a> {
     flatten(rows, mounts)
 }
 
+/// One mounted property instance as the database holds it.
+///
+/// Owns its namespace, because a `Mount` borrows and the rows it borrows from
+/// have to outlive the view built on them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MountRow {
+    pub namespace: String,
+    pub instance: u32,
+    /// Fields the mounting plugin declares as shared. Empty until the plugin
+    /// host fills it in from the manifest; a mount sharing nothing keeps every
+    /// field to itself, which is the safe reading of "we do not know yet".
+    pub shared: Vec<String>,
+}
+
 /// This library's mount order, lowest position first.
 ///
-/// The shared field list is not stored here — it comes from each plugin's
-/// manifest, which the plugin host owns. This returns the order and the caller
-/// fills in what each mount shares.
-pub fn mount_order(connection: &Connection) -> rusqlite::Result<Vec<(String, u32)>> {
+/// The shared list comes back empty: it is declared in each plugin's manifest,
+/// which the plugin host owns and which does not exist until layer 4. Layers 2
+/// and 3 read values before then, and they get isolation until a manifest says
+/// otherwise.
+pub fn mount_order(connection: &Connection) -> rusqlite::Result<Vec<MountRow>> {
     let mut statement = connection
         .prepare("SELECT namespace, instance FROM mounts ORDER BY position")?;
     let mounts = statement
-        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+        .query_map([], |row| {
+            Ok(MountRow { namespace: row.get(0)?, instance: row.get(1)?, shared: Vec::new() })
+        })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(mounts)
+}
+
+/// Borrow a slice of [`MountRow`] as the [`Mount`] list resolution takes.
+///
+/// This exists so the conversion has one home. Without it every caller writes
+/// its own, and two of them eventually disagree about what an empty `shared`
+/// means — which is the drift `flatten` exists to prevent.
+pub fn mounts(rows: &[MountRow]) -> Vec<Mount<'_>> {
+    rows.iter()
+        .map(|row| Mount {
+            namespace: &row.namespace,
+            instance: row.instance,
+            shared: &row.shared,
+        })
+        .collect()
 }
 
 /// Normalise a path so two spellings cannot both name one value.
@@ -312,8 +347,14 @@ mod tests {
         (connection, values, object)
     }
 
+    /// Shared fields as a `'static` slice, so a `Mount` can borrow them
+    /// without the caller holding a `Vec` alive.
+    fn shared(names: &[&str]) -> &'static [String] {
+        Box::leak(names.iter().map(|n| n.to_string()).collect::<Vec<_>>().into_boxed_slice())
+    }
+
     fn shop(namespace: &str, instance: u32) -> Mount<'_> {
-        Mount { namespace, instance, shared: &["title", "price"] }
+        Mount { namespace, instance, shared: shared(&["title", "price"]) }
     }
 
     // --- objects ----------------------------------------------------------
@@ -558,9 +599,10 @@ mod tests {
         values.set(&connection, object, "booth#1/cover", "booth.jpg").expect("booth");
         values.set(&connection, object, "gumroad#1/cover", "gumroad.jpg").expect("gumroad");
 
+        let cover = shared(&["cover"]);
         let mounts = [
-            Mount { namespace: "booth", instance: 1, shared: &["cover"] },
-            Mount { namespace: "gumroad", instance: 1, shared: &["cover"] },
+            Mount { namespace: "booth", instance: 1, shared: cover },
+            Mount { namespace: "gumroad", instance: 1, shared: cover },
         ];
 
         let rows = values.rows(&connection, object).expect("rows");
@@ -600,14 +642,14 @@ mod tests {
             .expect("insert mounts");
 
         let order = mount_order(&connection).expect("read order");
-        assert_eq!(
-            order,
-            [
-                ("booth".to_string(), 1),
-                ("gumroad".to_string(), 1),
-                ("booth".to_string(), 2),
-            ]
-        );
+        let named: Vec<(&str, u32)> =
+            order.iter().map(|row| (row.namespace.as_str(), row.instance)).collect();
+        assert_eq!(named, [("booth", 1), ("gumroad", 1), ("booth", 2)]);
+
+        // The shared list is empty until a manifest fills it, and empty means
+        // isolation rather than "share everything".
+        assert!(order.iter().all(|row| row.shared.is_empty()));
+        assert!(mounts(&order).iter().all(|mount| mount.shared.is_empty()));
     }
 
     #[test]

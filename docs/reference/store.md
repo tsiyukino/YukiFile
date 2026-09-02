@@ -100,12 +100,16 @@ Fields do not compete by default. A `Mount` carries the `shared` list its plugin
 declared, and only those fields join the sources for a bare name:
 
 ```rust
-Mount { namespace: "booth", instance: 1, shared: &["title", "price"] }
+Mount { namespace: "booth", instance: 1, shared: &shared_fields }
 ```
 
 `booth#1/title` becomes a source for `title`. `booth#1/item_id`, undeclared,
 stays Booth's own: it is read through `flat.plugin_value(("booth", 1),
 "item_id")` and never appears under `item_id`.
+
+`shared` borrows `[String]` rather than `[&str]`: these come from a manifest
+and from the database as owned strings, and borrowing `&str` would put a
+conversion at every call site.
 
 `Mount::isolated(namespace, instance)` builds a mount sharing nothing.
 
@@ -213,6 +217,28 @@ per-connection setting that SQLite does not store in the file, so a connection
 opened any other way has no foreign keys and no cascades: rows pointing at
 deleted objects simply stay. Setting it during migration is not enough, since
 migration runs on one connection and the application then uses others.
+
+`in_transaction(&mut Connection, |tx| ...) -> Result<T, E>`
+
+Runs a group of writes that either all happen or none do. A change set is a
+reviewable batch shaped like a pull request, and a pull request either merges or
+does not — applying thirty-one field changes and having the seventeenth fail
+must not leave the first sixteen behind, with a half-written batch in the
+history that reads no differently from a complete one.
+
+Every write in the store takes a `&Connection`, and `&Transaction` coerces to
+one, so no module needs a transaction-aware variant: the caller opens one here
+and passes it down where it would have passed a connection. The closure's error
+type is the caller's, so a `WriteError` survives the round trip instead of being
+flattened into a database error.
+
+```rust
+schema::in_transaction(&mut connection, |tx| {
+    values.overwrite(tx, object, "title", "new")?;
+    history::record(tx, object, "title", Some("old"), Some("new"), Some(batch))?;
+    Ok(())
+})?;
+```
 
 `migrate(&mut Connection) -> Result<()>` · `latest_version() -> i64`
 
@@ -339,9 +365,17 @@ generator so a test can force an id collision.
 because it needs no generator, and the borrow makes the lifetime plain: the
 view points into the rows.
 
-`mount_order(&conn) -> Vec<(String, u32)>` reads this library's order. The
-shared-field list is not stored with it — that comes from each plugin's
-manifest, which the plugin host owns.
+`mount_order(&conn) -> Vec<MountRow>` reads this library's order, and
+`mounts(&rows) -> Vec<Mount>` borrows those rows as the list resolution takes.
+
+The conversion lives here so it has one home. Without it every caller writes its
+own and two of them eventually disagree about what an empty `shared` means —
+the drift `flatten` exists to prevent.
+
+`MountRow.shared` comes back empty, because the shared list is declared in each
+plugin's manifest and the plugin host does not exist until layer 4. Layers 2 and
+3 read values before then and get isolation, which is the safe reading of "no
+manifest has said otherwise yet".
 
 ### `Written` and `WriteError`
 

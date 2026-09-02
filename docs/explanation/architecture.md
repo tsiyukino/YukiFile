@@ -188,10 +188,20 @@ accepted since they are lossless; modifications default to unaccepted. The most
 useful control is "accept additions only", which fills in blanks without
 touching decisions already made.
 
+Applying one is all or nothing. A pull request either merges or it does not,
+and a change set that half-applied would leave sixteen of thirty-one fields
+written with a batch in the history that reads no differently from a complete
+one. Every write in a change set runs inside one transaction, so a failure
+part-way takes the values and their history records back together.
+
 History is kept at field level: path, old value, new value, timestamp, batch.
 It is small — roughly a couple of megabytes for a library this size after years
 of edits — so it is stored plainly, without git-style delta packing. Thumbnails
 never enter history; replacing a cover replaces the file.
+
+History is written by whoever is making the decision, not automatically on
+every write. A scan importing 1518 objects is not 1518 edits; it is those
+fields existing for the first time.
 
 ## Plugins
 

@@ -58,6 +58,49 @@ fn prepare(connection: &Connection) -> rusqlite::Result<()> {
     connection.pragma_update(None, "foreign_keys", "ON")
 }
 
+/// Run a group of writes that either all happen or none do.
+///
+/// A change set is described as a reviewable batch shaped like a pull request,
+/// and a pull request either merges or does not. Applying thirty-one field
+/// changes and having the seventeenth fail must not leave the first sixteen
+/// behind, with a half-written batch in the history that reads no differently
+/// from a complete one.
+///
+/// Every write in the store takes a `&Connection`, and `&Transaction` coerces
+/// to one, so the modules need no transaction-aware variants: the caller opens
+/// one here and passes it down exactly as it would a connection.
+///
+/// ```no_run
+/// # use yukifile::store::{schema, values::Values};
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// # let mut connection = schema::open_in_memory()?;
+/// # let values = Values::new();
+/// # let (object, changes) = (1i64, Vec::<(String, String)>::new());
+/// schema::in_transaction(&mut connection, |tx| {
+///     for (field, value) in &changes {
+///         values.overwrite(tx, object, field, value)?;
+///     }
+///     Ok(())
+/// })?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// The closure's error type is the caller's, so a `WriteError` propagates
+/// without being flattened into a database error on the way out.
+pub fn in_transaction<T, E>(
+    connection: &mut Connection,
+    work: impl FnOnce(&Transaction<'_>) -> Result<T, E>,
+) -> Result<T, E>
+where
+    E: From<rusqlite::Error>,
+{
+    let transaction = connection.transaction()?;
+    let outcome = work(&transaction)?;
+    transaction.commit()?;
+    Ok(outcome)
+}
+
 /// Bring a database up to the latest schema version.
 ///
 /// Each migration runs in its own transaction, so a failure part-way leaves
@@ -718,4 +761,157 @@ mod tests {
             )
             .expect("two instances");
     }
+
+    // --- transactions -----------------------------------------------------
+
+    #[test]
+    fn a_transaction_commits_everything_it_wrote() {
+        let mut connection = db();
+        let mut values = crate::store::values::Values::new();
+        let object = values.create_object(&connection).expect("object");
+
+        in_transaction(&mut connection, |tx| {
+            values.set(tx, object, "title", "mine")?;
+            values.set(tx, object, "price", "2900")?;
+            Ok::<_, crate::store::values::WriteError>(())
+        })
+        .expect("commit");
+
+        assert_eq!(
+            values.get(&connection, object, "title").expect("read"),
+            Some("mine".to_string())
+        );
+        assert_eq!(
+            values.get(&connection, object, "price").expect("read"),
+            Some("2900".to_string())
+        );
+    }
+
+    #[test]
+    fn a_failure_part_way_leaves_nothing_behind() {
+        // A change set is a reviewable batch shaped like a pull request, and a
+        // pull request either merges or does not. Applying thirty-one field
+        // changes and having the seventeenth fail must not leave the first
+        // sixteen in the library.
+        use crate::store::values::{Values, WriteError};
+
+        let mut connection = db();
+        let mut values = Values::new();
+        let object = values.create_object(&connection).expect("object");
+        values.set(&connection, object, "title", "old").expect("seed");
+
+        let outcome: Result<(), WriteError> = in_transaction(&mut connection, |tx| {
+            values.overwrite(tx, object, "title", "new")?;
+            values.set(tx, object, "note", "also written")?;
+            // A write against an object that does not exist.
+            values.set(tx, 999_999, "price", "100")?;
+            Ok(())
+        });
+
+        assert!(outcome.is_err(), "the failing write should surface");
+        assert_eq!(
+            values.get(&connection, object, "title").expect("read"),
+            Some("old".to_string()),
+            "the overwrite before the failure was not rolled back"
+        );
+        assert_eq!(
+            values.get(&connection, object, "note").expect("read"),
+            None,
+            "a write before the failure survived"
+        );
+    }
+
+    #[test]
+    fn a_rolled_back_batch_leaves_no_history() {
+        // Half a batch in the log reads no differently from a whole one, so a
+        // failure must take the history with it.
+        use crate::store::values::{Values, WriteError};
+        use crate::store::history;
+
+        let mut connection = db();
+        let mut values = Values::new();
+        let object = values.create_object(&connection).expect("object");
+        values.set(&connection, object, "title", "old").expect("seed");
+
+        let batch = history::begin();
+        let outcome: Result<(), WriteError> = in_transaction(&mut connection, |tx| {
+            values.overwrite(tx, object, "title", "new")?;
+            history::record(tx, object, "title", Some("old"), Some("new"), Some(batch))?;
+            values.set(tx, 999_999, "price", "100")?;
+            Ok(())
+        });
+
+        assert!(outcome.is_err());
+        assert_eq!(history::len(&connection).expect("count"), 0, "a partial batch survived");
+    }
+
+    #[test]
+    fn the_caller_error_type_survives_the_round_trip() {
+        // A WriteError must not be flattened into a database error on the way
+        // out, or the caller cannot tell a conflict from a disk failure.
+        use crate::store::values::{Values, WriteError};
+
+        let mut connection = db();
+        let mut values = Values::new();
+        let object = values.create_object(&connection).expect("object");
+        values.set(&connection, object, "title", "mine").expect("seed");
+
+        let outcome: Result<(), WriteError> = in_transaction(&mut connection, |tx| {
+            values.set(tx, object, "title", "theirs")?;
+            Ok(())
+        });
+
+        assert!(
+            matches!(outcome, Err(WriteError::Conflict { .. })),
+            "expected a conflict, got {outcome:?}"
+        );
+    }
+
+    #[test]
+    fn edges_and_values_roll_back_together() {
+        // The layer's writes go through different modules; one transaction has
+        // to cover all of them.
+        use crate::store::edges::{self, Target};
+        use crate::store::values::{Values, WriteError};
+
+        let mut connection = db();
+        let mut values = Values::new();
+        let object = values.create_object(&connection).expect("object");
+        connection
+            .execute("INSERT INTO terms (vocab, id, label) VALUES ('avatar', 'manuka', 'Manuka')", [])
+            .expect("term");
+
+        let outcome: Result<(), WriteError> = in_transaction(&mut connection, |tx| {
+            values.set(tx, object, "title", "outfit")?;
+            edges::add(tx, object, "supports", &Target::Term {
+                vocab: "avatar".into(),
+                id: "manuka".into(),
+            })?;
+            values.set(tx, 999_999, "price", "100")?;
+            Ok(())
+        });
+
+        assert!(outcome.is_err());
+        assert_eq!(values.get(&connection, object, "title").expect("read"), None);
+        assert!(edges::from(&connection, object, None).expect("read").is_empty());
+    }
+
+    #[test]
+    fn a_transaction_that_returns_a_value_passes_it_out() {
+        let mut connection = db();
+        let mut values = crate::store::values::Values::new();
+
+        let object = in_transaction(&mut connection, |tx| {
+            let id = values.create_object(tx)?;
+            values.set(tx, id, "title", "mine")?;
+            Ok::<_, crate::store::values::WriteError>(id)
+        })
+        .expect("commit");
+
+        assert_eq!(
+            values.get(&connection, object, "title").expect("read"),
+            Some("mine".to_string())
+        );
+    }
+
 }

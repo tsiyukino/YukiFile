@@ -56,7 +56,11 @@ pub struct Mount<'a> {
     /// Fields this plugin declares as contributing to a shared concept. Only
     /// these join the sources for a bare field name; the rest are the
     /// plugin's own and are read through their full path.
-    pub shared: &'a [&'a str],
+    ///
+    /// `String` rather than `&str` because these come from a manifest and from
+    /// the database as owned strings; borrowing `&str` would put a conversion
+    /// at every call site.
+    pub shared: &'a [String],
 }
 
 impl<'a> Mount<'a> {
@@ -66,7 +70,7 @@ impl<'a> Mount<'a> {
     }
 
     fn shares(&self, field: &str) -> bool {
-        self.shared.contains(&field)
+        self.shared.iter().any(|name| name == field)
     }
 }
 
@@ -363,9 +367,18 @@ mod tests {
         StoredValue { path: path.to_string(), value: value.to_string() }
     }
 
-    /// A mount sharing the fields every shop plugin shares.
+    /// Fields a shop plugin declares as shared, as a `'static` slice.
+    ///
+    /// Leaked rather than owned by the caller so the thirty-odd call sites
+    /// below stay two arguments wide. A test process exits before a few dozen
+    /// leaked bytes matter.
+    fn shared_fields(names: &[&str]) -> &'static [String] {
+        Box::leak(names.iter().map(|name| name.to_string()).collect::<Vec<_>>().into_boxed_slice())
+    }
+
+    /// A mount sharing what a shop plugin shares.
     fn shop(namespace: &str, instance: u32) -> Mount<'_> {
-        Mount { namespace, instance, shared: &["title", "price", "url", "cover"] }
+        Mount { namespace, instance, shared: shared_fields(&["title", "price", "url", "cover"]) }
     }
 
     fn value<'a>(flat: &FlatView<'a>, field: &str) -> &'a str {
