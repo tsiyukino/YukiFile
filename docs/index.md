@@ -20,6 +20,23 @@
   why unitypackage support waits for a consumer.
 - [2026-09-01 viewer extension point](decisions/2026-09-01_viewer-extension-point.md)
   — why a viewer renders into a region without knowing where that region is.
+- [2026-09-02 core properties](decisions/2026-09-02_core-properties.md)
+  — the reserved set the core cannot run without, and why it lives in its own
+  tables.
+- [2026-09-02 objects may span paths](decisions/2026-09-02_objects-may-span-paths.md)
+  — an object sits at zero, one or several locations; a path still belongs to
+  one object.
+- [2026-09-02 fields have sources, not winners](decisions/2026-09-02_fields-have-sources-not-winners.md)
+  — reading returns every source for a field, and fields do not compete unless
+  a plugin says they do.
+- [2026-09-02 mount order and pins](decisions/2026-09-02_mount-order-and-pins.md)
+  — one library-wide rule, plus per-object choices that stay visible where they
+  apply.
+- [2026-09-02 UI ownership follows properties](decisions/2026-09-02_plugins-own-the-object-page.md)
+  — contributions are (property, slot) pairs, actions are independent of
+  layout, and grids are never owned.
+- [2026-09-02 v1 scope, revised](decisions/2026-09-02_v1-scope-revised.md)
+  — why layout ownership and the component library wait for a second plugin.
 
 ## Reference
 

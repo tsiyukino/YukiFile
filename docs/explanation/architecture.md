@@ -12,13 +12,32 @@ because something in that library broke a simpler design.
 
 ## The object model
 
-An **object** is one file or one folder on disk. That is the whole definition,
-and it is deliberately strict: an object maps to exactly one path. There is no
-such thing as an object that spans two folders. If you want to split a product
-into two, you make two folders on disk and add them separately; if you want to
-merge, you make one folder and move both in. The library never invents virtual
-groupings that the filesystem does not have, because the moment it does, every
-export, backup and "open in explorer" has to explain itself.
+An **object** is a thing in the library. It may sit at one location on disk, at
+several, or at none at all. A location is a `fs` instance:
+
+```
+42/fs#1/path   "Clothing/AW KLASSIK MAID"
+42/fs#1/kind   "folder"
+42/fs#2/path   "Clothing/AW KLASSIK MAID.zip"
+42/fs#2/kind   "file"
+```
+
+Spanning is not a hypothetical. The seed library has 43 products that exist as
+an extracted folder *and* the zip it came from, and the old scan recorded the
+second one in an `archives` array — a path smuggled in under another name
+because the model had no room for it.
+
+A path still belongs to exactly one object. Object-to-path is one-to-many;
+path-to-object stays one-to-one, because a scan that finds a file has to know
+which object it belongs to, and reconcile's move detection needs one answer
+rather than several.
+
+An object with no location is a grouping. The core does not name it or treat it
+as a separate kind — what it *is* comes from the properties it carries, so
+`playlist` makes it a playlist and `collection` makes it a collection. The only
+thing the core does differently is that "open in explorer" does not exist
+without a path. Groupings hold their members through `contains` edges, which is
+also how one file can belong to both a product and a user's collection at once.
 
 Objects carry **values**, stored under namespaced paths:
 
@@ -28,7 +47,7 @@ Objects carry **values**, stored under namespaced paths:
 42/booth#1/url           "https://booth.pm/ja/items/8264237"
 42/booth#1/title         "▸ BE NATURAL ◂【9Avatars】"
 42/booth#1/price         2900
-42/vrchat/category       "clothing"
+42/vrchat#1/category     "clothing"
 ```
 
 The namespace is not decoration. `title` and `booth#1/title` are different
@@ -36,32 +55,64 @@ facts: one is what you call the thing, the other is what the shop calls it.
 Storing them flat would mean that renaming a product locally causes every
 subsequent shop fetch to report a conflict on a field you already decided
 about. The `#1` suffix is an instance counter, which is what lets one object
-carry both a Booth page and a Gumroad page without either winning.
+carry both a Booth page and a Gumroad page without either overwriting the
+other.
 
-Reading flattens. The rule is one line: a bare field wins if it has a value;
-otherwise fall back to the first non-empty same-named field in property mount
-order. Mount order ranks property *instances* rather than property names — an
-object carrying both `booth#1` and `booth#2` needs the two ranked against each
-other — and the order belongs to the library, so two libraries can disagree
-about which shop they trust.
+A small, closed set of **core properties** is reserved to the core. Today that
+set is `fs` alone, and the test for admission is whether the software would
+fail to run without it: without `fs` the scanner has nothing to scan and
+"open in explorer" has no target. `title` fails that test and is an ordinary
+property. Core properties use the same path syntax and the same API as any
+other, but no plugin may declare one, and they are stored in typed tables
+because they need a real unique constraint on paths and real integers for
+sizes.
 
-Flattening lives in the backend rather than the UI because search, sort and
-export all need it, and two implementations of one rule drift apart. It keeps
-the values that lost: the winner is what search and export read, but the
-frontend is free to render whatever it likes from the ranked candidates —
-showing the local title large with the shop title underneath, or picking
-whichever of two prices is lower. That kind of display logic stays in the
-frontend; the backend has no opinion about it. Handing over the whole ranking
-rather than the winner alone is what keeps the frontend from growing a second
-copy of the rule.
+## Reading: sources, not winners
 
-Resolution reports what it could not place, and the two reasons are not alike.
-A value under a property the library does not mount is routine — an object can
-carry values written by a plugin that is not installed right now, and they wait
-in storage until it is. A value whose path does not parse is corruption, and
-since `values.path` is written by the import contract and by plugins, nothing
-on the write side rules it out. Neither one stops the rest of the object from
-resolving.
+A product sold on two shops has three titles, and all three are true. Reading
+does not pick a winner and discard the rest — it returns the **sources** for a
+field, best first. Anything that needs one value takes the first; the detail
+page can show them all, attributed.
+
+Fields do not compete by default. A plugin declares which of its fields
+contribute to a shared concept, and only those join:
+
+```
+booth contributes:  properties ["booth"]
+                    shared     ["title", "price", "url", "cover"]
+```
+
+So `booth#1/title` becomes a source for `title`, while `booth#1/item_id` is
+Booth's own and is read through its full path. Isolation is the default because
+the alternative lets installing a plugin silently change values the user is
+already looking at, on objects they never touched.
+
+Among the sources for a field, the rule is one line: a bare field wins if it
+has a value, otherwise the first non-empty source in mount order. Mount order
+ranks property *instances* rather than names — an object carrying `booth#1` and
+`booth#2` needs the two ranked — and it belongs to the library, so two
+libraries can disagree about which shop they trust.
+
+Mount order is a rule and applies everywhere. For a single object a **pin**
+overrides it:
+
+```
+42/@pin/cover   "gumroad#1"
+```
+
+Rules and choices are kept apart on purpose. A per-field priority setting —
+"for covers, always prefer Gumroad" — is invisible at the point it takes effect
+and impossible to debug later. A pin is visible on the object it affects, next
+to the value it changes, with an obvious way to undo it.
+
+Resolution runs in the backend because search, sort and export all need it, and
+two implementations of one rule drift apart. It reports what it could not
+place, and the two reasons differ: a value under a property this library does
+not mount is routine, since an object can carry values written by a plugin that
+is not installed and they wait in storage until it is; a value whose path does
+not parse is corruption, and nothing on the write side rules it out while the
+import contract and plugins both write that column. Neither stops the rest of
+the object from resolving.
 
 ## Facts and meanings
 
@@ -156,10 +207,11 @@ A manifest declares contributions:
   "id": "yukifile.vrc",
   "contributes": {
     "properties":   ["vrchat", "vrchat.clothing", "booth"],
+    "shared":       ["title", "price", "url", "cover"],
     "vocabularies": ["avatar"],
-    "actions":      ["fetch-booth", "export-to-unity"],
+    "actions":      { "booth": ["fetch-booth"], "vrchat": ["export-to-unity"] },
     "panels":       { "vrchat": "./panels/Vrchat", "booth": "./panels/Booth" },
-    "viewers":      [],
+    "viewers":      {},
     "scanProfiles": ["vrc-assets"]
   },
   "requires": { "properties": [] }
@@ -169,6 +221,20 @@ A manifest declares contributions:
 Dependencies name field contracts, not plugins. An AI-summary plugin for VRChat
 requires the `vrchat` property; whichever plugin provides it satisfies the
 requirement.
+
+Every UI contribution is keyed by the property it belongs to. That single fact
+answers a question that has no answer in positional terms: a plugin does not
+say where on screen it wants to be, it says which property it is scoped to, and
+the core places that property's region. Two plugins can no more collide than
+two properties can, and ordering falls out of mount order, which already
+exists.
+
+Visibility follows from the same key. A contribution appears when the object
+carries the property — panels, actions and columns alike, with no separate
+rule for each. Requiring a property is also the ticket into its region: a
+price-comparison plugin that requires `booth` and `gumroad` may place a panel
+among theirs, and a plugin that requires neither may not. The permission check
+and the dependency declaration are the same statement.
 
 The built-in modules — `folder`, `file`, `archive`, `pdf`, `docx`, `image` —
 use this same API with no privileges. They are the first real consumers of the
@@ -183,11 +249,25 @@ in performance — parsing 206 unitypackages took two minutes in Python during
 the manual cleanup and takes seconds in parallel Rust. A plugin that genuinely
 needs custom heavy computation can ship WASM.
 
-Three extension points cover the UI in the first version: detail panels,
-full-screen viewers (a PDF reader opening in a tab or window), and list
-columns. Plugins cannot rearrange the application layout. That restriction is
-temporary and deliberate — layout extension points designed against only six
-built-in modules would mostly be guesses.
+Three slots cover the UI in the first version: detail panels, full-screen
+viewers, and list columns — each scoped to a property. Actions are a fourth,
+and they are deliberately independent of layout: an object carrying `pdf`
+offers the PDF plugin's actions through the context menu and the command
+palette no matter who drew the page. That is what lets a plugin own an object's
+whole page without stranding the user, and it is why no layout has to reserve a
+slot for other plugins.
+
+Owning a page is the direction, not the first version. A VRChat asset page and
+a paper page have little in common, so the core imposes no mandatory header and
+lets one plugin — chosen per object by the user, since only they know whether a
+PDF is a prop or a document — draw the whole thing, falling back to the core's
+own layout when nobody claims it. v1 ships that default layout and the four
+slots; ownership and the component library a plugin would need to draw a page
+wait for a second real plugin to design against.
+
+Grids and lists are never owned. The grid exists to be scanned, and tiles drawn
+differently per object defeat scanning — which was the original problem. The
+core draws them; plugins contribute columns and badges.
 
 ## Storage
 

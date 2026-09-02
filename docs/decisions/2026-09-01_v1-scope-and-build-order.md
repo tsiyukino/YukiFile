@@ -1,7 +1,7 @@
 # v1 ships the core and a PDF plugin, not the VRChat plugin
 
 Date: 2026-09-01
-Status: accepted
+Status: accepted, revised by `2026-09-02_v1-scope-revised.md`
 
 ## Context
 
