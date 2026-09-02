@@ -10,5 +10,6 @@
 pub mod changes;
 pub mod commands;
 pub mod contract;
+pub mod plugin;
 pub mod scan;
 pub mod store;

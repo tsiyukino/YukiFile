@@ -188,12 +188,38 @@ fn the_core_names_no_file_extension() {
     );
 }
 
-// Not yet checkable, with the condition that activates each:
+#[test]
+fn a_built_in_manifest_goes_through_the_parser_third_parties_get() {
+    // docs.yml: built-in plugins use the same contribution API as third-party
+    // ones, and a built-in needing a special case in the core means the
+    // extension point is wrong. The check is that every manifest under
+    // plugins/ survives the ordinary parser -- no privileged fields, no
+    // reserved namespaces, no contributions scoped to a property the plugin
+    // has no relationship with.
+    let plugins = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("plugins");
+    if !plugins.exists() {
+        return; // layer 5 adds the first built-in
+    }
+
+    for entry in fs::read_dir(&plugins).expect("read plugins/") {
+        let manifest = entry.expect("read entry").path().join("manifest.json");
+        if !manifest.exists() {
+            continue;
+        }
+        let json = fs::read_to_string(&manifest)
+            .unwrap_or_else(|e| panic!("cannot read {}: {e}", manifest.display()));
+
+        yukifile::plugin::manifest::Manifest::parse(&json).unwrap_or_else(|error| {
+            panic!(
+                "{} is not a manifest a third party could have written: {error}",
+                manifest.display()
+            )
+        });
+    }
+}
+
+// Not yet checkable, with the condition that activates it:
 //
 // * The Tauri command surface exposed to plugins is an explicit allowlist, so
 //   that widening it is always a visible diff. Activates when layer 4 adds
 //   `plugin/commands.rs`.
-//
-// * No built-in plugin manifest declares a capability the manifest schema does
-//   not define for third parties. Activates when layer 4 adds
-//   `plugin/manifest.rs` and layer 5 adds the first built-in manifest.

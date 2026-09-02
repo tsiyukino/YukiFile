@@ -51,6 +51,7 @@ Generated per module from the source.
 - [commands.md](reference/commands.md) — heavy work a plugin calls into.
 - [contract.md](reference/contract.md) — the import and export document shape.
 - [changes.md](reference/changes.md) — proposals, review, and applying them.
+- [plugin.md](reference/plugin.md) — manifests, dependency resolution, load order.
 
 ## Seed
 
