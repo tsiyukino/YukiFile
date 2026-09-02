@@ -77,3 +77,49 @@ accident change values on objects the user never touched.
 
 Load order is a depth-first walk that reports a cycle rather than looping, and
 the error names every plugin in the chain.
+
+## plugin::commands
+
+What a plugin may ask the core to do.
+
+Plugins are TypeScript; the heavy work is not. Scanning, hashing, archive
+reading and database access are Rust, exposed as commands a plugin calls — so
+the barrier to writing a plugin stays low without costing performance, because
+a plugin is never the thing doing the scanning.
+
+`ALLOWED` · `is_allowed(name)` · `lookup(name)` · `proposing()`
+
+### The surface is a list, not a scattering of annotations
+
+Every command a plugin can reach is one row in `ALLOWED`. Widening what plugins
+can do is then a diff to one array.
+
+Marking functions individually would work as well at runtime and much worse in
+review: nobody notices one more annotation in a file of forty, and "what can a
+plugin do?" would have no single place to answer it. `boundary.rs` fails if a
+Tauri command attribute appears in core source at all.
+
+Each row carries a `reason`. A command nobody can justify in a sentence is a
+command that should not be on the list, and a test refuses an empty one.
+
+### What is deliberately absent
+
+**No command writes a value, an edge or a term.** The only `Propose` command is
+`import.propose`: a plugin submits a document and a person reviews it. A plugin
+quietly overwriting a decision is the failure change sets exist to prevent.
+
+Nothing opens a file dialog, spawns a process, or reaches the network.
+`docs.yml` says network access happens when the user presses a button, and a
+plugin is not a button.
+
+| command          | effect  |
+|------------------|---------|
+| `object.get`     | Read    |
+| `object.list`    | Read    |
+| `object.edges`   | Read    |
+| `term.resolve`   | Read    |
+| `term.list`      | Read    |
+| `archive.list`   | Read    |
+| `hash.of`        | Read    |
+| `history.of`     | Read    |
+| `import.propose` | Propose |

@@ -218,8 +218,60 @@ fn a_built_in_manifest_goes_through_the_parser_third_parties_get() {
     }
 }
 
-// Not yet checkable, with the condition that activates it:
-//
-// * The Tauri command surface exposed to plugins is an explicit allowlist, so
-//   that widening it is always a visible diff. Activates when layer 4 adds
-//   `plugin/commands.rs`.
+#[test]
+fn every_command_a_plugin_can_reach_is_on_the_list() {
+    // The surface is one array, so widening what plugins can do is a diff to
+    // one place. An annotation scattered through the source would work as
+    // well at runtime and much worse in review -- nobody notices one more
+    // #[tauri::command] in a file of forty.
+    //
+    // This checks the inverse: no function is exposed except through that
+    // array. If Tauri command attributes appear in core source, they have to
+    // be registered somewhere the list can see.
+    //
+    // Nothing is wired to Tauri yet, so today this guards against a second
+    // door being added rather than watching one that exists. That is the
+    // useful order: the check is in place before the first command is, so
+    // adding one the wrong way fails on the way in.
+    let mut files = Vec::new();
+    rust_files(&core_src(), &mut files);
+
+    let mut annotated = Vec::new();
+
+    for file in &files {
+        let source = fs::read_to_string(file)
+            .unwrap_or_else(|e| panic!("cannot read {}: {e}", file.display()));
+        let code = strip_comments(&source);
+
+        if code.contains("#[tauri::command]") || code.contains("#[command]") {
+            annotated.push(file.display().to_string());
+        }
+    }
+
+    assert!(
+        annotated.is_empty(),
+        "these files expose commands by annotation rather than through          plugin::commands::ALLOWED:
+  {}
+
+         The allowlist exists so that widening what a plugin can do is one          visible diff. An annotation somewhere else is a second door.",
+        annotated.join("
+  ")
+    );
+}
+
+#[test]
+fn every_allowed_command_says_why_it_is_there() {
+    // A command nobody can justify in a sentence is a command that should not
+    // be on the list.
+    for command in yukifile::plugin::commands::ALLOWED {
+        assert!(
+            !command.reason.trim().is_empty(),
+            "{} is allowed with no reason given",
+            command.name
+        );
+        assert!(
+            !command.name.trim().is_empty(),
+            "a command on the list has no name"
+        );
+    }
+}
