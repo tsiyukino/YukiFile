@@ -114,6 +114,25 @@ pub struct Changes {
     pub candidates: Vec<MoveCandidate>,
 }
 
+/// One thing to do to the library, in the order it must be done.
+///
+/// The order is not a preference. A move updates a path in place; a removal
+/// deletes one. Applying a removal first and its move second turns a move into
+/// a delete plus an add — which is exactly what this module works to avoid
+/// claiming, so applying its output in the wrong order would undo the care
+/// taken to produce it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Step<'a> {
+    /// Update a path in place. First, always.
+    Move(&'a Moved),
+    /// Refresh a location's size and mtime; its hash is now stale.
+    Touch(&'a Touched),
+    /// Drop a path an object no longer has.
+    Remove(&'a Removed),
+    /// Record a path nothing claims yet.
+    Add(&'a Added),
+}
+
 impl Changes {
     /// True when the library already matches the disk.
     ///
@@ -124,6 +143,24 @@ impl Changes {
             && self.removed.is_empty()
             && self.moved.is_empty()
             && self.touched.is_empty()
+    }
+
+    /// Every change, in an order that is safe to apply.
+    ///
+    /// Moves come first so a path being updated is never mistaken for one
+    /// being deleted. Candidates are not included: they are questions for a
+    /// caller to ask, not work to do.
+    ///
+    /// The whole sequence belongs in one transaction. A scan that half-applies
+    /// leaves the library describing a disk that never existed — see
+    /// `schema::in_transaction`.
+    pub fn steps(&self) -> impl Iterator<Item = Step<'_>> {
+        self.moved
+            .iter()
+            .map(Step::Move)
+            .chain(self.touched.iter().map(Step::Touch))
+            .chain(self.removed.iter().map(Step::Remove))
+            .chain(self.added.iter().map(Step::Add))
     }
 }
 
@@ -620,5 +657,83 @@ mod tests {
         assert_eq!(changes.moved.len(), 20);
         assert!(changes.added.is_empty());
         assert!(changes.removed.is_empty());
+    }
+    // --- application order ------------------------------------------------
+
+    #[test]
+    fn moves_are_applied_before_removals() {
+        // Applying a removal before its move turns the move into a delete
+        // plus an add, which is what this module works to avoid claiming.
+        let library = [known(1, "old/moved.zip", Some("h1")), known(2, "gone.zip", Some("h2"))];
+        let disk = [found("new/moved.zip", Some("h1"))];
+
+        let changes = reconcile(&library, &disk);
+        let order: Vec<&str> = changes
+            .steps()
+            .map(|step| match step {
+                Step::Move(_) => "move",
+                Step::Touch(_) => "touch",
+                Step::Remove(_) => "remove",
+                Step::Add(_) => "add",
+            })
+            .collect();
+
+        let first_move = order.iter().position(|s| *s == "move");
+        let first_remove = order.iter().position(|s| *s == "remove");
+        assert!(
+            first_move < first_remove,
+            "a removal came before a move: {order:?}"
+        );
+    }
+
+    #[test]
+    fn every_change_appears_exactly_once_in_the_steps() {
+        let library = [
+            known(1, "old/moved.zip", Some("h1")),
+            known(2, "gone.zip", Some("h2")),
+            known(3, "same.zip", Some("h3")),
+        ];
+        let disk = [
+            found("new/moved.zip", Some("h1")),
+            found("brand-new.zip", Some("h4")),
+            Found {
+                entry: Entry { path: "same.zip".into(), kind: Kind::File, size: Some(999), mtime: Some(1000) },
+                hash: Some("h3".into()),
+            },
+        ];
+
+        let changes = reconcile(&library, &disk);
+        let counted = changes.steps().count();
+
+        assert_eq!(
+            counted,
+            changes.moved.len()
+                + changes.touched.len()
+                + changes.removed.len()
+                + changes.added.len()
+        );
+        assert_eq!(counted, 4, "expected one of each");
+    }
+
+    #[test]
+    fn candidates_are_not_steps() {
+        // A candidate is a question for a caller to ask, not work to do.
+        let library = [known(1, "old/thing.zip", None)];
+        let disk = [found("new/thing.zip", None)];
+
+        let changes = reconcile(&library, &disk);
+        assert!(!changes.candidates.is_empty());
+
+        // The removal and addition are steps; the candidate is not extra work
+        // on top of them.
+        assert_eq!(changes.steps().count(), 2);
+    }
+
+    #[test]
+    fn an_unchanged_library_has_no_steps() {
+        let library = [known(1, "a.zip", Some("h1"))];
+        let disk = [found("a.zip", Some("h1"))];
+
+        assert_eq!(reconcile(&library, &disk).steps().count(), 0);
     }
 }

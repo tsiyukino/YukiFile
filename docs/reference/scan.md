@@ -131,6 +131,22 @@ struct Changes {
 `Changes::is_empty()` ignores candidates: they are questions, and a library
 with unanswered questions is not out of date.
 
+### Applying changes has an order
+
+`Changes::steps()` returns every change as a `Step`, in an order that is safe
+to apply: **moves, then touches, then removals, then additions**.
+
+That is not a preference. A move updates a path in place and a removal deletes
+one, so applying a removal first and its move second turns a move into a delete
+plus an add — the exact outcome this module works to avoid claiming. Reading
+the five `Vec`s directly is allowed, but `steps()` is the order that is correct.
+
+The whole sequence belongs in one transaction (`schema::in_transaction`). A
+scan that half-applies leaves the library describing a disk that never existed.
+
+Candidates are not steps: they are questions for a caller to ask, not work to
+do.
+
 ### Moves are claimed on evidence, never on resemblance
 
 Getting this wrong one way loses every value and edge attached to an object;
