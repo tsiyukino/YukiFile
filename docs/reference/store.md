@@ -3,10 +3,10 @@
 Objects, the values hung on them, the edges between them, and the vocabularies
 those edges point at.
 
-Five modules exist so far. `path` and `flatten` are pure — they take what they
+Six modules exist so far. `path` and `flatten` are pure — they take what they
 need as arguments and touch no database, no filesystem and no clock. `schema`
-owns the database, `id` owns the clock and the randomness, and `values` is the
-one that reads and writes.
+owns the database, `id` owns the clock and the randomness, and `values` and
+`edges` read and write.
 
 ## store::path
 
@@ -364,7 +364,50 @@ random tail, so two objects made in the same millisecond can draw the same one
 and the primary key catches it. Retrying forever would turn a broken generator
 into a hang instead of an error.
 
+## store::edges
+
+Anything that points at something else. One table, one `kind` column: plugin
+dependencies, product bundles, version successors and compatibility all reduce
+to this, which is what makes "what fits Manuka?" one indexed query rather than
+a scan over array fields.
+
+```rust
+enum Target {
+    Object(i64),
+    Term { vocab: String, id: String },
+}
+```
+
+The table stores a target as three nullable columns with a CHECK that exactly
+one shape is filled. This module does not repeat that shape — as an enum,
+"both" and "neither" cannot be written down, so the CHECK is the guard against
+anything reaching the table another way rather than the only guard.
+
+| function                                   | does                            |
+|--------------------------------------------|---------------------------------|
+| `add(&conn, src, kind, &target)`           | record, idempotently            |
+| `remove(&conn, src, kind, &target)`        | remove; absent is not an error  |
+| `from(&conn, src, kind)`                   | what one object points at       |
+| `to_object(&conn, dst, kind)`              | what points at an object        |
+| `to_term(&conn, vocab, term, kind)`        | what points at a term           |
+| `count_to_term(&conn, vocab, term)`        | how many, without reading them  |
+
+`kind` is `Option<&str>` on the reads: `None` is every kind.
+
+`add` is idempotent because a rescan reasserts what it found and that must not
+grow the table.
+
+`to_term` is the reverse lookup the object model exists to make cheap, and it
+answers from what the library holds — a shop page lists every avatar a product
+supports, while only some of those are owned. A test asserts the query plan
+uses `edges_by_term`, since the one-table design rests on that not being a
+scan.
+
+Reading a row whose target is neither or both returns an error rather than
+guessing. That is unreachable while the CHECK stands; the branch exists for the
+day a migration drops it, and a test builds a table without the constraint so
+the branch is one someone has seen work.
+
 ## Not yet written
 
-`values` · `edges` · `vocab` · `history` — the modules that read and write
-these tables.
+`vocab` · `history` — the modules that read and write those two tables.
