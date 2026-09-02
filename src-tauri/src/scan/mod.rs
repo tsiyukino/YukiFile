@@ -2,4 +2,5 @@
 //! the last look.
 
 pub mod factual;
+pub mod reconcile;
 pub mod walk;

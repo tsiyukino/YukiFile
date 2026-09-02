@@ -2,10 +2,9 @@
 
 What is on disk, what it factually is, and what changed since the last look.
 
-Two modules so far. `walk` reports what is on disk; `factual` says what an
-entry observably is. Whether an entry is new, moved or gone is `reconcile`'s
-question — keeping that apart is what lets reconciliation be tested on
-synthetic input with no filesystem at all.
+Three modules. `walk` reports what is on disk, `factual` says what an entry
+observably is, and `reconcile` says what changed. Only `walk` touches a
+filesystem, which is what lets the other two be tested on written-down input.
 
 ## scan::walk
 
@@ -111,3 +110,63 @@ A folder whose name ends in something extension-shaped is still a folder:
 `Airi_Ver1.00` and `mochi_bob1.0` are directories in the seed library.
 `.gitignore` is a file called `.gitignore`, not a file of type `gitignore` —
 reachable because dot-prefixed entries are walked.
+
+## scan::reconcile
+
+`reconcile(&[Known], &[Found]) -> Changes`
+
+Pure. It takes what the library holds and what a walk found, and returns the
+difference — no filesystem, no database, no clock.
+
+```rust
+struct Changes {
+    added:      Vec<Added>,       // a path no object claims
+    removed:    Vec<Removed>,     // a path an object claims that is gone
+    moved:      Vec<Moved>,       // proven by a matching hash
+    touched:    Vec<Touched>,     // same path, different size or mtime
+    candidates: Vec<MoveCandidate>, // a question, not an answer
+}
+```
+
+`Changes::is_empty()` ignores candidates: they are questions, and a library
+with unanswered questions is not out of date.
+
+### Moves are claimed on evidence, never on resemblance
+
+Getting this wrong one way loses every value and edge attached to an object;
+the other way silently merges two things the user kept apart.
+
+**A content hash is the only proof accepted.** `object_paths.hash` is null
+until computed — hashing 1518 files must not block a first scan from showing
+results — so much of an early reconcile has nothing to go on and says so.
+
+A hash is only proof when it is unique on both sides. A third of the seed
+library's archives are redundant copies, so identical content under several
+paths is normal, and pairing them arbitrarily would move an object somewhere
+the user did not put it. Ambiguous hashes fall through to a removal and an
+addition.
+
+### Candidates
+
+Every one of the seed library's 174 moves kept its basename, which makes the
+filename look like a reliable signal. It is not: 33 of those products are a
+folder and a zip sharing a stem.
+
+So a basename match with no hash becomes a `MoveCandidate` — offered to a
+caller that can ask the user or hash both sides and reconcile again. It is
+*also* reported as a removal and an addition, so a caller that ignores
+candidates is left with a correct if pessimistic answer rather than a lost
+object. An ambiguous basename suggests nothing.
+
+### Touched
+
+Same path, different size or mtime. Reported separately from an untouched path
+because it is what tells a caller which hashes are stale. A folder has no size,
+so its mtime is all there is — and that is enough to say its contents changed.
+
+### Objects with several paths
+
+One location of a spanning object can move while the others stay, and losing
+one is a removal of that path rather than a deletion of the object. Whether an
+object without locations should survive is the caller's decision; this module
+reports paths.
