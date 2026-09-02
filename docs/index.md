@@ -49,6 +49,7 @@ Generated per module from the source.
 - [scan.md](reference/scan.md) — walking a library root, typing entries, and
   working out what changed.
 - [commands.md](reference/commands.md) — heavy work a plugin calls into.
+- [contract.md](reference/contract.md) — the import and export document shape.
 
 ## Seed
 
