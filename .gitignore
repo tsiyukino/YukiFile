@@ -5,3 +5,6 @@ dist/
 
 # tauri-build regenerates these on every build
 src-tauri/gen/schemas/
+
+# Local tool configuration, not part of the project
+.claude/settings.local.json
