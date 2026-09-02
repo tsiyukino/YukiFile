@@ -279,6 +279,59 @@ fn commands_are_annotated_only_in_the_bridge() {
 }
 
 #[test]
+fn every_implemented_command_is_actually_registered() {
+    // The third correspondence, and the one that fails most quietly. A
+    // command can be on the list, implemented, annotated and documented, and
+    // still be unreachable because nobody added it to the handler list -- at
+    // which point every other check in this file passes and the command
+    // simply does not answer.
+    //
+    // The macro's contents are hand-written, so nothing about it is derived
+    // from the list the way handler_name is. That makes it exactly the kind
+    // of second copy this file exists to catch.
+    use std::collections::BTreeSet;
+
+    let source = fs::read_to_string(core_src().join("bridge").join("mod.rs"))
+        .expect("cannot read bridge/mod.rs");
+    let code = strip_comments(&source);
+
+    let macro_body = code
+        .split_once("macro_rules! register_commands")
+        .expect("register_commands! is gone")
+        .1;
+    let generate = macro_body
+        .split_once("generate_handler![")
+        .expect("the macro no longer registers a handler list")
+        .1;
+    let list = generate.split_once(']').expect("unterminated handler list").0;
+
+    let registered: BTreeSet<String> = list
+        .split(',')
+        .filter_map(|entry| entry.trim().rsplit("::").next())
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .collect();
+
+    let listed: BTreeSet<String> = yukifile::plugin::commands::ALLOWED
+        .iter()
+        .map(|command| yukifile::bridge::handler_name(command.name))
+        .collect();
+
+    let unreachable: Vec<&String> = listed.difference(&registered).collect();
+    let phantom: Vec<&String> = registered.difference(&listed).collect();
+
+    assert!(
+        unreachable.is_empty(),
+        "allowed and implemented but never registered, so calling one does \
+         nothing: {unreachable:?}"
+    );
+    assert!(
+        phantom.is_empty(),
+        "registered but not on the allowlist: {phantom:?}"
+    );
+}
+
+#[test]
 fn the_bridge_implements_exactly_what_the_list_allows() {
     // Both directions, because each failure is silent in its own way. A
     // listed command with no implementation is a documented capability that

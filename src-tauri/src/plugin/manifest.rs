@@ -256,8 +256,9 @@ impl Manifest {
 }
 
 #[cfg(test)]
-mod extension_tests {
+mod tests {
     use super::*;
+
 
     fn with_panel(specifier: &str) -> Manifest {
         let mut manifest = Manifest { id: "test.plugin".into(), ..Default::default() };

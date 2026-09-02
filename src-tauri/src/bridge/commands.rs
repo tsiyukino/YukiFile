@@ -32,6 +32,11 @@ use crate::store::{edges, history, values, vocab};
 /// One object's stored values.
 #[tauri::command]
 pub fn object_get(library: State<'_, Library>, id: i64) -> Result<ObjectView, BridgeError> {
+    object_get_in(&library, id)
+}
+
+/// One object's stored values.
+pub fn object_get_in(library: &Library, id: i64) -> Result<ObjectView, BridgeError> {
     library.with_connection(|connection| {
         let store = values::Values::new();
         let rows = store
@@ -54,9 +59,8 @@ pub fn object_get(library: State<'_, Library>, id: i64) -> Result<ObjectView, Br
 /// Missing ids are left out rather than failing the call: a grid asking for
 /// forty objects while one is being deleted should draw thirty-nine, not
 /// nothing.
-#[tauri::command]
-pub fn object_list(
-    library: State<'_, Library>,
+pub fn object_list_in(
+    library: &Library,
     ids: Vec<i64>,
 ) -> Result<Vec<ObjectView>, BridgeError> {
     library.with_connection(|connection| {
@@ -78,9 +82,8 @@ pub fn object_list(
 }
 
 /// What an object requires, supports or contains.
-#[tauri::command]
-pub fn object_edges(
-    library: State<'_, Library>,
+pub fn object_edges_in(
+    library: &Library,
     id: i64,
 ) -> Result<Vec<EdgeView>, BridgeError> {
     library.with_connection(|connection| {
@@ -93,9 +96,8 @@ pub fn object_edges(
 ///
 /// `桔梗`, `Kikyo` and `Kikyou` are one avatar, and a plugin reading filenames
 /// needs the same answer the rest of the library uses.
-#[tauri::command]
-pub fn term_resolve(
-    library: State<'_, Library>,
+pub fn term_resolve_in(
+    library: &Library,
     vocab: String,
     surface: String,
 ) -> Result<Option<String>, BridgeError> {
@@ -103,9 +105,8 @@ pub fn term_resolve(
 }
 
 /// Everything one vocabulary holds.
-#[tauri::command]
-pub fn term_list(
-    library: State<'_, Library>,
+pub fn term_list_in(
+    library: &Library,
     vocab: String,
 ) -> Result<Vec<TermView>, BridgeError> {
     library.with_connection(|connection| {
@@ -115,9 +116,8 @@ pub fn term_list(
 }
 
 /// List an archive without unpacking it.
-#[tauri::command]
-pub fn archive_list(
-    library: State<'_, Library>,
+pub fn archive_list_in(
+    library: &Library,
     path: String,
 ) -> Result<Vec<ArchiveMemberView>, BridgeError> {
     let resolved = library.resolve(&path)?;
@@ -156,16 +156,17 @@ impl From<&archive::Member> for ArchiveMemberView {
 ///
 /// A plugin finding duplicates has to agree with the scanner about what a
 /// duplicate is, which it cannot do by hashing things its own way.
-#[tauri::command]
-pub fn hash_of(library: State<'_, Library>, path: String) -> Result<String, BridgeError> {
+pub fn hash_of_in(
+    library: &Library,
+        path: String,
+) -> Result<String, BridgeError> {
     let resolved = library.resolve(&path)?;
     hash::of_path(&resolved).map_err(|error| BridgeError::from_io(error, &path))
 }
 
 /// What changed on an object, and when.
-#[tauri::command]
-pub fn history_of(
-    library: State<'_, Library>,
+pub fn history_of_in(
+    library: &Library,
     id: i64,
 ) -> Result<Vec<HistoryView>, BridgeError> {
     library.with_connection(|connection| {
@@ -184,9 +185,8 @@ pub fn history_of(
 ///
 /// The whole import runs in one transaction. Half an import is a library
 /// describing something that never existed.
-#[tauri::command]
-pub fn import_propose(
-    library: State<'_, Library>,
+pub fn import_propose_in(
+    library: &Library,
     label: String,
     document: String,
 ) -> Result<ProposalView, BridgeError> {
@@ -223,6 +223,84 @@ pub struct ProposalView {
     pub terms: usize,
     pub edges: usize,
     pub pending: Option<i64>,
+}
+
+// --- the Tauri surface -------------------------------------------------
+//
+// Each of these unwraps `State` and calls the function above it. The split
+// exists so the work is reachable from a test: a `State` cannot be built
+// outside a running Tauri app, and a command that can only run inside one is
+// a command whose failure paths are never exercised until a user finds them.
+
+/// Several objects at once, for a column rendering across a page.
+#[tauri::command]
+pub fn object_list(
+    library: State<'_, Library>,
+    ids: Vec<i64>,
+) -> Result<Vec<ObjectView>, BridgeError> {
+    object_list_in(&library, ids)
+}
+
+/// What an object requires, supports or contains.
+#[tauri::command]
+pub fn object_edges(
+    library: State<'_, Library>,
+    id: i64,
+) -> Result<Vec<EdgeView>, BridgeError> {
+    object_edges_in(&library, id)
+}
+
+/// Map a spelling to a term.
+#[tauri::command]
+pub fn term_resolve(
+    library: State<'_, Library>,
+    vocab: String,
+    surface: String,
+) -> Result<Option<String>, BridgeError> {
+    term_resolve_in(&library, vocab, surface)
+}
+
+/// Everything one vocabulary holds.
+#[tauri::command]
+pub fn term_list(
+    library: State<'_, Library>,
+    vocab: String,
+) -> Result<Vec<TermView>, BridgeError> {
+    term_list_in(&library, vocab)
+}
+
+/// List an archive without unpacking it.
+#[tauri::command]
+pub fn archive_list(
+    library: State<'_, Library>,
+    path: String,
+) -> Result<Vec<ArchiveMemberView>, BridgeError> {
+    archive_list_in(&library, path)
+}
+
+/// Hash a file or folder with the same function the core uses.
+#[tauri::command]
+pub fn hash_of(library: State<'_, Library>, path: String) -> Result<String, BridgeError> {
+    hash_of_in(&library, path)
+}
+
+/// What changed on an object, and when.
+#[tauri::command]
+pub fn history_of(
+    library: State<'_, Library>,
+    id: i64,
+) -> Result<Vec<HistoryView>, BridgeError> {
+    history_of_in(&library, id)
+}
+
+/// Submit a document.
+#[tauri::command]
+pub fn import_propose(
+    library: State<'_, Library>,
+    label: String,
+    document: String,
+) -> Result<ProposalView, BridgeError> {
+    import_propose_in(&library, label, document)
 }
 
 /// Whether an object row exists at all.
