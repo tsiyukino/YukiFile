@@ -63,6 +63,8 @@ Generated per module from the source.
   discovery, and how a plugin calls the core.
 - [app.md](reference/app.md) — startup, configuration, the frontend entry
   point, and the one door to the Tauri runtime.
+- [object-page.md](reference/object-page.md) — the framework's object page,
+  the panel contract, and how a failing plugin stays contained.
 
 ## Seed
 
