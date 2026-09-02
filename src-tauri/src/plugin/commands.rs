@@ -59,6 +59,12 @@ pub const ALLOWED: &[Command] = &[
         reason: "a column renders across the objects on screen",
     },
     Command {
+        name: "object.flat",
+        effect: Effect::Read,
+        reason: "resolution runs in the backend because search, sort and export \
+                 all need it, and two implementations of one rule drift apart",
+    },
+    Command {
         name: "object.edges",
         effect: Effect::Read,
         reason: "a panel shows what an object requires or supports",

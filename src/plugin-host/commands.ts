@@ -51,6 +51,40 @@ export interface ObjectRecord {
   readonly values: readonly StoredValue[];
 }
 
+/** One source for a shared field, with where it came from. */
+export interface Source {
+  readonly value: string;
+  /** `null` for a bare field entered directly, else the property instance. */
+  readonly from: string | null;
+}
+
+/** One plugin's region: its property instance and the fields it owns. */
+export interface Region {
+  readonly property: string;
+  readonly instance: number;
+  readonly fields: Readonly<Record<string, string>>;
+}
+
+/** A value resolution could not place, worth surfacing. */
+export interface Skipped {
+  readonly path: string;
+  readonly reason: string;
+}
+
+/**
+ * One object resolved into what to show.
+ *
+ * Shared and private fields arrive apart, because the page renders them
+ * differently: a shared field is one row with its sources listed, a private
+ * field belongs inside its plugin's region.
+ */
+export interface FlatObject {
+  readonly id: number;
+  readonly shared: Readonly<Record<string, readonly Source[]>>;
+  readonly regions: readonly Region[];
+  readonly skipped: readonly Skipped[];
+}
+
 /** One vocabulary term. */
 export interface Term {
   readonly vocab: string;
@@ -94,6 +128,7 @@ export interface CommandError {
 export interface Api {
   objectGet(id: number): Promise<ObjectRecord>;
   objectList(ids: readonly number[]): Promise<ObjectRecord[]>;
+  objectFlat(id: number): Promise<FlatObject>;
   objectEdges(id: number): Promise<unknown[]>;
   termResolve(vocab: string, surface: string): Promise<string | null>;
   termList(vocab: string): Promise<Term[]>;
@@ -137,6 +172,7 @@ export function apiFor(invoke: Invoke): Api {
   return {
     objectGet: (id) => call("object.get", { id }),
     objectList: (ids) => call("object.list", { ids }),
+    objectFlat: (id) => call("object.flat", { id }),
     objectEdges: (id) => call("object.edges", { id }),
     termResolve: (vocab, surface) => call("term.resolve", { vocab, surface }),
     termList: (vocab) => call("term.list", { vocab }),

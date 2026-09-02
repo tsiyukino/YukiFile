@@ -79,7 +79,8 @@ underlying `io::Error` text, which names absolute paths on the user's disk.
 
 ## bridge::views
 
-`ObjectView` · `ValueView` · `EdgeView` · `TermView` · `HistoryView`
+`ObjectView` · `ValueView` · `EdgeView` · `TermView` · `HistoryView` ·
+`FlatObjectView` · `SourceView` · `RegionView` · `SkippedView`
 
 The store's row types have no serde derives, deliberately. `store::Edge`
 describes a row in a table; a column added for an index is not a change to what
@@ -91,13 +92,14 @@ rendering its own property's region wants `booth#1/title` rather than a winner.
 
 ## bridge::commands
 
-Nine functions, each thin: parse, call the core function that already does the
+Ten functions, each thin: parse, call the core function that already does the
 work, convert the result.
 
 | command          | calls                    |
 |------------------|--------------------------|
 | `object.get`     | `values::Values::rows`   |
 | `object.list`    | `values::Values::rows`   |
+| `object.flat`    | `store::flatten::flatten`|
 | `object.edges`   | `edges::from`            |
 | `term.resolve`   | `vocab::resolve`         |
 | `term.list`      | `vocab::terms`           |
@@ -108,6 +110,36 @@ work, convert the result.
 
 None of them holds logic of its own. A second copy of a rule behind an IPC
 boundary is a copy that drifts where nobody is testing it.
+
+### object.flat resolves; object.get does not
+
+`object.get` hands back values under their stored paths (`booth#1/title`).
+`object.flat` hands back the resolved view: shared fields with every source
+ranked, private fields grouped by the region that owns them.
+
+Resolution runs here rather than in TypeScript because search, sort and export
+all need the same answer, and two implementations of one rule drift apart. The
+object page is only the first caller.
+
+**Which fields are shared comes from the manifests.** `values::mount_order`
+reads the mounts table, which holds no opinion about sharing -- it predates the
+plugin host. `Registry::shared_fields` does hold that opinion, because each
+manifest declares it. Joining the two in this command is what makes
+`booth#1/title` a source for `title` rather than a field Booth keeps to itself.
+
+Without a registry every field stays private. That is the safe reading of "no
+manifest has said otherwise" rather than a degraded mode: a library running no
+plugins has nothing that could be sharing a name.
+
+Shared and private stay apart across the boundary. Merging them here and
+splitting again in TypeScript by looking for a `/` would hand back a job
+`flatten` already did.
+
+A value under a property this library does not mount is **not** reported in
+`skipped`. An object may carry values written by a plugin that is not
+installed, and they wait in storage until it is; a permanent warning on healthy
+objects is a warning nobody reads. Malformed paths and pins that cannot take
+effect are reported, because those are defects.
 
 `import.propose` is the only one that changes anything, and it does not decide
 what lands: `changes::build::import` writes into empty fields and queues

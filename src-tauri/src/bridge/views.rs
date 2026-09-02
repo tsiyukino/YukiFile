@@ -9,6 +9,8 @@
 //!
 //! So the bridge converts. It is more typing and one fewer coupling.
 
+use std::collections::BTreeMap;
+
 use serde::Serialize;
 
 use crate::store::edges::{Edge, Target};
@@ -37,6 +39,54 @@ impl From<&StoredValue> for ValueView {
     fn from(stored: &StoredValue) -> Self {
         Self { path: stored.path.clone(), value: stored.value.clone() }
     }
+}
+
+/// One object resolved: what to show, and where each value came from.
+///
+/// Shared and private fields stay apart, because the object page renders them
+/// differently -- a shared field is one row with its sources listed, a private
+/// field belongs inside its plugin's region. Merging them here and splitting
+/// again in TypeScript by looking for a `/` would be handing back a job
+/// `flatten` already did.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct FlatObjectView {
+    pub id: i64,
+    /// Field name to its sources, best first.
+    pub shared: BTreeMap<String, Vec<SourceView>>,
+    /// One entry per mounted property instance that contributed a field.
+    pub regions: Vec<RegionView>,
+    /// Values that could not be placed. Routine ones are left out; see
+    /// [`SkippedView`].
+    pub skipped: Vec<SkippedView>,
+}
+
+/// One source for a shared field.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SourceView {
+    pub value: String,
+    /// `null` for a bare field entered directly, otherwise the property
+    /// instance it came from.
+    pub from: Option<String>,
+}
+
+/// One plugin's region: its property instance and the fields it owns.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RegionView {
+    pub property: String,
+    pub instance: u32,
+    pub fields: BTreeMap<String, String>,
+}
+
+/// A value resolution could not place.
+///
+/// Only the ones worth surfacing reach here. A value under a property this
+/// library does not mount is routine -- an object may carry values written by
+/// a plugin that is not installed -- and reporting it would put a permanent
+/// warning on objects that are fine.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SkippedView {
+    pub path: String,
+    pub reason: String,
 }
 
 /// One edge leaving an object.

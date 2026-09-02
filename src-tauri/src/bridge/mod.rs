@@ -54,6 +54,7 @@ macro_rules! register_commands {
         $builder.invoke_handler(tauri::generate_handler![
             $crate::bridge::commands::object_get,
             $crate::bridge::commands::object_list,
+            $crate::bridge::commands::object_flat,
             $crate::bridge::commands::object_edges,
             $crate::bridge::commands::term_resolve,
             $crate::bridge::commands::term_list,

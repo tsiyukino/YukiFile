@@ -20,14 +20,20 @@
 //! root. Without that, `hash.of` — a read-only command whose stated reason is
 //! finding duplicates — would hash any file on the machine.
 
+use std::collections::BTreeMap;
+
 use tauri::State;
 
 use crate::bridge::error::BridgeError;
-use crate::bridge::views::{EdgeView, HistoryView, ObjectView, TermView, ValueView};
+use crate::bridge::views::{
+    EdgeView, FlatObjectView, HistoryView, ObjectView, RegionView, SkippedView,
+    SourceView, TermView, ValueView,
+};
 use crate::bridge::Library;
 use crate::changes;
 use crate::commands::{archive, hash};
-use crate::store::{edges, history, values, vocab};
+use crate::plugin::registry::Registry;
+use crate::store::{edges, flatten, history, values, vocab};
 
 /// One object's stored values.
 #[tauri::command]
@@ -52,6 +58,120 @@ pub fn object_get_in(library: &Library, id: i64) -> Result<ObjectView, BridgeErr
 
         Ok(ObjectView { id, values: rows.iter().map(ValueView::from).collect() })
     })
+}
+
+/// One object resolved into what to show.
+///
+/// `object.get` returns values under their stored paths; this returns them
+/// resolved -- shared fields with every source ranked, private fields grouped
+/// by the region that owns them.
+///
+/// Resolution runs here rather than in TypeScript because search, sort and
+/// export all need the same answer, and two implementations of one rule drift
+/// apart. The object page is only the first caller.
+///
+/// # Which fields are shared comes from the manifests
+///
+/// `values::mount_order` reads the mounts table, which holds no opinion about
+/// sharing -- it predates the plugin host. The registry does hold that opinion,
+/// because each manifest declares it. Joining the two here is what makes
+/// `booth#1/title` a source for `title` instead of a field Booth keeps to
+/// itself.
+///
+/// Without a registry every field stays private, which is the safe reading of
+/// "no manifest has said otherwise" rather than a degraded mode: a library
+/// running no plugins has nothing that could be sharing a name.
+pub fn object_flat_in(
+    library: &Library,
+    registry: Option<&Registry>,
+    id: i64,
+) -> Result<FlatObjectView, BridgeError> {
+    library.with_connection(|connection| {
+        let store = values::Values::new();
+        let rows = store
+            .rows(connection, id)
+            .map_err(|error| BridgeError::Storage(error.to_string()))?;
+
+        if rows.is_empty() && !object_exists(connection, id)? {
+            return Err(BridgeError::NoSuchObject(id.to_string()));
+        }
+
+        let mut order = values::mount_order(connection)?;
+        if let Some(registry) = registry {
+            let shared = registry.shared_fields();
+            for row in &mut order {
+                if let Some(fields) = shared.get(row.namespace.as_str()) {
+                    row.shared = fields.to_vec();
+                }
+            }
+        }
+
+        let mounts = values::mounts(&order);
+        let view = flatten::flatten(&rows, &mounts);
+
+        Ok(as_flat_view(id, &view))
+    })
+}
+
+/// Turn a resolved view into what crosses the boundary.
+fn as_flat_view(id: i64, view: &flatten::FlatView<'_>) -> FlatObjectView {
+    let mut shared: BTreeMap<String, Vec<SourceView>> = BTreeMap::new();
+    for field in view.fields() {
+        let sources = view
+            .sources(field)
+            .iter()
+            .map(|source| SourceView {
+                value: source.value.to_string(),
+                from: match source.origin {
+                    flatten::Origin::Bare => None,
+                    flatten::Origin::Mounted { namespace, instance } => {
+                        Some(format!("{namespace}#{instance}"))
+                    }
+                },
+            })
+            .collect();
+        shared.insert(field.to_string(), sources);
+    }
+
+    // Sorted, so two reads of one object agree about region order beyond what
+    // mount order already fixes. A HashMap would hand back a different order
+    // per run and make a diff of two pages meaningless.
+    let mut regions: Vec<RegionView> = view
+        .plugin_mounts()
+        .map(|mount| RegionView {
+            property: mount.0.to_string(),
+            instance: mount.1,
+            fields: view
+                .plugin_fields(mount)
+                .map(|(name, value)| (name.to_string(), value.to_string()))
+                .collect(),
+        })
+        .collect();
+    regions.sort_by(|a, b| (&a.property, a.instance).cmp(&(&b.property, b.instance)));
+
+    let skipped = view
+        .skipped()
+        .iter()
+        .filter_map(|skipped| {
+            // NotMounted is routine: an object may carry values written by a
+            // plugin that is not installed, and they wait in storage until it
+            // is. Reporting it would put a permanent warning on healthy
+            // objects, and a warning that is always there is one nobody reads.
+            let reason = match &skipped.reason {
+                flatten::SkipReason::NotMounted => return None,
+                flatten::SkipReason::Malformed(error) => format!("malformed path: {error}"),
+                flatten::SkipReason::PinNotMounted => {
+                    "pinned to a source this library does not mount".to_string()
+                }
+                flatten::SkipReason::PinOnUnsharedField => {
+                    "pinned on a field no mounted plugin shares".to_string()
+                }
+            };
+            Some(SkippedView { path: skipped.path.to_string(), reason })
+        })
+        .collect();
+
+    FlatObjectView { id, shared, regions, skipped }
 }
 
 /// Several objects at once, for a column rendering across a page.
@@ -231,6 +351,16 @@ pub struct ProposalView {
 // exists so the work is reachable from a test: a `State` cannot be built
 // outside a running Tauri app, and a command that can only run inside one is
 // a command whose failure paths are never exercised until a user finds them.
+
+/// One object resolved into what to show.
+#[tauri::command]
+pub fn object_flat(
+    library: State<'_, Library>,
+    registry: State<'_, Registry>,
+    id: i64,
+) -> Result<FlatObjectView, BridgeError> {
+    object_flat_in(&library, Some(&registry), id)
+}
 
 /// Several objects at once, for a column rendering across a page.
 #[tauri::command]

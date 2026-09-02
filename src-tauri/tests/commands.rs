@@ -432,3 +432,187 @@ impl Drop for Dir {
         let _ = fs::remove_dir_all(&self.0);
     }
 }
+
+// --- resolution ---------------------------------------------------------
+
+/// A registry holding one plugin that shares the given fields.
+fn registry_sharing(property: &str, shared: &[&str]) -> yukifile::plugin::registry::Registry {
+    use yukifile::plugin::manifest::Manifest;
+    use yukifile::plugin::registry::Registry;
+
+    let json = format!(
+        r#"{{"id":"example.{property}","contributes":{{"properties":["{property}"],
+           "shared":[{}]}}}}"#,
+        shared.iter().map(|f| format!("\"{f}\"")).collect::<Vec<_>>().join(",")
+    );
+    Registry::load(vec![Manifest::parse(&json).expect("manifest")]).expect("registry")
+}
+
+/// Mount a property instance at the given position.
+fn mount(library: &Library, namespace: &str, instance: u32, position: i64) {
+    library
+        .with_connection(|connection| {
+            connection.execute(
+                "INSERT INTO mounts (namespace, instance, position) VALUES (?1, ?2, ?3)",
+                rusqlite::params![namespace, instance, position],
+            )?;
+            Ok(())
+        })
+        .expect("mount");
+}
+
+#[test]
+fn a_bare_field_resolves_with_no_plugins_at_all() {
+    let (library, _dir) = library();
+    let id = object_with(&library, &[("title", "BE NATURAL")]);
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+
+    assert_eq!(view.shared["title"][0].value, "BE NATURAL");
+    assert_eq!(view.shared["title"][0].from, None, "a bare field has no source");
+}
+
+#[test]
+fn a_plugin_field_stays_private_until_a_manifest_shares_it() {
+    // The safe reading of "no manifest has said otherwise". A field that
+    // competed for a bare name by default would change values on objects the
+    // user never touched, just by installing a plugin.
+    let (library, _dir) = library();
+    let id = object_with(&library, &[("booth#1/title", "shop name")]);
+    mount(&library, "booth", 1, 0);
+
+    let isolated = object_flat_in(&library, None, id).expect("flat");
+    assert!(isolated.shared.is_empty(), "an undeclared field joined a bare name");
+    assert_eq!(isolated.regions.len(), 1);
+    assert_eq!(isolated.regions[0].fields["title"], "shop name");
+
+    let shared = registry_sharing("booth", &["title"]);
+    let joined = object_flat_in(&library, Some(&shared), id).expect("flat");
+    assert_eq!(joined.shared["title"][0].value, "shop name");
+    assert_eq!(joined.shared["title"][0].from.as_deref(), Some("booth#1"));
+}
+
+#[test]
+fn a_bare_value_outranks_a_shop() {
+    // Renaming a product locally must not be undone by the next fetch.
+    let (library, _dir) = library();
+    let id = object_with(&library, &[("title", "mine"), ("booth#1/title", "theirs")]);
+    mount(&library, "booth", 1, 0);
+
+    let view =
+        object_flat_in(&library, Some(&registry_sharing("booth", &["title"])), id).expect("flat");
+
+    let sources: Vec<&str> = view.shared["title"].iter().map(|s| s.value.as_str()).collect();
+    assert_eq!(sources, ["mine", "theirs"], "the shop's title won");
+}
+
+#[test]
+fn every_source_comes_back_attributed() {
+    // A product on two shops has three titles and all three are true. The
+    // page shows them attributed rather than picking one and discarding the
+    // rest.
+    use yukifile::plugin::manifest::Manifest;
+    use yukifile::plugin::registry::Registry;
+
+    let (library, _dir) = library();
+    let id = object_with(
+        &library,
+        &[("booth#1/title", "from booth"), ("gumroad#1/title", "from gumroad")],
+    );
+    mount(&library, "booth", 1, 0);
+    mount(&library, "gumroad", 1, 1);
+
+    let registry = Registry::load(vec![
+        Manifest::parse(
+            r#"{"id":"e.booth","contributes":{"properties":["booth"],"shared":["title"]}}"#,
+        )
+        .expect("a"),
+        Manifest::parse(
+            r#"{"id":"e.gumroad","contributes":{"properties":["gumroad"],"shared":["title"]}}"#,
+        )
+        .expect("b"),
+    ])
+    .expect("registry");
+
+    let view = object_flat_in(&library, Some(&registry), id).expect("flat");
+
+    let from: Vec<Option<&str>> =
+        view.shared["title"].iter().map(|s| s.from.as_deref()).collect();
+    assert_eq!(from, [Some("booth#1"), Some("gumroad#1")], "mount order was not followed");
+}
+
+#[test]
+fn a_region_carries_the_fields_its_plugin_keeps_to_itself() {
+    // booth#1/item_id is Booth's own. It belongs in Booth's region, not in a
+    // bare name nobody declared.
+    let (library, _dir) = library();
+    let id = object_with(
+        &library,
+        &[("booth#1/title", "shop name"), ("booth#1/item_id", "8264237")],
+    );
+    mount(&library, "booth", 1, 0);
+
+    let view =
+        object_flat_in(&library, Some(&registry_sharing("booth", &["title"])), id).expect("flat");
+
+    assert_eq!(view.shared["title"][0].value, "shop name");
+    assert_eq!(view.regions[0].fields["item_id"], "8264237");
+    assert!(!view.regions[0].fields.contains_key("title"), "a shared field stayed private too");
+}
+
+#[test]
+fn a_value_under_an_unmounted_property_is_not_reported_as_a_problem() {
+    // An object may carry values written by a plugin that is not installed;
+    // they wait in storage until it is. A permanent warning on a healthy
+    // object is a warning nobody reads.
+    let (library, _dir) = library();
+    let id = object_with(&library, &[("title", "fine"), ("vrchat#1/category", "clothing")]);
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+
+    assert!(view.skipped.is_empty(), "an uninstalled plugin's values were flagged");
+    assert_eq!(view.shared["title"][0].value, "fine");
+}
+
+#[test]
+fn an_object_with_nothing_resolves_to_an_empty_view() {
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+
+    assert!(view.shared.is_empty());
+    assert!(view.regions.is_empty());
+    assert_eq!(view.id, id);
+}
+
+#[test]
+fn resolving_an_object_that_is_not_there_says_so() {
+    let (library, _dir) = library();
+
+    assert!(matches!(
+        object_flat_in(&library, None, 99_999),
+        Err(BridgeError::NoSuchObject(_))
+    ));
+}
+
+#[test]
+fn regions_come_back_in_a_stable_order() {
+    // Two reads of one object have to agree, or a diff of two pages means
+    // nothing. A HashMap iteration order would not.
+    let (library, _dir) = library();
+    let id = object_with(
+        &library,
+        &[("zeta#1/a", "1"), ("alpha#1/b", "2"), ("mid#1/c", "3")],
+    );
+    for (i, name) in ["zeta", "alpha", "mid"].iter().enumerate() {
+        mount(&library, name, 1, i as i64);
+    }
+
+    let first = object_flat_in(&library, None, id).expect("a");
+    let second = object_flat_in(&library, None, id).expect("b");
+
+    let names: Vec<&str> = first.regions.iter().map(|r| r.property.as_str()).collect();
+    assert_eq!(names, ["alpha", "mid", "zeta"]);
+    assert_eq!(first.regions, second.regions);
+}
