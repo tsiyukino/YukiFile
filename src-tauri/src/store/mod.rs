@@ -2,5 +2,6 @@
 //! vocabularies those edges point at.
 
 pub mod flatten;
+pub mod id;
 pub mod path;
 pub mod schema;

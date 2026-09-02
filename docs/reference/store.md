@@ -3,9 +3,9 @@
 Objects, the values hung on them, the edges between them, and the vocabularies
 those edges point at.
 
-Three modules exist so far. `path` and `flatten` are pure — they take what they
+Four modules exist so far. `path` and `flatten` are pure — they take what they
 need as arguments and touch no database, no filesystem and no clock. `schema`
-owns the database itself.
+owns the database itself, and `id` owns the clock and the randomness.
 
 ## store::path
 
@@ -256,6 +256,59 @@ assume every row has one.
 
 `edges.kind` is free text: the core does not enumerate valid edge kinds, so a
 plugin adding `cites` or `remixes` needs no schema change.
+
+## store::id
+
+Object identifiers: 64-bit, time-ordered, and derived from nothing.
+
+```text
+ 63   62        21 20       0
+[sign][ milliseconds ][ random ]
+```
+
+An id says nothing about the object. The seed library's own history is 174
+products being moved between folders, and an identity that changes on move
+loses every value and edge attached to it — so neither the path nor the content
+can be the key.
+
+Time in the high bits keeps a scan's thousand inserts landing at the right of
+the B-tree rather than scattering it. Randomness in the low bits is what lets
+two machines merge libraries without a rewrite, which the import contract
+needs; a sequential counter would collide on every row.
+
+42 timestamp bits run to 2109. 41 would have run out in 2039, which is not a
+lifetime for a library meant to be kept.
+
+`IdGenerator::new()` · `IdGenerator::with(clock, entropy)` · `next() -> i64`
+
+`timestamp_of(id) -> u64` recovers the millisecond, for debugging.
+
+### Collisions are expected
+
+21 random bits is about two million values per millisecond. A scan inserting a
+thousand objects puts them all in one millisecond, so birthday maths gives
+roughly a one-in-five chance of a collision somewhere in the batch.
+
+That is designed for rather than prevented: **the primary key is the guarantee,
+and the caller retries on violation.** Retrying belongs to the caller because it
+means knowing an insert failed, and this module has no database. A test asserts
+collisions stay rare rather than absent — asserting they never happen would be
+asserting the documented behaviour does not occur.
+
+### `Clock` and `Entropy`
+
+Both are traits with system implementations (`SystemClock`, `SystemEntropy`).
+They are injectable so the collision path is reachable in a test; a generator
+reading the clock directly could only be tested by waiting.
+
+`SystemEntropy` is xorshift seeded from `RandomState`, not a cryptographic
+generator. Ids are not secrets, and the property needed is spread within a
+millisecond rather than unpredictability.
+
+Both halves are masked when composed, so a clock past 2109 or an `Entropy`
+returning more bits than the tail holds cannot corrupt the other half or push
+an id negative. SQLite integers are signed, and a negative id would sort before
+every existing row.
 
 ## Not yet written
 
