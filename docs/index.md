@@ -52,6 +52,8 @@ Generated per module from the source.
 - [contract.md](reference/contract.md) — the import and export document shape.
 - [changes.md](reference/changes.md) — proposals, review, and applying them.
 - [plugin.md](reference/plugin.md) — manifests, dependency resolution, load order.
+- [plugin-host.md](reference/plugin-host.md) — the TypeScript half: which
+  contributions render where, and fetching a plugin's modules.
 
 ## Seed
 

@@ -267,6 +267,22 @@ palette no matter who drew the page. That is what lets a plugin own an object's
 whole page without stranding the user, and it is why no layout has to reserve a
 slot for other plugins.
 
+The arbitration is split across the two languages along the line between what
+is decided once and what is asked per object. Rust settles which plugins load
+and in what order, all or nothing, because a partly loaded set is a library
+where some objects have panels and others do not for reasons nobody can see.
+TypeScript takes that order and answers, for each object, what belongs in each
+slot — a pure function of the manifests, the object's properties and mount
+order, with no state of its own, because the same question is asked from the
+object page, the context menu and the grid header and all three have to get
+the same answer.
+
+Fetching a plugin's code is where the all-or-nothing rule stops. Dependencies
+were checked before anything loaded, so what can still go wrong is one module
+failing to parse — and refusing to start over that would let any plugin author
+take the application down with a typo. A module that fails is left out and
+reported; the rest of the library keeps working.
+
 Owning a page is the direction, not the first version. A VRChat asset page and
 a paper page have little in common, so the core imposes no mandatory header and
 lets one plugin — chosen per object by the user, since only they know whether a
