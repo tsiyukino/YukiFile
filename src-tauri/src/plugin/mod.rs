@@ -2,5 +2,6 @@
 //! core arbitrates between plugins.
 
 pub mod commands;
+pub mod discover;
 pub mod manifest;
 pub mod registry;

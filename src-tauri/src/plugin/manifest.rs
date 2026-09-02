@@ -106,6 +106,12 @@ pub enum ManifestError {
     UnscopedContribution { slot: &'static str, property: String },
     /// A reserved name a plugin may not use.
     Reserved(String),
+    /// A module specifier carries a file extension.
+    ///
+    /// Which extension a module has on disk is the resolver's business. A
+    /// manifest naming `./panel.js` is a manifest that has to change when the
+    /// build output changes, and the two have no reason to be coupled.
+    ExtensionInSpecifier { slot: &'static str, specifier: String },
 }
 
 impl std::fmt::Display for ManifestError {
@@ -119,6 +125,11 @@ impl std::fmt::Display for ManifestError {
                  declares nor requires"
             ),
             Self::Reserved(name) => write!(f, "{name:?} is reserved"),
+            Self::ExtensionInSpecifier { slot, specifier } => write!(
+                f,
+                "the {slot} module {specifier:?} names a file extension; leave it \
+                 off and let the loader resolve it"
+            ),
         }
     }
 }
@@ -128,6 +139,33 @@ impl std::error::Error for ManifestError {}
 /// Namespaces the core keeps for itself. A plugin declaring one is refused at
 /// load rather than allowed to shadow a core property.
 const RESERVED: &[&str] = &["fs", "@pin", "@import"];
+
+/// Whether a specifier's last segment carries a file extension.
+///
+/// Only the last segment is examined, and only after the leading `./` or
+/// `../` is stepped over: `./panels/v1.2/Booth` has a dot in a directory name
+/// and names no extension, while `../panel` is dots that are path syntax. What
+/// this refuses is `panel.js` -- a trailing dot followed by something that
+/// looks like an extension rather than part of a name.
+fn names_an_extension(specifier: &str) -> bool {
+    let last = specifier.rsplit('/').next().unwrap_or(specifier);
+
+    // `.`, `..` and a leading dot are path syntax or a hidden-file convention,
+    // not an extension.
+    let name = last.trim_start_matches('.');
+    let Some((_, extension)) = name.rsplit_once('.') else {
+        return false;
+    };
+
+    // A version fragment (`Panel.v2`) is part of the name. An extension is
+    // short and alphanumeric, which is what distinguishes `.js` from `.v2`
+    // only imperfectly -- so the test is narrower: an extension the loader
+    // could plausibly be resolving.
+    matches!(
+        extension.to_ascii_lowercase().as_str(),
+        "js" | "mjs" | "cjs" | "jsx" | "ts" | "mts" | "cts" | "tsx" | "json" | "wasm"
+    )
+}
 
 impl Manifest {
     /// Read and check a manifest.
@@ -184,6 +222,25 @@ impl Manifest {
                 }
             }
         }
+
+        // Module specifiers name a module, not a file. What extension it has
+        // on disk belongs to whoever resolves it -- `.ts` in development,
+        // `.js` after a build, a hashed name after bundling -- and a manifest
+        // that spells one of those out has to be edited when the build
+        // changes.
+        for (slot, modules) in [
+            ("panel", &self.contributes.panels),
+            ("viewer", &self.contributes.viewers),
+        ] {
+            for specifier in modules.values() {
+                if names_an_extension(specifier) {
+                    return Err(ManifestError::ExtensionInSpecifier {
+                        slot,
+                        specifier: specifier.clone(),
+                    });
+                }
+            }
+        }
         Ok(())
     }
 
@@ -195,5 +252,58 @@ impl Manifest {
             .iter()
             .chain(&self.requires.properties)
             .map(String::as_str)
+    }
+}
+
+#[cfg(test)]
+mod extension_tests {
+    use super::*;
+
+    fn with_panel(specifier: &str) -> Manifest {
+        let mut manifest = Manifest { id: "test.plugin".into(), ..Default::default() };
+        manifest.contributes.properties.push("thing".into());
+        manifest.contributes.panels.insert("thing".into(), specifier.into());
+        manifest
+    }
+
+    #[test]
+    fn a_specifier_without_an_extension_is_fine() {
+        assert!(with_panel("./panel").check().is_ok());
+        assert!(with_panel("./panels/Booth").check().is_ok());
+        assert!(with_panel("../shared/Panel").check().is_ok());
+    }
+
+    #[test]
+    fn a_specifier_naming_a_build_output_is_refused() {
+        for bad in ["./panel.js", "./panel.ts", "./dist/panel.mjs", "panel.tsx"] {
+            assert!(
+                matches!(
+                    with_panel(bad).check(),
+                    Err(ManifestError::ExtensionInSpecifier { .. })
+                ),
+                "{bad} was accepted"
+            );
+        }
+    }
+
+    #[test]
+    fn a_dot_that_is_not_an_extension_is_left_alone() {
+        // A version fragment in a directory or a name is part of the name.
+        // Refusing these would make the rule about dots rather than about
+        // build outputs.
+        assert!(with_panel("./panels/v1.2/Booth").check().is_ok());
+        assert!(with_panel("./Panel.v2").check().is_ok());
+    }
+
+    #[test]
+    fn a_viewer_is_held_to_the_same_rule() {
+        let mut manifest = Manifest { id: "test.plugin".into(), ..Default::default() };
+        manifest.contributes.properties.push("thing".into());
+        manifest.contributes.viewers.insert("thing".into(), "./viewer.js".into());
+
+        assert!(matches!(
+            manifest.check(),
+            Err(ManifestError::ExtensionInSpecifier { slot: "viewer", .. })
+        ));
     }
 }

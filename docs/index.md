@@ -59,6 +59,8 @@ Generated per module from the source.
   contributions render where, and fetching a plugin's modules.
 - [bridge.md](reference/bridge.md) — where the allowlist becomes callable
   commands, and how a path a plugin names is kept inside the library.
+- [archive-plugin.md](reference/archive-plugin.md) — the first built-in, plugin
+  discovery, and how a plugin calls the core.
 
 ## Seed
 

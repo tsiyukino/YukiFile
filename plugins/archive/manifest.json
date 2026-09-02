@@ -1,0 +1,15 @@
+{
+  "id": "yukifile.archive",
+  "contributes": {
+    "properties": ["archive"],
+    "file_types": {
+      "zip": ["archive"]
+    },
+    "panels": {
+      "archive": "./panel"
+    },
+    "columns": {
+      "archive": ["entries", "unpacked"]
+    }
+  }
+}

@@ -45,6 +45,28 @@ refused rather than allowed to shadow something it does not know exists.
 `file_types` maps an extension to the factual properties it brings, which is
 how the core holds the matching and none of the extensions.
 
+### Module specifiers name no extension
+
+`"./panel"`, never `"./panel.js"`. Which extension a module carries on disk --
+`.ts` in development, `.js` after a build, a hashed name after bundling -- is
+the resolver's business, and a manifest that spells one out has to be edited
+whenever the build output changes. `ExtensionInSpecifier` refuses it.
+
+Path syntax is left alone: `./panels/v1.2/Booth` and `../panel` both pass,
+because the check reads the last segment's extension rather than looking for
+dots.
+
+## plugin::discover
+
+`in_directory(root) -> Found { manifests, skipped }`
+
+A plugin is a directory holding a `manifest.json`. Discovery reads them and
+hands back what parsed, alongside what did not and why.
+
+**Reading is not loading.** A broken directory is skipped and reported; an
+unsatisfied dependency refuses the whole set. See
+[archive-plugin.md](archive-plugin.md) for why the two are separate calls.
+
 ## plugin::registry
 
 `Registry::load(Vec<Manifest>) -> Result<Registry, RegistryError>`
