@@ -3,10 +3,10 @@
 Objects, the values hung on them, the edges between them, and the vocabularies
 those edges point at.
 
-Six modules exist so far. `path` and `flatten` are pure — they take what they
+Seven modules exist so far. `path` and `flatten` are pure — they take what they
 need as arguments and touch no database, no filesystem and no clock. `schema`
-owns the database, `id` owns the clock and the randomness, and `values` and
-`edges` read and write.
+owns the database, `id` owns the clock and the randomness, and `values`,
+`edges` and `vocab` read and write.
 
 ## store::path
 
@@ -408,6 +408,47 @@ guessing. That is unreachable while the CHECK stands; the branch exists for the
 day a migration drops it, and a test builds a table without the constraint so
 the branch is one someone has seen work.
 
+## store::vocab
+
+Controlled lists of names that objects point at. A **term** is a name with
+aliases and no path; an **alias** is one spelling of it.
+
+Terms are separate from objects because the real library requires it: 73
+avatars are referenced and 21 bases are owned, so modelling the rest as objects
+would put 52 pathless shells in every listing and every backup.
+
+| function                                | does                              |
+|-----------------------------------------|-----------------------------------|
+| `put_term(&conn, vocab, id, label)`     | add or relabel, idempotently      |
+| `term(&conn, vocab, id)`                | one term, if it exists            |
+| `terms(&conn, vocab)`                   | every term in a vocabulary        |
+| `remove_term(&conn, vocab, id)`         | remove; aliases and edges cascade |
+| `put_alias(&conn, vocab, surface, term)`| record a spelling                 |
+| `resolve(&conn, vocab, surface)`        | which term a spelling names       |
+| `aliases(&conn, vocab, term)`           | every spelling of one term        |
+| `remove_alias(&conn, vocab, surface)`   | drop one spelling                 |
+| `vocabularies(&conn)`                   | vocabularies that have terms      |
+
+`put_term` is idempotent because seeding runs whenever a plugin loads.
+
+A term resolves by its own id without needing an alias for it.
+
+### Folding, and what is not done
+
+Surfaces are stored and compared folded to Unicode lowercase, so `LUMINA` and
+`Lumina` — both present in the seed data — are one spelling.
+
+**Folding happens in Rust, never in SQL.** SQLite's `lower()` only folds ASCII:
+`ÄÖÜ` comes back unchanged, so a term id carrying a non-ASCII capital would be
+compared against a Rust-folded surface and never match. An author vocabulary
+would hit this immediately.
+
+Nothing else is done to a surface. `Kikyo!` does not resolve to `kikyo`, and
+`sio` does not match inside `Expressions`. Loose matching against arbitrary
+text is a different problem with different rules — short names need extra
+evidence, which is a heuristic belonging to whichever plugin reads filenames.
+This module answers "is this exact string a known spelling".
+
 ## Not yet written
 
-`vocab` · `history` — the modules that read and write those two tables.
+`history` — the module that reads and writes that table.
