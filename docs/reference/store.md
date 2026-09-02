@@ -3,10 +3,10 @@
 Objects, the values hung on them, the edges between them, and the vocabularies
 those edges point at.
 
-Seven modules exist so far. `path` and `flatten` are pure — they take what they
-need as arguments and touch no database, no filesystem and no clock. `schema`
-owns the database, `id` owns the clock and the randomness, and `values`,
-`edges` and `vocab` read and write.
+Eight modules, and the layer is complete. `path` and `flatten` are pure — they
+take what they need as arguments and touch no database, no filesystem and no
+clock. `schema` owns the database, `id` owns the clock and the randomness, and
+`values`, `edges`, `vocab` and `history` read and write.
 
 ## store::path
 
@@ -449,6 +449,43 @@ text is a different problem with different rules — short names need extra
 evidence, which is a heuristic belonging to whichever plugin reads filenames.
 This module answers "is this exact string a known spelling".
 
-## Not yet written
+## store::history
 
-`history` — the module that reads and writes that table.
+What changed, when, and in which batch. One record is a field's before and
+after; the log is small enough — a couple of megabytes for a library this size
+after years of edits — to store plainly, with no delta packing. Thumbnails
+never enter it, since replacing a cover replaces the file.
+
+**Recording is the caller's to do.** `values` does not write history on every
+set: a scan importing 1518 objects would produce 1518 entries saying a field
+came into existence, which is not an edit but those fields existing for the
+first time. History is for decisions — an accepted change set, a rename, a
+value cleared — and the caller knows which of those it is doing.
+
+| function                                          | does                         |
+|---------------------------------------------------|------------------------------|
+| `begin()` / `begin_at(clock)`                     | start a batch                |
+| `record(&conn, object, path, old, new, batch)`    | record one change            |
+| `record_at(&conn, clock, ...)`                    | the same, at a given time    |
+| `of_object(&conn, object)`                        | one object's log, newest first |
+| `of_field(&conn, object, path)`                   | one field's log, newest first  |
+| `of_batch(&conn, batch)`                          | one batch, oldest first      |
+| `previous_value(&conn, object, path)`             | what a field held before     |
+| `len(&conn)`                                      | how many entries             |
+
+`old` and `new` are `Option<&str>`: `None` before means the field was empty,
+`None` after means it was cleared. Both `None`, or the two equal, records
+nothing — an entry saying nothing happened would sit in the log forever making
+every reader ask what it meant.
+
+`of_field` is what makes a diff naturally scoped: `booth#1/price` and the local
+`price` are separate facts, so their histories do not mix.
+
+A batch reads oldest first, because undoing one means walking it backwards.
+
+`previous_value` returns `Option<Option<String>>`, and both layers matter to a
+caller offering an undo: the outer is whether the field was ever changed, the
+inner whether it held anything before that change.
+
+Nothing here updates or deletes an entry. The only way one leaves is with the
+object it belongs to.

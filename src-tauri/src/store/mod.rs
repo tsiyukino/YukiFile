@@ -3,6 +3,7 @@
 
 pub mod edges;
 pub mod flatten;
+pub mod history;
 pub mod id;
 pub mod path;
 pub mod schema;
