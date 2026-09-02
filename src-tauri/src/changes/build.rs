@@ -4,13 +4,27 @@
 //! reports a conflict rather than overwriting. This module takes that report
 //! and turns it into a reviewable entry, so the rule lives in one place and
 //! this is wiring rather than a second judgement.
+//!
+//! # A document is imported whole
+//!
+//! Values, edges and vocabulary terms. An earlier version read only the
+//! values and reported success, so a document carrying 174 products and 73
+//! avatars imported the products and silently lost every avatar — the
+//! interface said it had done something it had not.
+//!
+//! Objects come first, then edges, because an edge names its target by path
+//! and that path may belong to a record further down the document. One pass
+//! would resolve it against a library that does not hold it yet.
 
-use rusqlite::{Connection, params};
+use std::collections::HashMap;
+
+use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::changes::{ChangeError, ChangeSet};
-use crate::contract::Document;
+use crate::contract::{Document, EdgeRecord};
 use crate::store::id::{Clock, SystemClock};
 use crate::store::values::{Values, WriteError, Written};
+use crate::store::{edges, vocab};
 
 /// What importing a document did.
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -21,6 +35,11 @@ pub struct Imported {
     pub unchanged: usize,
     /// Objects created because no path matched.
     pub objects_created: usize,
+    /// Vocabulary terms added or relabelled.
+    pub terms: usize,
+    /// Edges recorded. An edge whose target this library does not hold is not
+    /// counted, because it was not recorded.
+    pub edges: usize,
     /// The set holding what could not be written directly, if anything could
     /// not.
     pub pending: Option<i64>,
@@ -61,10 +80,28 @@ pub fn import_at(
     let mut outcome = Imported::default();
     let mut set: Option<i64> = None;
 
+    // Terms first: an edge may point at one, and a term that does not exist
+    // yet would fail the foreign key.
+    for term in &document.terms {
+        vocab::put_term(connection, &term.vocab, &term.id, &term.label)?;
+        for alias in &term.aliases {
+            vocab::put_alias(connection, &term.vocab, alias, &term.id)?;
+        }
+        outcome.terms += 1;
+    }
+
+    // Objects, remembering which path led to which, so the edge pass can
+    // resolve a target named by a path this document itself introduced.
+    let mut by_path: HashMap<&str, i64> = HashMap::new();
+
     for record in &document.objects {
         let (object, created) = match_object(connection, values, record)?;
         if created {
             outcome.objects_created += 1;
+        }
+
+        for path in &record.paths {
+            by_path.insert(path.as_str(), object);
         }
 
         for (field_path, value) in &record.values {
@@ -100,8 +137,70 @@ pub fn import_at(
         }
     }
 
+    // Edges last, now that every object the document mentions exists.
+    for record in &document.objects {
+        let Some(&source) = record.paths.first().and_then(|p| by_path.get(p.as_str())) else {
+            continue;
+        };
+        for edge in &record.edges {
+            outcome.edges += usize::from(add_edge(connection, source, edge, &by_path)?);
+        }
+    }
+
     outcome.pending = set;
     Ok(outcome)
+}
+
+/// Record one edge, if its target can be resolved.
+///
+/// A malformed record — naming both targets or neither — is skipped rather
+/// than guessed at, matching what the edge table itself refuses. A target
+/// naming a path this library does not have is also skipped: the document
+/// referred to something that is not here, and inventing an object for it
+/// would put a pathless shell in every listing, which is what the vocabulary
+/// decision exists to avoid.
+fn add_edge(
+    connection: &Connection,
+    source: i64,
+    edge: &EdgeRecord,
+    by_path: &HashMap<&str, i64>,
+) -> Result<bool, ChangeError> {
+    if !edge.is_well_formed() {
+        return Ok(false);
+    }
+
+    let target = if let Some((vocab, term)) = edge.term_parts() {
+        edges::Target::Term { vocab: vocab.to_string(), id: term.to_string() }
+    } else if let Some(path) = &edge.object {
+        match resolve_object(connection, path, by_path)? {
+            Some(object) => edges::Target::Object(object),
+            None => return Ok(false),
+        }
+    } else {
+        return Ok(false);
+    };
+
+    edges::add(connection, source, &edge.kind, &target)?;
+    Ok(true)
+}
+
+/// The object at a path — from this document, or already in the library.
+fn resolve_object(
+    connection: &Connection,
+    path: &str,
+    by_path: &HashMap<&str, i64>,
+) -> Result<Option<i64>, ChangeError> {
+    if let Some(&object) = by_path.get(path) {
+        return Ok(Some(object));
+    }
+    let existing: Option<i64> = connection
+        .query_row(
+            "SELECT object_id FROM object_paths WHERE path = ?1",
+            params![path],
+            |row| row.get(0),
+        )
+        .optional()?;
+    Ok(existing)
 }
 
 /// Find the object a record describes, or make one.
@@ -234,7 +333,6 @@ mod tests {
     use super::*;
     use crate::changes::apply;
     use crate::contract::{Document, ObjectRecord};
-    use crate::store::history;
     use crate::store::schema;
 
     struct Ticks(std::cell::Cell<u64>);
@@ -473,174 +571,203 @@ mod tests {
         assert!(!proposals[0].accepted, "a modification was swept up");
     }
 
-    // --- applying ---------------------------------------------------------
+    // --- edges and terms --------------------------------------------------
 
     #[test]
-    fn applying_writes_only_what_was_accepted() {
+    fn a_document_brings_its_vocabulary_with_it() {
+        // 73 avatars are referenced by the seed library's assets. An import
+        // that dropped them would leave every compatibility edge pointing at
+        // nothing.
+        use crate::contract::TermRecord;
+        use crate::store::vocab;
+
         let (connection, mut values) = library();
-        import_now(
-            &connection,
-            &mut values,
-            &document(vec![record("a", &[("title", "mine"), ("note", "keep")])]),
-            "1",
+        let mut doc = document(vec![]);
+        doc.terms.push(TermRecord {
+            vocab: "avatar".into(),
+            id: "kikyo".into(),
+            label: "桔梗".into(),
+            aliases: ["Kikyo", "Kikyou", "桔梗"].map(String::from).to_vec(),
+        });
+
+        let outcome = import_at(&connection, &mut values, &doc, "seed", &Ticks::at(1))
+            .expect("import");
+
+        assert_eq!(outcome.terms, 1);
+        assert_eq!(
+            vocab::resolve(&connection, "avatar", "Kikyou").expect("resolve"),
+            Some("kikyo".to_string())
         );
-        let outcome = import_now(
-            &connection,
-            &mut values,
-            &document(vec![record("a", &[("title", "theirs"), ("note", "replaced")])]),
-            "2",
-        );
-        let set = outcome.pending.expect("set");
+    }
 
-        let proposals = apply::entries(&connection, set).expect("entries");
-        let title = proposals.iter().find(|c| c.field_path == "title").expect("title");
-        apply::set_accepted(&connection, title.id, true).expect("accept");
+    #[test]
+    fn an_edge_to_a_term_is_recorded() {
+        use crate::contract::{EdgeRecord, TermRecord};
+        use crate::store::edges;
 
-        let applied = apply::apply_at(&connection, &values, set, &Ticks::at(2000)).expect("apply");
-        assert_eq!(applied.changed, 1);
-        assert_eq!(applied.declined, 1);
+        let (connection, mut values) = library();
+        let mut doc = document(vec![]);
+        doc.terms.push(TermRecord {
+            vocab: "avatar".into(),
+            id: "manuka".into(),
+            label: "マヌカ".into(),
+            aliases: vec![],
+        });
+        let mut outfit = record("outfit.zip", &[("title", "outfit")]);
+        outfit.edges.push(EdgeRecord::to_term("supports", "avatar", "manuka"));
+        doc.objects.push(outfit);
 
-        let object = values
-            .find_by_value(&connection, "@import/key", "a")
+        let outcome =
+            import_at(&connection, &mut values, &doc, "seed", &Ticks::at(1)).expect("import");
+        assert_eq!(outcome.edges, 1);
+
+        let fits = edges::to_term(&connection, "avatar", "manuka", None).expect("reverse");
+        assert_eq!(fits.len(), 1, "the compatibility edge was lost");
+    }
+
+    #[test]
+    fn an_edge_can_point_at_an_object_further_down_the_document() {
+        // Edges are resolved after every object exists. One pass would look
+        // the target up in a library that does not hold it yet.
+        use crate::contract::EdgeRecord;
+        use crate::store::edges;
+
+        let (connection, mut values) = library();
+        let mut collection = record("collection", &[("title", "my textures")]);
+        collection.edges.push(EdgeRecord::to_object("contains", "Textures/skin.png"));
+
+        // The target is the *second* record.
+        let doc = document(vec![collection, record("Textures/skin.png", &[("title", "skin")])]);
+
+        let outcome =
+            import_at(&connection, &mut values, &doc, "seed", &Ticks::at(1)).expect("import");
+        assert_eq!(outcome.edges, 1, "a forward reference was dropped");
+
+        let source = values
+            .find_by_value(&connection, "@import/key", "collection")
             .expect("find")
             .expect("object");
-        assert_eq!(values.get(&connection, object, "title").expect("r"), Some("theirs".into()));
-        assert_eq!(values.get(&connection, object, "note").expect("r"), Some("keep".into()));
+        assert_eq!(edges::from(&connection, source, None).expect("read").len(), 1);
     }
 
     #[test]
-    fn applying_records_history_in_one_batch() {
+    fn an_edge_to_something_this_library_does_not_have_is_skipped() {
+        // Inventing an object for it would put a pathless shell in every
+        // listing, which is what the vocabulary decision exists to avoid.
+        use crate::contract::EdgeRecord;
+
         let (connection, mut values) = library();
-        import_now(&connection, &mut values, &document(vec![record("a", &[("title", "mine")])]), "1");
-        let outcome = import_now(
+        let mut orphan = record("a.zip", &[("title", "a")]);
+        orphan.edges.push(EdgeRecord::to_object("requires", "not/in/this/library"));
+
+        let outcome = import_at(
             &connection,
             &mut values,
-            &document(vec![record("a", &[("title", "theirs")])]),
-            "2",
-        );
-        let set = outcome.pending.expect("set");
-        apply::accept_all(&connection, set, true).expect("accept");
+            &document(vec![orphan]),
+            "seed",
+            &Ticks::at(1),
+        )
+        .expect("import");
 
-        let applied = apply::apply_at(&connection, &values, set, &Ticks::at(2000)).expect("apply");
-        let batch = applied.batch.expect("batch");
+        assert_eq!(outcome.edges, 0, "an unresolvable edge was counted as recorded");
 
-        let recorded = history::of_batch(&connection, batch).expect("history");
-        assert_eq!(recorded.len(), 1);
-        assert_eq!(recorded[0].old.as_deref(), Some("mine"));
-        assert_eq!(recorded[0].new.as_deref(), Some("theirs"));
+        let objects: i64 = connection
+            .query_row("SELECT count(*) FROM objects", [], |row| row.get(0))
+            .expect("count");
+        assert_eq!(objects, 1, "a shell object was invented for the target");
     }
 
     #[test]
-    fn a_set_cannot_be_applied_twice() {
-        // The second pass would write against an old_value two versions stale.
+    fn a_malformed_edge_is_skipped_rather_than_guessed_at() {
+        use crate::contract::EdgeRecord;
+
         let (connection, mut values) = library();
-        import_now(&connection, &mut values, &document(vec![record("a", &[("title", "mine")])]), "1");
-        let outcome = import_now(
+        let mut confused = record("a.zip", &[("title", "a")]);
+        confused.edges.push(EdgeRecord {
+            kind: "supports".into(),
+            object: Some("a.zip".into()),
+            term: Some("avatar:manuka".into()),
+            reason: None,
+        });
+
+        let outcome = import_at(
             &connection,
             &mut values,
-            &document(vec![record("a", &[("title", "theirs")])]),
-            "2",
-        );
-        let set = outcome.pending.expect("set");
-        apply::accept_all(&connection, set, true).expect("accept");
+            &document(vec![confused]),
+            "seed",
+            &Ticks::at(1),
+        )
+        .expect("import");
 
-        apply::apply_at(&connection, &values, set, &Ticks::at(2000)).expect("first");
-        let again = apply::apply_at(&connection, &values, set, &Ticks::at(3000));
-
-        assert!(matches!(again, Err(ChangeError::AlreadyApplied(_))));
+        assert_eq!(outcome.edges, 0);
     }
 
     #[test]
-    fn a_field_that_moved_since_the_proposal_is_refused() {
-        // Someone edited the field between the set being built and applied.
-        // Applying anyway would overwrite that without it being seen.
+    fn importing_a_document_with_edges_twice_does_not_duplicate_them() {
+        use crate::contract::{EdgeRecord, TermRecord};
+        use crate::store::edges;
+
         let (connection, mut values) = library();
-        import_now(&connection, &mut values, &document(vec![record("a", &[("title", "mine")])]), "1");
-        let outcome = import_now(
-            &connection,
-            &mut values,
-            &document(vec![record("a", &[("title", "theirs")])]),
-            "2",
-        );
-        let set = outcome.pending.expect("set");
-        apply::accept_all(&connection, set, true).expect("accept");
+        let mut doc = document(vec![]);
+        doc.terms.push(TermRecord {
+            vocab: "avatar".into(),
+            id: "manuka".into(),
+            label: "Manuka".into(),
+            aliases: vec![],
+        });
+        let mut outfit = record("outfit.zip", &[("title", "outfit")]);
+        outfit.edges.push(EdgeRecord::to_term("supports", "avatar", "manuka"));
+        doc.objects.push(outfit);
 
-        // A person edits the field in the meantime.
-        let object = values.find_by_value(&connection, "@import/key", "a").expect("f").expect("o");
-        values.overwrite(&connection, object, "title", "something else").expect("edit");
-
-        let result = apply::apply_at(&connection, &values, set, &Ticks::at(2000));
-        assert!(matches!(result, Err(ChangeError::Stale { .. })), "got {result:?}");
+        import_at(&connection, &mut values, &doc, "seed", &Ticks::at(1)).expect("first");
+        import_at(&connection, &mut values, &doc, "seed", &Ticks::at(2)).expect("second");
 
         assert_eq!(
-            values.get(&connection, object, "title").expect("read"),
-            Some("something else".to_string()),
-            "the intervening edit was overwritten"
+            edges::to_term(&connection, "avatar", "manuka", None).expect("reverse").len(),
+            1,
+            "the second import duplicated the edge"
         );
     }
 
     #[test]
-    fn a_declined_entry_stays_as_a_record() {
+    fn the_seed_librarys_avatar_vocabulary_imports() {
+        // The shape the vocabulary decision was written around: a term with
+        // three spellings, referenced by an asset, with no base owned.
+        use crate::contract::{EdgeRecord, TermRecord};
+        use crate::store::{edges, vocab};
+
         let (connection, mut values) = library();
-        import_now(&connection, &mut values, &document(vec![record("a", &[("title", "mine")])]), "1");
-        let outcome = import_now(
-            &connection,
-            &mut values,
-            &document(vec![record("a", &[("title", "theirs")])]),
-            "2",
+        let mut doc = document(vec![]);
+
+        for (id, label, aliases) in [
+            ("kikyo", "桔梗", vec!["Kikyo", "Kikyou", "桔梗"]),
+            ("selestia", "セレスティア", vec!["Selestia"]),
+        ] {
+            doc.terms.push(TermRecord {
+                vocab: "avatar".into(),
+                id: id.into(),
+                label: label.into(),
+                aliases: aliases.into_iter().map(String::from).collect(),
+            });
+        }
+
+        let mut outfit = record(".AASHAREE/CLOTHS/Cross_Maid_Fullset", &[("title", "Cross Maid")]);
+        outfit.edges.push(EdgeRecord::to_term("supports", "avatar", "kikyo"));
+        outfit.edges.push(EdgeRecord::to_term("supports", "avatar", "selestia"));
+        doc.objects.push(outfit);
+
+        let outcome =
+            import_at(&connection, &mut values, &doc, "seed", &Ticks::at(1)).expect("import");
+
+        assert_eq!(outcome.terms, 2);
+        assert_eq!(outcome.edges, 2);
+
+        // Selestia: referenced, base not owned. Information, not an error.
+        assert_eq!(edges::count_to_term(&connection, "avatar", "selestia").expect("c"), 1);
+        assert_eq!(
+            vocab::resolve(&connection, "avatar", "桔梗").expect("resolve"),
+            Some("kikyo".to_string())
         );
-        let set = outcome.pending.expect("set");
-
-        apply::apply_at(&connection, &values, set, &Ticks::at(2000)).expect("apply");
-
-        let proposals = apply::entries(&connection, set).expect("entries");
-        assert_eq!(proposals.len(), 1, "a declined entry was deleted");
-        assert!(!proposals[0].accepted);
     }
 
-    #[test]
-    fn an_applied_set_leaves_the_pending_list() {
-        let (connection, mut values) = library();
-        import_now(&connection, &mut values, &document(vec![record("a", &[("title", "mine")])]), "1");
-        let outcome = import_now(
-            &connection,
-            &mut values,
-            &document(vec![record("a", &[("title", "theirs")])]),
-            "2",
-        );
-        let set = outcome.pending.expect("set");
-        assert_eq!(pending(&connection).expect("pending").len(), 1);
-
-        apply::apply_at(&connection, &values, set, &Ticks::at(2000)).expect("apply");
-        assert!(pending(&connection).expect("pending").is_empty());
-    }
-
-    #[test]
-    fn applying_a_set_that_does_not_exist_says_so() {
-        let (connection, values) = library();
-        assert!(matches!(
-            apply::apply_at(&connection, &values, 999, &Ticks::at(1)),
-            Err(ChangeError::NoSuchSet(999))
-        ));
-    }
-
-    // --- review ------------------------------------------------------------
-
-    #[test]
-    fn a_summary_counts_what_is_on_offer() {
-        let (connection, mut values) = library();
-        import_now(&connection, &mut values, &document(vec![record("a", &[("title", "mine")])]), "1");
-        let outcome = import_now(
-            &connection,
-            &mut values,
-            &document(vec![record("a", &[("title", "theirs"), ("note", "new")])]),
-            "2",
-        );
-        let set = outcome.pending.expect("set");
-
-        let summary = apply::summary(&connection, set).expect("summary");
-        assert_eq!(summary.modifications, 1);
-        // `note` was empty, so it was written directly rather than proposed.
-        assert_eq!(summary.additions, 0);
-    }
 }

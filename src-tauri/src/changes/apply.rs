@@ -210,3 +210,204 @@ pub struct Summary {
     pub modifications: usize,
     pub accepted: usize,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::changes::build::{import_at, pending};
+    use crate::contract::{Document, ObjectRecord};
+    use crate::store::schema;
+
+    struct Ticks(std::cell::Cell<u64>);
+
+    impl Ticks {
+        fn at(millis: u64) -> Self {
+            Self(std::cell::Cell::new(millis))
+        }
+    }
+
+    impl Clock for Ticks {
+        fn now_millis(&self) -> u64 {
+            self.0.get()
+        }
+    }
+
+    fn library() -> (Connection, Values) {
+        (schema::open_in_memory().expect("open"), Values::new())
+    }
+
+    fn record(path: &str, values: &[(&str, &str)]) -> ObjectRecord {
+        ObjectRecord {
+            paths: vec![path.to_string()],
+            values: values.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
+            ..ObjectRecord::default()
+        }
+    }
+
+    fn document(records: Vec<ObjectRecord>) -> Document {
+        Document { objects: records, ..Document::new() }
+    }
+
+    /// Import, then hand back the set it opened.
+    fn import_now(connection: &Connection, values: &mut Values, doc: &Document, label: &str) {
+        import_at(connection, values, doc, label, &Ticks::at(1000)).expect("import");
+    }
+
+    /// Import, and hand back the set it opened.
+    fn import_for_review(
+        connection: &Connection,
+        values: &mut Values,
+        doc: &Document,
+        label: &str,
+    ) -> i64 {
+        import_at(connection, values, doc, label, &Ticks::at(1000))
+            .expect("import")
+            .pending
+            .expect("this import should have opened a set")
+    }
+
+    /// The two imports that leave one modification waiting for review.
+    fn conflicting(connection: &Connection, values: &mut Values) -> i64 {
+        import_now(connection, values, &document(vec![record("a", &[("title", "mine")])]), "1");
+        import_for_review(
+            connection,
+            values,
+            &document(vec![record("a", &[("title", "theirs")])]),
+            "2",
+        )
+    }
+
+    // --- applying ---------------------------------------------------------
+
+    #[test]
+    fn applying_writes_only_what_was_accepted() {
+        let (connection, mut values) = library();
+        import_now(
+            &connection,
+            &mut values,
+            &document(vec![record("a", &[("title", "mine"), ("note", "keep")])]),
+            "1",
+        );
+        let set = import_for_review(
+            &connection,
+            &mut values,
+            &document(vec![record("a", &[("title", "theirs"), ("note", "replaced")])]),
+            "2",
+        );
+
+        let proposals = entries(&connection, set).expect("entries");
+        let title = proposals.iter().find(|c| c.field_path == "title").expect("title");
+        set_accepted(&connection, title.id, true).expect("accept");
+
+        let applied = apply_at(&connection, &values, set, &Ticks::at(2000)).expect("apply");
+        assert_eq!(applied.changed, 1);
+        assert_eq!(applied.declined, 1);
+
+        let object = values
+            .find_by_value(&connection, "@import/key", "a")
+            .expect("find")
+            .expect("object");
+        assert_eq!(values.get(&connection, object, "title").expect("r"), Some("theirs".into()));
+        assert_eq!(values.get(&connection, object, "note").expect("r"), Some("keep".into()));
+    }
+
+    #[test]
+    fn applying_records_history_in_one_batch() {
+        let (connection, mut values) = library();
+        let set = conflicting(&connection, &mut values);
+        accept_all(&connection, set, true).expect("accept");
+
+        let applied = apply_at(&connection, &values, set, &Ticks::at(2000)).expect("apply");
+        let batch = applied.batch.expect("batch");
+
+        let recorded = history::of_batch(&connection, batch).expect("history");
+        assert_eq!(recorded.len(), 1);
+        assert_eq!(recorded[0].old.as_deref(), Some("mine"));
+        assert_eq!(recorded[0].new.as_deref(), Some("theirs"));
+    }
+
+    #[test]
+    fn a_set_cannot_be_applied_twice() {
+        // The second pass would write against an old_value two versions stale.
+        let (connection, mut values) = library();
+        let set = conflicting(&connection, &mut values);
+        accept_all(&connection, set, true).expect("accept");
+
+        apply_at(&connection, &values, set, &Ticks::at(2000)).expect("first");
+        let again = apply_at(&connection, &values, set, &Ticks::at(3000));
+
+        assert!(matches!(again, Err(ChangeError::AlreadyApplied(_))));
+    }
+
+    #[test]
+    fn a_field_that_moved_since_the_proposal_is_refused() {
+        // Someone edited the field between the set being built and applied.
+        // Applying anyway would overwrite that without it being seen.
+        let (connection, mut values) = library();
+        let set = conflicting(&connection, &mut values);
+        accept_all(&connection, set, true).expect("accept");
+
+        // A person edits the field in the meantime.
+        let object = values.find_by_value(&connection, "@import/key", "a").expect("f").expect("o");
+        values.overwrite(&connection, object, "title", "something else").expect("edit");
+
+        let result = apply_at(&connection, &values, set, &Ticks::at(2000));
+        assert!(matches!(result, Err(ChangeError::Stale { .. })), "got {result:?}");
+
+        assert_eq!(
+            values.get(&connection, object, "title").expect("read"),
+            Some("something else".to_string()),
+            "the intervening edit was overwritten"
+        );
+    }
+
+    #[test]
+    fn a_declined_entry_stays_as_a_record() {
+        let (connection, mut values) = library();
+        let set = conflicting(&connection, &mut values);
+
+        apply_at(&connection, &values, set, &Ticks::at(2000)).expect("apply");
+
+        let proposals = entries(&connection, set).expect("entries");
+        assert_eq!(proposals.len(), 1, "a declined entry was deleted");
+        assert!(!proposals[0].accepted);
+    }
+
+    #[test]
+    fn an_applied_set_leaves_the_pending_list() {
+        let (connection, mut values) = library();
+        let set = conflicting(&connection, &mut values);
+        assert_eq!(pending(&connection).expect("pending").len(), 1);
+
+        apply_at(&connection, &values, set, &Ticks::at(2000)).expect("apply");
+        assert!(pending(&connection).expect("pending").is_empty());
+    }
+
+    #[test]
+    fn applying_a_set_that_does_not_exist_says_so() {
+        let (connection, values) = library();
+        assert!(matches!(
+            apply_at(&connection, &values, 999, &Ticks::at(1)),
+            Err(ChangeError::NoSuchSet(999))
+        ));
+    }
+
+    // --- review ------------------------------------------------------------
+
+    #[test]
+    fn a_summary_counts_what_is_on_offer() {
+        let (connection, mut values) = library();
+        import_now(&connection, &mut values, &document(vec![record("a", &[("title", "mine")])]), "1");
+        let set = import_for_review(
+            &connection,
+            &mut values,
+            &document(vec![record("a", &[("title", "theirs"), ("note", "new")])]),
+            "2",
+        );
+
+        let summary = summary(&connection, set).expect("summary");
+        assert_eq!(summary.modifications, 1);
+        // `note` was empty, so it was written directly rather than proposed.
+        assert_eq!(summary.additions, 0);
+    }
+}

@@ -23,9 +23,29 @@ value" and not "who suggested it".
 `import_at(..., clock)` — the same, with the clock injected.
 
 Writes what fits and proposes what does not. `Imported` reports `written`,
-`unchanged`, `objects_created` and `pending` — the set id, if anything needed
-review. An import with no conflicts opens no set: a review screen with nothing
-to review is noise.
+`unchanged`, `objects_created`, `terms`, `edges` and `pending` — the set id, if
+anything needed review. An import with no conflicts opens no set: a review
+screen with nothing to review is noise.
+
+### A document is imported whole
+
+Values, edges and vocabulary terms. An earlier version read only the values and
+reported success, so a document carrying 174 products and 73 avatars imported
+the products and silently lost every avatar — the interface claimed to have
+done something it had not.
+
+The order is terms, then objects, then edges. Terms first because an edge may
+point at one and a missing term fails the foreign key. Edges last because an
+edge names its target by path, and that path may belong to a record further
+down the document; resolving in one pass would look it up in a library that
+does not hold it yet.
+
+An edge whose target this library does not have is **skipped and not counted**.
+Inventing an object for it would put a pathless shell in every listing, which
+is what `2026-09-01_vocabularies-not-empty-objects.md` exists to prevent. A
+malformed edge — naming both targets or neither — is skipped for the same
+reason the edge table refuses one: there is nothing to resolve it to that is
+not a guess.
 
 Belongs inside `schema::in_transaction`. Half an import is a library describing
 something that never existed.
