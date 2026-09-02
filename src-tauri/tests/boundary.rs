@@ -218,44 +218,101 @@ fn a_built_in_manifest_goes_through_the_parser_third_parties_get() {
     }
 }
 
+/// Every `#[tauri::command]` function name in one file.
+fn annotated_commands(source: &str) -> Vec<String> {
+    let code = strip_comments(source);
+    let mut found = Vec::new();
+
+    for (index, _) in code.match_indices("#[tauri::command]") {
+        // The function name is whatever follows the next `fn`.
+        let rest = &code[index..];
+        let Some(fn_at) = rest.find("fn ") else { continue };
+        let after = &rest[fn_at + 3..];
+        let name: String = after
+            .chars()
+            .take_while(|c| c.is_alphanumeric() || *c == '_')
+            .collect();
+        if !name.is_empty() {
+            found.push(name);
+        }
+    }
+    found
+}
+
 #[test]
-fn every_command_a_plugin_can_reach_is_on_the_list() {
+fn commands_are_annotated_only_in_the_bridge() {
     // The surface is one array, so widening what plugins can do is a diff to
     // one place. An annotation scattered through the source would work as
     // well at runtime and much worse in review -- nobody notices one more
     // #[tauri::command] in a file of forty.
     //
-    // This checks the inverse: no function is exposed except through that
-    // array. If Tauri command attributes appear in core source, they have to
-    // be registered somewhere the list can see.
-    //
-    // Nothing is wired to Tauri yet, so today this guards against a second
-    // door being added rather than watching one that exists. That is the
-    // useful order: the check is in place before the first command is, so
-    // adding one the wrong way fails on the way in.
+    // Confining them to one directory is what makes the correspondence check
+    // below possible: a set that can be enumerated can be compared against
+    // the list, and one scattered across the tree cannot.
     let mut files = Vec::new();
     rust_files(&core_src(), &mut files);
 
-    let mut annotated = Vec::new();
+    let bridge = core_src().join("bridge");
+    let mut stray = Vec::new();
 
     for file in &files {
+        if file.starts_with(&bridge) {
+            continue;
+        }
         let source = fs::read_to_string(file)
             .unwrap_or_else(|e| panic!("cannot read {}: {e}", file.display()));
         let code = strip_comments(&source);
 
         if code.contains("#[tauri::command]") || code.contains("#[command]") {
-            annotated.push(file.display().to_string());
+            stray.push(file.display().to_string());
         }
     }
 
     assert!(
-        annotated.is_empty(),
-        "these files expose commands by annotation rather than through          plugin::commands::ALLOWED:
-  {}
+        stray.is_empty(),
+        "these files outside src/bridge expose commands by annotation:\n  {}\n\n\
+         Commands live in the bridge so the set of them can be compared \
+         against plugin::commands::ALLOWED. An annotation elsewhere is a \
+         second door that no list is watching.",
+        stray.join("\n  ")
+    );
+}
 
-         The allowlist exists so that widening what a plugin can do is one          visible diff. An annotation somewhere else is a second door.",
-        annotated.join("
-  ")
+#[test]
+fn the_bridge_implements_exactly_what_the_list_allows() {
+    // Both directions, because each failure is silent in its own way. A
+    // listed command with no implementation is a documented capability that
+    // errors at runtime; an implemented command that is not listed is a
+    // capability nobody reviewed.
+    use std::collections::BTreeSet;
+
+    let mut files = Vec::new();
+    rust_files(&core_src().join("bridge"), &mut files);
+
+    let mut implemented: BTreeSet<String> = BTreeSet::new();
+    for file in &files {
+        let source = fs::read_to_string(file)
+            .unwrap_or_else(|e| panic!("cannot read {}: {e}", file.display()));
+        implemented.extend(annotated_commands(&source));
+    }
+
+    let listed: BTreeSet<String> = yukifile::plugin::commands::ALLOWED
+        .iter()
+        .map(|command| yukifile::bridge::handler_name(command.name))
+        .collect();
+
+    let missing: Vec<&String> = listed.difference(&implemented).collect();
+    let unlisted: Vec<&String> = implemented.difference(&listed).collect();
+
+    assert!(
+        missing.is_empty(),
+        "on the allowlist with no implementation in the bridge: {missing:?}"
+    );
+    assert!(
+        unlisted.is_empty(),
+        "implemented in the bridge but not on the allowlist: {unlisted:?}\n\n\
+         Every command a plugin can reach has to be one visible row in \
+         plugin::commands::ALLOWED, with a reason."
     );
 }
 

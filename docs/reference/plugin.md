@@ -96,8 +96,13 @@ can do is then a diff to one array.
 
 Marking functions individually would work as well at runtime and much worse in
 review: nobody notices one more annotation in a file of forty, and "what can a
-plugin do?" would have no single place to answer it. `boundary.rs` fails if a
-Tauri command attribute appears in core source at all.
+plugin do?" would have no single place to answer it. `boundary.rs` confines
+Tauri command attributes to `src/bridge/` and fails unless the set of them
+equals this list, in both directions -- see [bridge.md](bridge.md).
+
+What the list cannot say is what a command may do with its arguments. `hash.of`
+is read-only, but nothing here stops it reading the whole disk; that check
+lives in `bridge::library`.
 
 Each row carries a `reason`. A command nobody can justify in a sentence is a
 command that should not be on the list, and a test refuses an empty one.

@@ -37,6 +37,9 @@
   layout, and grids are never owned.
 - [2026-09-02 v1 scope, revised](decisions/2026-09-02_v1-scope-revised.md)
   — why layout ownership and the component library wait for a second plugin.
+- [2026-09-02 commands live in a bridge](decisions/2026-09-02_commands-live-in-a-bridge.md)
+  — why the annotation rule got narrower and stricter at once, and what an
+  allowlist cannot enforce on its own.
 - [2026-09-02 a leading dot does not hide anything](decisions/2026-09-02_dot-prefixed-entries-are-not-hidden.md)
   — why the scan ignores the Unix convention, and what it would have cost.
 
@@ -54,6 +57,8 @@ Generated per module from the source.
 - [plugin.md](reference/plugin.md) — manifests, dependency resolution, load order.
 - [plugin-host.md](reference/plugin-host.md) — the TypeScript half: which
   contributions render where, and fetching a plugin's modules.
+- [bridge.md](reference/bridge.md) — where the allowlist becomes callable
+  commands, and how a path a plugin names is kept inside the library.
 
 ## Seed
 
