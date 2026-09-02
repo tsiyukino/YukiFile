@@ -37,13 +37,17 @@
   layout, and grids are never owned.
 - [2026-09-02 v1 scope, revised](decisions/2026-09-02_v1-scope-revised.md)
   — why layout ownership and the component library wait for a second plugin.
+- [2026-09-02 a leading dot does not hide anything](decisions/2026-09-02_dot-prefixed-entries-are-not-hidden.md)
+  — why the scan ignores the Unix convention, and what it would have cost.
 
 ## Reference
 
 Generated per module from the source.
 
-- [store.md](reference/store.md) — value paths and the flattening rule. The
-  rest of the store is not written yet.
+- [store.md](reference/store.md) — objects, values, edges, vocabularies,
+  history, and the schema they live in.
+- [scan.md](reference/scan.md) — walking a library root. Factual typing and
+  reconciliation are not written yet.
 
 ## Seed
 
