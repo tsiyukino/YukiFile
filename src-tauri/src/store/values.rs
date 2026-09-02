@@ -304,6 +304,37 @@ pub struct MountRow {
     pub shared: Vec<String>,
 }
 
+/// Object ids, lowest first, a page at a time.
+///
+/// Ordered by id because that is the only ordering the objects table can
+/// offer on its own -- anything a person would rather sort by (title, size,
+/// date) is a value, and values are resolved rather than stored in a column.
+/// Sorting on those belongs above resolution, not here.
+///
+/// Paged because the seed library holds 1518 objects and a grid draws perhaps
+/// forty. Reading them all to show a screenful is the shape that stops working
+/// on somebody else's library rather than on ours.
+pub fn object_ids(
+    connection: &Connection,
+    after: Option<i64>,
+    limit: u32,
+) -> rusqlite::Result<Vec<i64>> {
+    let mut statement = connection.prepare(
+        "SELECT id FROM objects WHERE id > ?1 ORDER BY id LIMIT ?2",
+    )?;
+    // `after` is exclusive, so the caller passes back the last id it saw and
+    // gets what follows. A page number would drift as objects are added.
+    let rows = statement
+        .query_map(params![after.unwrap_or(0), limit], |row| row.get(0))?
+        .collect::<rusqlite::Result<Vec<i64>>>()?;
+    Ok(rows)
+}
+
+/// How many objects the library holds.
+pub fn object_count(connection: &Connection) -> rusqlite::Result<i64> {
+    connection.query_row("SELECT count(*) FROM objects", [], |row| row.get(0))
+}
+
 /// This library's mount order, lowest position first.
 ///
 /// The shared list comes back empty: it is declared in each plugin's manifest,

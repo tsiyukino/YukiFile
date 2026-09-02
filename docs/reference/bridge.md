@@ -92,7 +92,7 @@ rendering its own property's region wants `booth#1/title` rather than a winner.
 
 ## bridge::commands
 
-Ten functions, each thin: parse, call the core function that already does the
+Thirteen functions, each thin: parse, call the core function that already does the
 work, convert the result.
 
 | command          | calls                    |
@@ -100,6 +100,9 @@ work, convert the result.
 | `object.get`     | `values::Values::rows`   |
 | `object.list`    | `values::Values::rows`   |
 | `object.flat`    | `store::flatten::flatten`|
+| `object.ids`     | `values::object_ids`     |
+| `plugin.list`    | `Registry::plugins`      |
+| `mount.order`    | `values::mount_order`    |
 | `object.edges`   | `edges::from`            |
 | `term.resolve`   | `vocab::resolve`         |
 | `term.list`      | `vocab::terms`           |
@@ -140,6 +143,27 @@ A value under a property this library does not mount is **not** reported in
 installed, and they wait in storage until it is; a permanent warning on healthy
 objects is a warning nobody reads. Malformed paths and pins that cannot take
 effect are reported, because those are defects.
+
+### Browsing is paged, and the cap is the bridge's
+
+`object.ids` takes the last id seen rather than a page number: a number drifts
+as objects are added, and a grid that skipped an object because one arrived
+mid-scroll is wrong in a way nobody reports. Ordering is by id, because
+anything a person would rather sort by is a value, and values are resolved
+rather than stored in a column.
+
+The limit is clamped here and not in the store. The store may read what it
+likes; a plugin may not ask for a 1518-object library in one call. A limit of
+zero is clamped up rather than honoured — a caller asking for nothing is asking
+by mistake, and an empty page reads as "the library is empty".
+
+`plugin.list` and `mount.order` exist because slot arbitration runs in the
+frontend. The manifests are read from disk in Rust at startup and the mount
+order lives in the database; neither is reachable from TypeScript otherwise.
+
+`MountView` deliberately omits the `shared` list. Which fields are shared comes
+from the manifests, which `plugin.list` already returned — sending it twice
+would give the frontend two answers to keep in step.
 
 `import.propose` is the only one that changes anything, and it does not decide
 what lands: `changes::build::import` writes into empty fields and queues

@@ -616,3 +616,130 @@ fn regions_come_back_in_a_stable_order() {
     assert_eq!(names, ["alpha", "mid", "zeta"]);
     assert_eq!(first.regions, second.regions);
 }
+
+// --- browsing -----------------------------------------------------------
+
+#[test]
+fn object_ids_come_back_lowest_first() {
+    // Ids carry a timestamp and entropy rather than a counter, so creation
+    // order is not id order. Sorting the expectation is the honest test:
+    // what the command promises is an ordering, not the order they arrived.
+    let (library, _dir) = library();
+    let mut ids: Vec<i64> = (0..5).map(|_| object_with(&library, &[])).collect();
+    ids.sort();
+
+    let page = object_ids_in(&library, None, 100).expect("ids");
+
+    assert_eq!(page.ids, ids);
+    assert_eq!(page.total, 5);
+}
+
+#[test]
+fn a_page_stops_at_its_limit_and_says_how_many_there_are() {
+    // A grid draws forty of 1518. Knowing the total is what lets it say
+    // whether there is more without asking for all of it.
+    let (library, _dir) = library();
+    for _ in 0..10 {
+        object_with(&library, &[]);
+    }
+
+    let page = object_ids_in(&library, None, 3).expect("ids");
+
+    assert_eq!(page.ids.len(), 3);
+    assert_eq!(page.total, 10);
+}
+
+#[test]
+fn paging_by_cursor_walks_the_whole_library_once() {
+    // Every object exactly once, no repeats and nothing skipped. A page
+    // number would drift as objects are added; the last id seen does not.
+    let (library, _dir) = library();
+    let mut all: Vec<i64> = (0..7).map(|_| object_with(&library, &[])).collect();
+    all.sort();
+
+    let mut seen = Vec::new();
+    let mut after = None;
+    loop {
+        let page = object_ids_in(&library, after, 2).expect("ids");
+        if page.ids.is_empty() {
+            break;
+        }
+        after = page.ids.last().copied();
+        seen.extend(page.ids);
+    }
+
+    assert_eq!(seen, all);
+}
+
+#[test]
+fn a_limit_of_zero_still_returns_something() {
+    // Clamped rather than honoured: a caller asking for nothing is asking by
+    // mistake, and an empty page reads as "the library is empty".
+    let (library, _dir) = library();
+    object_with(&library, &[]);
+
+    assert_eq!(object_ids_in(&library, None, 0).expect("ids").ids.len(), 1);
+}
+
+#[test]
+fn an_enormous_limit_is_capped() {
+    // The store may read what it likes; a plugin may not ask for the whole
+    // library in one call.
+    let (library, _dir) = library();
+    for _ in 0..3 {
+        object_with(&library, &[]);
+    }
+
+    let page = object_ids_in(&library, None, u32::MAX).expect("ids");
+
+    assert_eq!(page.ids.len(), 3, "the cap should not lose real rows");
+}
+
+#[test]
+fn an_empty_library_pages_to_nothing() {
+    let (library, _dir) = library();
+
+    let page = object_ids_in(&library, None, 40).expect("ids");
+
+    assert!(page.ids.is_empty());
+    assert_eq!(page.total, 0);
+}
+
+#[test]
+fn the_manifests_cross_the_boundary() {
+    // Slot arbitration runs in the frontend and cannot read plugins/ itself.
+    let registry = registry_sharing("booth", &["title"]);
+
+    let listed = plugin_list_in(Some(&registry));
+
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].contributes.shared, ["title"]);
+}
+
+#[test]
+fn no_registry_means_no_plugins_rather_than_an_error() {
+    assert!(plugin_list_in(None).is_empty());
+}
+
+#[test]
+fn mount_order_comes_back_in_position_order() {
+    // Slot ordering is mount order. If this came back sorted by name instead,
+    // panels would be drawn in an order the library never chose.
+    let (library, _dir) = library();
+    mount(&library, "gumroad", 1, 0);
+    mount(&library, "booth", 1, 1);
+
+    let order = mount_order_in(&library).expect("order");
+
+    assert_eq!(
+        order.iter().map(|m| m.namespace.as_str()).collect::<Vec<_>>(),
+        ["gumroad", "booth"]
+    );
+}
+
+#[test]
+fn a_library_mounting_nothing_has_an_empty_order() {
+    let (library, _dir) = library();
+
+    assert!(mount_order_in(&library).expect("order").is_empty());
+}

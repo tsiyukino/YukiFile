@@ -65,6 +65,21 @@ pub const ALLOWED: &[Command] = &[
                  all need it, and two implementations of one rule drift apart",
     },
     Command {
+        name: "object.ids",
+        effect: Effect::Read,
+        reason: "a grid draws a page of a 1518-object library, not all of it",
+    },
+    Command {
+        name: "plugin.list",
+        effect: Effect::Read,
+        reason: "the host arbitrates slots from manifests it cannot otherwise see",
+    },
+    Command {
+        name: "mount.order",
+        effect: Effect::Read,
+        reason: "slot ordering is mount order, which belongs to the library",
+    },
+    Command {
         name: "object.edges",
         effect: Effect::Read,
         reason: "a panel shows what an object requires or supports",

@@ -21,6 +21,8 @@
  * quietly calling something that no longer exists.
  */
 
+import type { Manifest } from "./types.js";
+
 /** How a command name and its arguments reach the core. */
 export type Invoke = (
   command: string,
@@ -85,6 +87,25 @@ export interface FlatObject {
   readonly skipped: readonly Skipped[];
 }
 
+/** A page of object ids, and how many there are in total. */
+export interface ObjectIds {
+  readonly ids: readonly number[];
+  /** Every object in the library, so a caller knows whether it has them all. */
+  readonly total: number;
+}
+
+/**
+ * One mounted property instance.
+ *
+ * No `shared` list: which fields are shared comes from the manifests, which
+ * `pluginList` already returned. Sending it twice would give the frontend two
+ * answers to keep in step.
+ */
+export interface MountRow {
+  readonly namespace: string;
+  readonly instance: number;
+}
+
 /** One vocabulary term. */
 export interface Term {
   readonly vocab: string;
@@ -129,6 +150,9 @@ export interface Api {
   objectGet(id: number): Promise<ObjectRecord>;
   objectList(ids: readonly number[]): Promise<ObjectRecord[]>;
   objectFlat(id: number): Promise<FlatObject>;
+  objectIds(after: number | null, limit: number): Promise<ObjectIds>;
+  pluginList(): Promise<Manifest[]>;
+  mountOrder(): Promise<MountRow[]>;
   objectEdges(id: number): Promise<unknown[]>;
   termResolve(vocab: string, surface: string): Promise<string | null>;
   termList(vocab: string): Promise<Term[]>;
@@ -173,6 +197,9 @@ export function apiFor(invoke: Invoke): Api {
     objectGet: (id) => call("object.get", { id }),
     objectList: (ids) => call("object.list", { ids }),
     objectFlat: (id) => call("object.flat", { id }),
+    objectIds: (after, limit) => call("object.ids", { after, limit }),
+    pluginList: () => call("plugin.list", {}),
+    mountOrder: () => call("mount.order", {}),
     objectEdges: (id) => call("object.edges", { id }),
     termResolve: (vocab, surface) => call("term.resolve", { vocab, surface }),
     termList: (vocab) => call("term.list", { vocab }),

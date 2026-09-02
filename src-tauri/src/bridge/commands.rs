@@ -32,6 +32,7 @@ use crate::bridge::views::{
 use crate::bridge::Library;
 use crate::changes;
 use crate::commands::{archive, hash};
+use crate::plugin::manifest::Manifest;
 use crate::plugin::registry::Registry;
 use crate::store::{edges, flatten, history, values, vocab};
 
@@ -173,6 +174,68 @@ fn as_flat_view(id: i64, view: &flatten::FlatView<'_>) -> FlatObjectView {
 
     FlatObjectView { id, shared, regions, skipped }
 }
+
+/// A page of object ids, lowest first.
+///
+/// `after` is the last id the caller saw, so paging is by cursor rather than
+/// by page number -- a number drifts as objects are added, and a grid that
+/// skipped an object because one arrived mid-scroll would be wrong in a way
+/// nobody reports.
+pub fn object_ids_in(
+    library: &Library,
+    after: Option<i64>,
+    limit: u32,
+) -> Result<ObjectIdsView, BridgeError> {
+    // A caller asking for everything gets a page anyway. The cap is here and
+    // not in the store because it is a boundary decision: the store is free to
+    // read what it likes, a plugin is not.
+    let limit = limit.clamp(1, 500);
+
+    library.with_connection(|connection| {
+        Ok(ObjectIdsView {
+            ids: values::object_ids(connection, after, limit)?,
+            total: values::object_count(connection)?,
+        })
+    })
+}
+
+/// A page of ids, and how many there are in total.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct ObjectIdsView {
+    pub ids: Vec<i64>,
+    /// Every object in the library, so a caller knows whether it has them all.
+    pub total: i64,
+}
+
+/// The manifests of every loaded plugin.
+///
+/// Slot arbitration runs in the frontend and needs them; they are read from
+/// disk in Rust at startup. This is the only way across.
+pub fn plugin_list_in(registry: Option<&Registry>) -> Vec<Manifest> {
+    registry.map(|r| r.plugins().to_vec()).unwrap_or_default()
+}
+
+/// This library's mount order, lowest position first.
+pub fn mount_order_in(library: &Library) -> Result<Vec<MountView>, BridgeError> {
+    library.with_connection(|connection| {
+        Ok(values::mount_order(connection)?
+            .into_iter()
+            .map(|row| MountView { namespace: row.namespace, instance: row.instance })
+            .collect())
+    })
+}
+
+/// One mounted property instance.
+///
+/// The `shared` list is deliberately absent: which fields are shared comes
+/// from the manifests, which the caller already has from `plugin.list`.
+/// Sending it twice would give the frontend two answers to keep in step.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct MountView {
+    pub namespace: String,
+    pub instance: u32,
+}
+
 
 /// Several objects at once, for a column rendering across a page.
 ///
@@ -361,6 +424,29 @@ pub fn object_flat(
 ) -> Result<FlatObjectView, BridgeError> {
     object_flat_in(&library, Some(&registry), id)
 }
+
+/// A page of object ids.
+#[tauri::command]
+pub fn object_ids(
+    library: State<'_, Library>,
+    after: Option<i64>,
+    limit: u32,
+) -> Result<ObjectIdsView, BridgeError> {
+    object_ids_in(&library, after, limit)
+}
+
+/// The manifests of every loaded plugin.
+#[tauri::command]
+pub fn plugin_list(registry: State<'_, Registry>) -> Vec<Manifest> {
+    plugin_list_in(Some(&registry))
+}
+
+/// This library's mount order.
+#[tauri::command]
+pub fn mount_order(library: State<'_, Library>) -> Result<Vec<MountView>, BridgeError> {
+    mount_order_in(&library)
+}
+
 
 /// Several objects at once, for a column rendering across a page.
 #[tauri::command]
