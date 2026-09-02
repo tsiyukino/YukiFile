@@ -3,3 +3,4 @@
 
 pub mod flatten;
 pub mod path;
+pub mod schema;

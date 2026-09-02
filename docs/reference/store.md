@@ -3,8 +3,9 @@
 Objects, the values hung on them, the edges between them, and the vocabularies
 those edges point at.
 
-Two modules exist so far. Both are pure: they take what they need as arguments
-and touch no database, no filesystem and no clock.
+Three modules exist so far. `path` and `flatten` are pure — they take what they
+need as arguments and touch no database, no filesystem and no clock. `schema`
+owns the database itself.
 
 ## store::path
 
@@ -198,6 +199,65 @@ of the object from resolving — one bad row must not take down a library view.
 rather than from the user, and so change review can scope a diff to
 `booth#1/price` rather than to the whole object.
 
+## store::schema
+
+The tables and their migrations. One library is one database file, so there is
+no `libraries` table — mount order and everything else belongs to the library
+the file is in.
+
+`open(&Path) -> Result<Connection>` · `open_in_memory() -> Result<Connection>`
+
+**Every connection goes through one of these.** `foreign_keys` is a
+per-connection setting that SQLite does not store in the file, so a connection
+opened any other way has no foreign keys and no cascades: rows pointing at
+deleted objects simply stay. Setting it during migration is not enough, since
+migration runs on one connection and the application then uses others.
+
+`migrate(&mut Connection) -> Result<()>` · `latest_version() -> i64`
+
+Migrations exist from v1 even though there is only one, because building the
+mechanism at the moment it is first needed means inventing how to change the
+schema while changing it. Layer 3 adds the change set tables as v2. Each
+migration runs in its own transaction, so a failure leaves the database at the
+last version that fully applied.
+
+### Tables
+
+| table          | holds                                                        |
+|----------------|--------------------------------------------------------------|
+| `objects`      | identity, and `primary_property` (unread in v1)              |
+| `object_paths` | where an object sits on disk — 0..N rows, `path` unique      |
+| `values_`      | values under field paths, keyed `(object_id, field_path)`    |
+| `mounts`       | this library's property instance order                       |
+| `terms`        | vocabulary terms, keyed `(vocab, id)`                        |
+| `aliases`      | surface forms collapsing to a term                           |
+| `edges`        | one table, one `kind` column, target is an object or a term  |
+| `history`      | field-level changes, grouped by `batch`                      |
+
+`field_path` rather than `path` in `values_`: one is where a value hangs on an
+object, the other is where the object sits on disk, and two things called
+`path` in one join is how someone writes the wrong query and gets rows back.
+
+`kind`, `size`, `mtime` and `hash` hang on the location, not the object — an
+object holding a folder and a zip has no single answer to "is it a file".
+`hash` is null until computed, so reconcile must cope with null rather than
+assume every row has one.
+
+### What the database enforces
+
+| guarantee                                   | mechanism                    |
+|---------------------------------------------|------------------------------|
+| one file belongs to one object              | `object_paths.path UNIQUE`   |
+| one field holds one value                   | `values_` primary key        |
+| an edge targets an object **or** a term     | `CHECK` on `edges`           |
+| no edge outlives its target                 | foreign keys + `ON DELETE CASCADE` |
+| an object id is never a string              | `STRICT` tables              |
+| "what fits Manuka?" is one index hit        | `edges_by_term`              |
+
+`edges.kind` is free text: the core does not enumerate valid edge kinds, so a
+plugin adding `cites` or `remixes` needs no schema change.
+
 ## Not yet written
 
-`schema` · `values` · `edges` · `vocab` · `history`
+`values` · `edges` · `vocab` · `history` — the modules that read and write
+these tables.
