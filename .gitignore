@@ -2,3 +2,6 @@ target/
 node_modules/
 dist/
 .yukifile/
+
+# tauri-build regenerates these on every build
+src-tauri/gen/schemas/

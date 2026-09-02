@@ -61,6 +61,8 @@ Generated per module from the source.
   commands, and how a path a plugin names is kept inside the library.
 - [archive-plugin.md](reference/archive-plugin.md) — the first built-in, plugin
   discovery, and how a plugin calls the core.
+- [app.md](reference/app.md) — startup, configuration, the frontend entry
+  point, and the one door to the Tauri runtime.
 
 ## Seed
 

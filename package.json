@@ -4,12 +4,28 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "dev": "tauri dev",
+    "dev:vite": "vite",
+    "build": "tauri build",
+    "build:vite": "vite build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^26.4.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "@primer/octicons-react": "^19.33.0",
+    "@primer/react": "^38.37.0",
+    "@tauri-apps/api": "^2.11.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "styled-components": "^6.5.3"
   }
 }

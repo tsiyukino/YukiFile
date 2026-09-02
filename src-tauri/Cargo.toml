@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[[bin]]
+name = "yukifile"
+path = "src/main.rs"
+
 [lib]
 name = "yukifile"
 path = "src/lib.rs"
@@ -17,3 +21,6 @@ tauri = "2"
 zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
