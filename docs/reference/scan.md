@@ -2,10 +2,10 @@
 
 What is on disk, what it factually is, and what changed since the last look.
 
-One module so far. `walk` reports; it does not decide. What an entry means is
-`factual`'s question and whether it is new, moved or gone is `reconcile`'s —
-keeping those apart is what lets reconciliation be tested on synthetic input
-with no filesystem at all.
+Two modules so far. `walk` reports what is on disk; `factual` says what an
+entry observably is. Whether an entry is new, moved or gone is `reconcile`'s
+question — keeping that apart is what lets reconciliation be tested on
+synthetic input with no filesystem at all.
 
 ## scan::walk
 
@@ -52,3 +52,62 @@ the source says so rather than implying coverage.
 Reported as what they are (a link to a file is a file), never followed into.
 Following them lets the same bytes appear under two paths, which the
 one-path-one-object rule has no answer for.
+
+## scan::factual
+
+What an entry observably is. A `.pdf` is a pdf; a directory is a folder. The
+restraint is the feature: these attach without a person confirming them, so
+anything that could be wrong does not belong here.
+
+### The core owns the matching, not the list
+
+`archive`, `pdf`, `image` and the rest come from the built-in modules, which
+use the same contribution API as any third-party plugin. This module holds a
+`Rules` set and no extension of its own — a plugin adding `.blend` registers a
+rule rather than editing the core. `src-tauri/tests/boundary.rs` fails if a
+file extension appears in core source.
+
+`FILE` and `FOLDER` are the exception, and the only one. Every entry is one or
+the other by definition of being on a filesystem, and a scan that could not
+tell them apart until a plugin loaded would have nothing to report.
+
+```rust
+let mut rules = Rules::new();
+rules.add_all("docx", &["archive", "document", "docx"]);
+rules.properties(&entry)   // BTreeSet<String>
+```
+
+| method                          | does                                        |
+|---------------------------------|---------------------------------------------|
+| `add(extension, property)`      | declare one fact about an extension         |
+| `add_all(extension, &[..])`     | several at once                             |
+| `properties(&entry)`            | what this entry observably is               |
+| `known()`                       | every property any rule can attach          |
+| `is_empty()`                    | whether any rule is registered              |
+
+Results are sorted and deduplicated, so two scans of one tree produce the same
+set and a difference between them means something changed rather than that a
+map iterated differently.
+
+Two plugins may claim one extension without either overriding the other — a
+`.docx` being both an archive and a document is two facts, not a conflict.
+
+### What it refuses to do
+
+Organising the seed library by hand produced inferences that look reasonable
+and are wrong (`seed/vrc-lessons.md`), and this module makes none of them:
+
+- **It does not read inside an archive.** A Santa outfit held 23 files matching
+  `Assets/**/Editor/*.cs`, all of them lilToon's shader inspector. "Has editor
+  scripts, therefore is a tool" misfiles twelve products.
+- **It does not judge a folder by its name.** `Texture/` is sometimes loose
+  PNGs belonging to its parent and sometimes a category folder holding
+  eighteen products. Excluding by name dropped all eighteen, silently, twice.
+- **It never attaches a semantic property.** `vrchat`, `booth`, `paper` and
+  `dataset` come from a person. A filename cannot tell a VRChat outfit from a
+  research dataset.
+
+A folder whose name ends in something extension-shaped is still a folder:
+`Airi_Ver1.00` and `mochi_bob1.0` are directories in the seed library.
+`.gitignore` is a file called `.gitignore`, not a file of type `gitignore` —
+reachable because dot-prefixed entries are walked.

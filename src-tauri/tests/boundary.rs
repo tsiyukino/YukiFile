@@ -145,6 +145,49 @@ let id = "plugins/folder";
     );
 }
 
+/// File extensions the built-in modules own. The core types an entry by
+/// matching rules a plugin registered, and holds no extension of its own — a
+/// third party adding `.blend` registers a rule rather than editing the core.
+const PLUGIN_EXTENSIONS: &[&str] = &[
+    "\"zip\"", "\"pdf\"", "\"docx\"", "\"png\"", "\"jpg\"", "\"jpeg\"",
+    "\"unitypackage\"", "\"blend\"", "\"epub\"", "\"fbx\"",
+];
+
+#[test]
+fn the_core_names_no_file_extension() {
+    let mut files = Vec::new();
+    rust_files(&core_src(), &mut files);
+
+    let mut violations = Vec::new();
+
+    for file in &files {
+        let source = fs::read_to_string(file)
+            .unwrap_or_else(|e| panic!("cannot read {}: {e}", file.display()));
+        // Tests build rule sets out of extensions on purpose; the check is
+        // about what the core ships, not what a test constructs.
+        let code = strip_comments(&source);
+        let Some(code) = code.split("#[cfg(test)]").next() else {
+            continue;
+        };
+
+        for needle in PLUGIN_EXTENSIONS {
+            if code.contains(needle) {
+                violations.push(format!("{} contains {}", file.display(), needle));
+            }
+        }
+    }
+
+    assert!(
+        violations.is_empty(),
+        "the core names a file extension:
+  {}
+
+         Typing an entry is done by rules a plugin registers. A core that          knows what .zip means is a core a third party has to edit to add          .blend.",
+        violations.join("
+  ")
+    );
+}
+
 // Not yet checkable, with the condition that activates each:
 //
 // * The Tauri command surface exposed to plugins is an explicit allowlist, so

@@ -71,12 +71,12 @@ fn prepare(connection: &Connection) -> rusqlite::Result<()> {
 /// one here and passes it down exactly as it would a connection.
 ///
 /// ```no_run
-/// # use yukifile::store::{schema, values::Values};
+/// # use yukifile::store::{schema, values::{Values, WriteError}};
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// # let mut connection = schema::open_in_memory()?;
 /// # let values = Values::new();
 /// # let (object, changes) = (1i64, Vec::<(String, String)>::new());
-/// schema::in_transaction(&mut connection, |tx| {
+/// schema::in_transaction(&mut connection, |tx| -> Result<(), WriteError> {
 ///     for (field, value) in &changes {
 ///         values.overwrite(tx, object, field, value)?;
 ///     }
