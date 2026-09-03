@@ -19,6 +19,15 @@
 export interface Manifest {
   /** `yukifile.vrc`, `com.example.epub`. Unique among loaded plugins. */
   readonly id: string;
+
+  /**
+   * The directory it was read from, relative to `plugins/`.
+   *
+   * Filled in by discovery, not declared. A manifest's `./panel` is relative
+   * to this, not to whatever file is doing the importing — resolving it
+   * against the importer is a 404 for a file that exists.
+   */
+  readonly directory?: string;
   readonly contributes?: Contributes;
   readonly requires?: Requires;
 }

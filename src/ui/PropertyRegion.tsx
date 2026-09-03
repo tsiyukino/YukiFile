@@ -14,7 +14,7 @@
 import { InlineMessage } from "@primer/react/experimental";
 import { Heading, Stack, Text } from "@primer/react";
 
-import type { Api, Region } from "../plugin-host/commands.js";
+import type { Api, ObjectId, Region } from "../plugin-host/commands.js";
 import type { Panel } from "../plugin-host/panel.js";
 
 /** A panel that belongs in this region, once resolved. */
@@ -26,7 +26,7 @@ export interface ResolvedPanel {
 
 export interface PropertyRegionProps {
   readonly api: Api;
-  readonly objectId: number;
+  readonly objectId: ObjectId;
   readonly region: Region;
   readonly panels: readonly ResolvedPanel[];
   /**

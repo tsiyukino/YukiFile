@@ -47,9 +47,17 @@ export interface StoredValue {
   readonly value: string;
 }
 
-/** One object, as a plugin reads it. */
+/**
+ * One object, as a plugin reads it.
+ *
+ * The id is a string. Object ids are 62 bits — time in the high bits,
+ * randomness in the low — and a JavaScript number holds 53, so
+ * `3750587936530965241` would arrive as `3750587936530965000` and every
+ * lookup with it would fail. Keeping them as text is what makes them
+ * survive the crossing.
+ */
 export interface ObjectRecord {
-  readonly id: number;
+  readonly id: ObjectId;
   readonly values: readonly StoredValue[];
 }
 
@@ -81,15 +89,22 @@ export interface Skipped {
  * field belongs inside its plugin's region.
  */
 export interface FlatObject {
-  readonly id: number;
+  readonly id: ObjectId;
   readonly shared: Readonly<Record<string, readonly Source[]>>;
   readonly regions: readonly Region[];
   readonly skipped: readonly Skipped[];
 }
 
+/**
+ * An object id.
+ *
+ * A string, not a number: see {@link ObjectRecord}.
+ */
+export type ObjectId = string;
+
 /** A page of object ids, and how many there are in total. */
 export interface ObjectIds {
-  readonly ids: readonly number[];
+  readonly ids: readonly ObjectId[];
   /** Every object in the library, so a caller knows whether it has them all. */
   readonly total: number;
 }
@@ -147,18 +162,18 @@ export interface CommandError {
 
 /** Everything a plugin may ask for. */
 export interface Api {
-  objectGet(id: number): Promise<ObjectRecord>;
-  objectList(ids: readonly number[]): Promise<ObjectRecord[]>;
-  objectFlat(id: number): Promise<FlatObject>;
-  objectIds(after: number | null, limit: number): Promise<ObjectIds>;
+  objectGet(id: ObjectId): Promise<ObjectRecord>;
+  objectList(ids: readonly ObjectId[]): Promise<ObjectRecord[]>;
+  objectFlat(id: ObjectId): Promise<FlatObject>;
+  objectIds(after: ObjectId | null, limit: number): Promise<ObjectIds>;
   pluginList(): Promise<Manifest[]>;
   mountOrder(): Promise<MountRow[]>;
-  objectEdges(id: number): Promise<unknown[]>;
+  objectEdges(id: ObjectId): Promise<unknown[]>;
   termResolve(vocab: string, surface: string): Promise<string | null>;
   termList(vocab: string): Promise<Term[]>;
   archiveList(path: string): Promise<ArchiveMember[]>;
   hashOf(path: string): Promise<string>;
-  historyOf(id: number): Promise<HistoryEntry[]>;
+  historyOf(id: ObjectId): Promise<HistoryEntry[]>;
   importPropose(label: string, document: string): Promise<Proposal>;
 }
 

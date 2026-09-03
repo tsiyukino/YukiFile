@@ -60,9 +60,19 @@ named one is a bug report.
 `plugin-host/panel.ts`
 
 ```ts
-interface PanelProps { api: Api; objectId: number; property: string; instance: number }
+interface PanelProps { api: Api; objectId: ObjectId; property: string; instance: number }
 type Panel = ComponentType<PanelProps>
 ```
+
+A manifest's `./panel` is relative to **that plugin's directory**, which is why
+`Resolve` receives the plugin id alongside the specifier and why discovery
+records the directory it read each manifest from. Resolving against the
+importing file instead asks for `src/ui/panel` — a 404 for a file that exists,
+and a failure that reads as a missing plugin rather than a wrong base path.
+
+The frontend resolves through `import.meta.glob`, not a bare `import()`: a
+specifier read out of a manifest is data, and a bundler cannot follow a string
+it never sees at build time.
 
 A panel is handed its `api` rather than importing one — the same injection the
 loader and command API use, and with the same payoff: a panel is tested by

@@ -52,6 +52,21 @@ asserts that no `APP_ONLY` command is reachable from `apiFor`.
 |----------------|----------|--------|
 | `library.scan` | APP_ONLY | Write  |
 
+### Object ids cross as strings
+
+Ids are 62 bits — time in the high bits so inserts land at the right of the
+B-tree, randomness in the low so two machines can merge without colliding. A
+JavaScript number holds 53.
+
+Sent as a number, `3750587936530965241` arrives as `3750587936530965000`, and
+the next lookup fails with "no such object". Nothing in that message points at
+rounding, which is what made it worth fixing at the boundary rather than
+documenting as a caveat.
+
+So ids serialise as strings and commands take them as strings, parsing at the
+edge. Narrowing the ids themselves would have traded a boundary detail for a
+real constraint on the store.
+
 ## bridge::library
 
 `Library::new(root, connection)` · `resolve(path)` · `with_connection` ·

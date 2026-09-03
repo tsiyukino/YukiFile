@@ -9,7 +9,7 @@ function fakeApi(over: Partial<Api> = {}): Api {
     pluginList: async () => [],
     mountOrder: async () => [],
     objectIds: async () => ({ ids: [], total: 0 }),
-    objectFlat: async (id: number) => ({
+    objectFlat: async (id: string) => ({
       id,
       shared: {},
       regions: [],
@@ -30,7 +30,7 @@ describe("gathering what the page needs", () => {
   });
 
   test("the first object is fetched and resolved", async () => {
-    const objectFlat = vi.fn(async (id: number) => ({
+    const objectFlat = vi.fn(async (id: string) => ({
       id,
       shared: { title: [{ value: "BE NATURAL", from: null }] },
       regions: [],
@@ -38,11 +38,11 @@ describe("gathering what the page needs", () => {
     }));
 
     const context = await gather(
-      fakeApi({ objectIds: async () => ({ ids: [42], total: 7 }), objectFlat }),
+      fakeApi({ objectIds: async () => ({ ids: ["42"], total: 7 }), objectFlat }),
     );
 
-    expect(objectFlat).toHaveBeenCalledWith(42);
-    expect(context.object?.id).toBe(42);
+    expect(objectFlat).toHaveBeenCalledWith("42");
+    expect(context.object?.id).toBe("42");
     // The page needs the total, not just the one object it drew.
     expect(context.total).toBe(7);
   });
@@ -50,7 +50,7 @@ describe("gathering what the page needs", () => {
   test("only one object is asked for", async () => {
     // There is no grid yet. Fetching the whole library to show one object is
     // the shape that stops working on somebody else's 1518 objects.
-    const objectIds = vi.fn(async () => ({ ids: [1], total: 1500 }));
+    const objectIds = vi.fn(async () => ({ ids: ["1"], total: 1500 }));
 
     await gather(fakeApi({ objectIds }));
 

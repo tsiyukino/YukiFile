@@ -11,7 +11,7 @@ import { instanceCounts, ObjectPage, panelsIn } from "./ObjectPage.js";
 const api = {} as Api;
 
 function flat(over: Partial<FlatObject> = {}): FlatObject {
-  return { id: 1, shared: {}, regions: [], skipped: [], ...over };
+  return { id: "1", shared: {}, regions: [], skipped: [], ...over };
 }
 
 function loadedWith(id: string, specifier: string, module: unknown): Loaded {

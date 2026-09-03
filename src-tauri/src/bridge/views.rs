@@ -18,9 +18,56 @@ use crate::store::flatten::StoredValue;
 use crate::store::history::Record;
 use crate::store::vocab::Term;
 
+/// Object ids as strings, in both directions.
+///
+/// Ids are 62 bits — time in the high bits, randomness in the low — and
+/// JavaScript numbers hold 53. `3750587936530965241` arrives as
+/// `3750587936530965000`, and the frontend then asks for an object that does
+/// not exist. It is not a rounding error anyone notices; it is a lookup that
+/// fails for a reason nothing in the message explains.
+///
+/// So ids cross as strings. The alternative — narrowing the ids themselves —
+/// would trade a boundary detail for a real constraint on the store, and the
+/// randomness in the low bits is what lets two machines merge without
+/// colliding.
+pub mod id_as_string {
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer>(id: &i64, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&id.to_string())
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<i64, D::Error> {
+        // A number is accepted as well as a string: a caller that has an id
+        // small enough to be safe should not have to know why the format is
+        // what it is.
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Either {
+            Text(String),
+            Number(i64),
+        }
+
+        match Either::deserialize(deserializer)? {
+            Either::Text(text) => text.parse().map_err(serde::de::Error::custom),
+            Either::Number(number) => Ok(number),
+        }
+    }
+}
+
+/// The same, for a list of ids.
+pub mod ids_as_strings {
+    use serde::Serializer;
+
+    pub fn serialize<S: Serializer>(ids: &[i64], serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_seq(ids.iter().map(|id| id.to_string()))
+    }
+}
+
 /// One object's values, as a plugin reads them.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ObjectView {
+    #[serde(with = "id_as_string")]
     pub id: i64,
     /// Field path to value, exactly as stored. Flattening is a separate
     /// question with its own mount order, and a panel rendering its own
@@ -50,6 +97,7 @@ impl From<&StoredValue> for ValueView {
 /// `flatten` already did.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 pub struct FlatObjectView {
+    #[serde(with = "id_as_string")]
     pub id: i64,
     /// Field name to its sources, best first.
     pub shared: BTreeMap<String, Vec<SourceView>>,
@@ -97,7 +145,10 @@ pub struct SkippedView {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "target", rename_all = "snake_case")]
 pub enum TargetView {
-    Object { id: i64 },
+    Object {
+        #[serde(with = "id_as_string")]
+        id: i64,
+    },
     Term { vocab: String, term: String },
 }
 

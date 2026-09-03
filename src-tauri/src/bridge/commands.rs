@@ -39,8 +39,11 @@ use crate::store::{edges, flatten, history, values, vocab};
 
 /// One object's stored values.
 #[tauri::command]
-pub fn object_get(library: State<'_, Library>, id: i64) -> Result<ObjectView, BridgeError> {
-    object_get_in(&library, id)
+pub fn object_get(
+    library: State<'_, Library>,
+    id: String,
+) -> Result<ObjectView, BridgeError> {
+    object_get_in(&library, parse_id(&id)?)
 }
 
 /// One object's stored values.
@@ -203,6 +206,7 @@ pub fn object_ids_in(
 /// A page of ids, and how many there are in total.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct ObjectIdsView {
+    #[serde(serialize_with = "crate::bridge::views::ids_as_strings::serialize")]
     pub ids: Vec<i64>,
     /// Every object in the library, so a caller knows whether it has them all.
     pub total: i64,
@@ -491,18 +495,19 @@ pub struct ProposalView {
 pub fn object_flat(
     library: State<'_, Library>,
     registry: State<'_, Registry>,
-    id: i64,
+    id: String,
 ) -> Result<FlatObjectView, BridgeError> {
-    object_flat_in(&library, Some(&registry), id)
+    object_flat_in(&library, Some(&registry), parse_id(&id)?)
 }
 
 /// A page of object ids.
 #[tauri::command]
 pub fn object_ids(
     library: State<'_, Library>,
-    after: Option<i64>,
+    after: Option<String>,
     limit: u32,
 ) -> Result<ObjectIdsView, BridgeError> {
+    let after = after.map(|id| parse_id(&id)).transpose()?;
     object_ids_in(&library, after, limit)
 }
 
@@ -533,18 +538,19 @@ pub fn library_scan(
 #[tauri::command]
 pub fn object_list(
     library: State<'_, Library>,
-    ids: Vec<i64>,
+    ids: Vec<String>,
 ) -> Result<Vec<ObjectView>, BridgeError> {
-    object_list_in(&library, ids)
+    let parsed = ids.iter().map(|id| parse_id(id)).collect::<Result<Vec<_>, _>>()?;
+    object_list_in(&library, parsed)
 }
 
 /// What an object requires, supports or contains.
 #[tauri::command]
 pub fn object_edges(
     library: State<'_, Library>,
-    id: i64,
+    id: String,
 ) -> Result<Vec<EdgeView>, BridgeError> {
-    object_edges_in(&library, id)
+    object_edges_in(&library, parse_id(&id)?)
 }
 
 /// Map a spelling to a term.
@@ -585,9 +591,9 @@ pub fn hash_of(library: State<'_, Library>, path: String) -> Result<String, Brid
 #[tauri::command]
 pub fn history_of(
     library: State<'_, Library>,
-    id: i64,
+    id: String,
 ) -> Result<Vec<HistoryView>, BridgeError> {
-    history_of_in(&library, id)
+    history_of_in(&library, parse_id(&id)?)
 }
 
 /// Submit a document.
@@ -598,6 +604,17 @@ pub fn import_propose(
     document: String,
 ) -> Result<ProposalView, BridgeError> {
     import_propose_in(&library, label, document)
+}
+
+/// Read an object id sent as a string.
+///
+/// Ids are 62 bits and JavaScript numbers hold 53, so they cross as text in
+/// both directions. Parsing here rather than taking an `i64` parameter is the
+/// point: an `i64` would arrive already rounded, and the lookup would fail
+/// with "no such object" for a reason nothing in the message explains.
+fn parse_id(id: &str) -> Result<i64, BridgeError> {
+    id.parse()
+        .map_err(|_| BridgeError::BadRequest(format!("{id:?} is not an object id")))
 }
 
 /// Whether an object row exists at all.

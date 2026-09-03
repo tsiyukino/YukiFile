@@ -209,3 +209,35 @@ describe("loading a set", () => {
     expect(await loadAll([], resolver({}))).toEqual([]);
   });
 });
+
+describe("resolving is told which plugin is asking", () => {
+  test("the plugin id comes with the specifier", async () => {
+    // A manifest's `./panel` is relative to that plugin's directory. Without
+    // the id the caller cannot know which directory, and `import("./panel")`
+    // resolves against whatever file is importing -- a 404 for a file that
+    // exists, reading as a missing plugin rather than a wrong base path.
+    const seen: Array<[string, string]> = [];
+
+    await load(booth, async (specifier, plugin) => {
+      seen.push([specifier, plugin]);
+      return {};
+    });
+
+    expect(seen).toEqual([["./panels/Booth", "shop.booth"]]);
+  });
+
+  test("each plugin is named with its own modules", async () => {
+    const other: Manifest = {
+      id: "shop.gumroad",
+      contributes: { properties: ["gumroad"], panels: { gumroad: "./panel" } },
+    };
+    const seen: string[] = [];
+
+    await loadAll([booth, other], async (_specifier, plugin) => {
+      seen.push(plugin);
+      return {};
+    });
+
+    expect(seen.sort()).toEqual(["shop.booth", "shop.gumroad"]);
+  });
+});

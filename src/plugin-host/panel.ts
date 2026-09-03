@@ -27,14 +27,14 @@
 
 import type { ComponentType } from "react";
 
-import type { Api } from "./commands.js";
+import type { Api, ObjectId } from "./commands.js";
 
 /** What every panel is given. */
 export interface PanelProps {
   /** The commands this plugin may call. Built from the allowlist. */
   readonly api: Api;
   /** The object being drawn. */
-  readonly objectId: number;
+  readonly objectId: ObjectId;
   /** The property this panel was scoped to: `booth`. */
   readonly property: string;
   /**

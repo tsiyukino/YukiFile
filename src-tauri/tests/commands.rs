@@ -836,3 +836,48 @@ fn a_scan_does_not_record_the_librarys_own_data() {
 
     assert_eq!(scanned.added, 1, "the library scanned its own data");
 }
+
+// --- ids across the boundary --------------------------------------------
+
+#[test]
+fn an_object_id_survives_json() {
+    // Ids are 62 bits and a JavaScript number holds 53. Serialised as a
+    // number, 3750587936530965241 arrives as 3750587936530965000 and every
+    // lookup with it fails -- which is what "no such object" meant the first
+    // time the window opened.
+    let (library, dir) = library();
+    dir.file("a.txt", b"one");
+    library_scan_in(&library, None).expect("scan");
+
+    let page = object_ids_in(&library, None, 1).expect("ids");
+    let id = page.ids[0];
+    assert!(
+        id > (1_i64 << 53),
+        "this test proves nothing unless the id is past the safe range: {id}"
+    );
+
+    let json = serde_json::to_string(&page).expect("serialise");
+    assert!(
+        json.contains(&format!("\"{id}\"")),
+        "the id was not sent as a string: {json}"
+    );
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+    let view_json = serde_json::to_value(&view).expect("serialise");
+    assert_eq!(view_json["id"], serde_json::Value::String(id.to_string()));
+}
+
+#[test]
+fn a_string_id_is_read_back_exactly() {
+    // The round trip that matters: what crosses out has to come back in
+    // naming the same object.
+    let (library, dir) = library();
+    dir.file("a.txt", b"one");
+    library_scan_in(&library, None).expect("scan");
+
+    let id = object_ids_in(&library, None, 1).expect("ids").ids[0];
+    let text = id.to_string();
+
+    assert_eq!(text.parse::<i64>().expect("parse"), id);
+    assert!(object_flat_in(&library, None, text.parse().expect("parse")).is_ok());
+}

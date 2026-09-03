@@ -30,6 +30,16 @@ use serde::{Deserialize, Serialize};
 pub struct Manifest {
     /// `yukifile.vrc`, `com.example.epub`. Unique among loaded plugins.
     pub id: String,
+
+    /// The directory this manifest was read from, relative to `plugins/`.
+    ///
+    /// Filled in by discovery rather than declared: a manifest saying where
+    /// it lives could say something false, and the loader needs the truth to
+    /// resolve `./panel` against the right place.
+    ///
+    /// Empty for a manifest built in memory, which is what tests do.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub directory: String,
     #[serde(default)]
     pub contributes: Contributes,
     #[serde(default)]

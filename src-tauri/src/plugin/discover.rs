@@ -89,7 +89,15 @@ pub fn in_directory(root: &Path) -> io::Result<Found> {
 
         match fs::read_to_string(&manifest_path) {
             Ok(text) => match Manifest::parse(&text) {
-                Ok(manifest) => found.manifests.push(manifest),
+                Ok(mut manifest) => {
+                    // Where it was found, so the frontend can resolve a
+                    // manifest's `./panel` against the right directory. The
+                    // id cannot stand in for it: `yukifile.archive` lives in
+                    // `archive/`, and deriving one from the other would be a
+                    // convention nothing enforces.
+                    manifest.directory = name.clone();
+                    found.manifests.push(manifest);
+                }
                 Err(error) => found.skipped.push(Skipped {
                     directory: name,
                     reason: error.to_string(),

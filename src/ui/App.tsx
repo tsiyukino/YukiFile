@@ -153,6 +153,50 @@ export function ScanButton({ onDone }: { onDone: () => void }): React.JSX.Elemen
 }
 
 /**
+ * Every module the built-in plugins can contribute.
+ *
+ * A glob rather than a bare `import(specifier)`: the specifier is data from a
+ * manifest, and a bundler cannot follow a string it does not see at build
+ * time. Vite turns this into a map of loaders it can, which is also what makes
+ * a production build include the plugins at all.
+ *
+ * Third-party plugins loaded from disk at runtime will need a different path —
+ * they are not in the bundle by definition. That is a later problem, and the
+ * injected resolver is what keeps it from being this file's problem twice.
+ */
+const BUILT_IN = import.meta.glob("../../plugins/*/*.{ts,tsx}");
+
+/**
+ * Resolve a manifest's specifier against the plugin's own directory.
+ *
+ * `./panel` in `plugins/archive/manifest.json` means `plugins/archive/panel`.
+ * Importing `"./panel"` from here would ask for `src/ui/panel`, which is the
+ * 404 this exists to avoid — a failure that reads as a missing plugin rather
+ * than a wrong base path.
+ */
+export async function resolvePluginModule(
+  plugins: readonly Manifest[],
+  id: string,
+  specifier: string,
+): Promise<unknown> {
+  const directory = plugins.find((plugin) => plugin.id === id)?.directory;
+  if (!directory) {
+    throw new Error(`${id} did not say which directory it came from`);
+  }
+
+  const base = `../../plugins/${directory}/${specifier.replace(/^\.\//, "")}`;
+
+  // The extension is the resolver's business, which is why the manifest does
+  // not name one. Trying both is what makes that true here.
+  for (const candidate of [`${base}.tsx`, `${base}.ts`]) {
+    const load = BUILT_IN[candidate];
+    if (load) return load();
+  }
+
+  throw new Error(`${specifier} is not a module in plugins/${directory}`);
+}
+
+/**
  * Everything the page needs, fetched once.
  *
  * Exported so it can be tested against a fake api: what is worth checking here
@@ -166,8 +210,8 @@ export async function gather(api: Api): Promise<Context> {
   // the call site that decides how a specifier becomes a module. A plugin
   // module that will not load is reported in `failures` and the rest proceed;
   // the object page names the missing one.
-  const loaded = await loadAll(plugins, (specifier) =>
-    import(/* @vite-ignore */ specifier),
+  const loaded = await loadAll(plugins, (specifier, id) =>
+    resolvePluginModule(plugins, id, specifier),
   );
 
   const mounts = await api.mountOrder();

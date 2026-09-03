@@ -36,10 +36,16 @@ import type { Manifest } from "./types.js";
 /**
  * How a specifier becomes a module.
  *
- * Production passes `(specifier) => import(specifier)`. Tests pass a map. The
+ * Production passes something built on `import()`. Tests pass a map. The
  * loader cannot tell the difference, which is the reason it takes one.
+ *
+ * The plugin id comes with the specifier because a manifest's `./panel` is
+ * relative to *that plugin's* directory, not to whatever file is doing the
+ * importing. Without the id, `import("./panel")` from the shell resolves
+ * against the shell — which is a 404 for a file that exists, and the kind of
+ * failure that looks like a missing plugin rather than a wrong base path.
  */
-export type Resolve = (specifier: string) => Promise<unknown>;
+export type Resolve = (specifier: string, plugin: string) => Promise<unknown>;
 
 /** A module a manifest asked for, and where it was asked for. */
 export interface Needed {
@@ -113,7 +119,7 @@ export async function load(manifest: Manifest, resolve: Resolve): Promise<Loaded
   const settled = await Promise.all(
     needed.map(async (entry) => {
       try {
-        const module = await resolve(entry.specifier);
+        const module = await resolve(entry.specifier, manifest.id);
         // A resolver that returns nothing has failed without saying so. Left
         // unchecked this reaches a slot as an undefined component, and the
         // error surfaces at render time pointing at the wrong place.
