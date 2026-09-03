@@ -105,3 +105,31 @@ describe("saying what went wrong", () => {
     expect(inWords("just a string")).toBe("just a string");
   });
 });
+
+describe("reloading after a scan", () => {
+  test("gather is called again for a new generation", async () => {
+    // Clearing the context alone left a spinner nothing would replace: the
+    // effect ran once, had no reason to run again, and "reload" meant "show
+    // the loading state forever". This is the property that was missing.
+    const objectIds = vi.fn(async () => ({ ids: [], total: 0 }));
+    const api = fakeApi({ objectIds });
+
+    await gather(api);
+    await gather(api);
+
+    expect(objectIds).toHaveBeenCalledTimes(2);
+  });
+
+  test("a second gather sees what the first did not", async () => {
+    // A scan is the thing that happens between the two, so the second call
+    // has to read the library again rather than reuse an answer.
+    let scanned = false;
+    const api = fakeApi({
+      objectIds: async () => (scanned ? { ids: ["1"], total: 441 } : { ids: [], total: 0 }),
+    });
+
+    expect((await gather(api)).object).toBeUndefined();
+    scanned = true;
+    expect((await gather(api)).object?.id).toBe("1");
+  });
+});

@@ -58,8 +58,15 @@ export function App(): React.JSX.Element {
   const [context, setContext] = useState<Context | undefined>(undefined);
   const [problem, setProblem] = useState<string | undefined>(undefined);
 
+  // Bumped when a scan finishes. Clearing the context alone left a spinner
+  // nothing would ever replace: the effect ran once and had no reason to run
+  // again, so "reload" meant "show the loading state forever".
+  const [generation, setGeneration] = useState(0);
+
   useEffect(() => {
     let current = true;
+    setContext(undefined);
+    setProblem(undefined);
 
     gather(api)
       .then((next) => {
@@ -72,7 +79,7 @@ export function App(): React.JSX.Element {
     return () => {
       current = false;
     };
-  }, []);
+  }, [generation]);
 
   if (problem) {
     return (
@@ -92,19 +99,28 @@ export function App(): React.JSX.Element {
       <Stack padding="normal" gap="condensed">
         <Heading>Yukifile</Heading>
         <Text>This library holds no objects yet.</Text>
-        <ScanButton onDone={() => setContext(undefined)} />
+        <ScanButton onDone={() => setGeneration((n) => n + 1)} />
       </Stack>
     );
   }
 
   return (
-    <ObjectPage
-      api={api}
-      object={context.object}
-      plugins={context.plugins}
-      loaded={context.loaded}
-      mounts={context.mounts}
-    />
+    <Stack gap="none">
+      <Stack direction="horizontal" padding="condensed" gap="condensed" align="center">
+        <Text size="small">
+          {context.total} {context.total === 1 ? "object" : "objects"}
+        </Text>
+        <ScanButton onDone={() => setGeneration((n) => n + 1)} />
+      </Stack>
+
+      <ObjectPage
+        api={api}
+        object={context.object}
+        plugins={context.plugins}
+        loaded={context.loaded}
+        mounts={context.mounts}
+      />
+    </Stack>
   );
 }
 
@@ -160,11 +176,14 @@ export function ScanButton({ onDone }: { onDone: () => void }): React.JSX.Elemen
  * time. Vite turns this into a map of loaders it can, which is also what makes
  * a production build include the plugins at all.
  *
+ * Test files are excluded. Without that they are bundled and shipped, which
+ * puts vitest and every fixture into the application a user runs.
+ *
  * Third-party plugins loaded from disk at runtime will need a different path —
  * they are not in the bundle by definition. That is a later problem, and the
  * injected resolver is what keeps it from being this file's problem twice.
  */
-const BUILT_IN = import.meta.glob("../../plugins/*/*.{ts,tsx}");
+const BUILT_IN = import.meta.glob(["../../plugins/*/*.{ts,tsx}", "!**/*.test.*"]);
 
 /**
  * Resolve a manifest's specifier against the plugin's own directory.
