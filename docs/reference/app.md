@@ -87,6 +87,35 @@ not pixel values. There is no supported escape hatch for arbitrary spacing,
 which is the design system working: two visual registers held together by
 shared tokens was the decision, and bypassing the tokens is how they drift.
 
+## Logging
+
+`tauri-plugin-log`, writing to three places: the terminal, a file, and the
+webview console. The file is the one that matters — three of the bugs found on
+the first real runs were diagnosed by guessing from a screenshot, and a log to
+send is what replaces the guessing.
+
+Windows: `%LOCALAPPDATA%pp.yukifile\logs\yukifile.log`
+
+Frontend command failures go through `invoke.ts` into the same file, so a
+panel's complaint sits beside the command it called. The error is rethrown
+untouched: callers switch on the tag, and swallowing it would turn a refusal
+into a silence.
+
+### Startup lines are logged from inside `setup`
+
+The plugin attaches its logger in its own setup hook, which runs during
+`run()`. Anything logged before that reaches a logger that does not exist and
+vanishes — registering the plugin earlier does not help, because registration
+is not attachment.
+
+So `load_plugins` carries its skipped list out rather than logging it, and
+startup reports from inside `setup`. That ordering was wrong twice before the
+log file was checked, which is the argument for checking it: a logging setup
+that looks installed and records nothing reads exactly like one that works.
+
+`log:default` is granted in `capabilities/default.json`. Tauri 2 gates plugin
+access per window, so the frontend call is denied without it.
+
 ## Building
 
 ```bash

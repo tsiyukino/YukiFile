@@ -19,8 +19,11 @@ struct Migration {
 }
 
 /// Every migration, in order. Append; never edit one that has shipped.
-const MIGRATIONS: &[Migration] =
-    &[Migration { version: 1, sql: V1 }, Migration { version: 2, sql: V2 }];
+const MIGRATIONS: &[Migration] = &[
+    Migration { version: 1, sql: V1 },
+    Migration { version: 2, sql: V2 },
+    Migration { version: 3, sql: V3 },
+];
 
 /// The version this build expects.
 pub fn latest_version() -> i64 {
@@ -1017,7 +1020,87 @@ mod tests {
         );
     }
 
+    #[test]
+    fn the_present_marker_is_removed_from_an_existing_library() {
+        // A library scanned before the scan stopped writing the marker still
+        // holds the rows, and nothing else would remove them: a rescan
+        // updates locations and leaves values alone, which is the separation
+        // that makes a rescan safe.
+        let mut connection = Connection::open_in_memory().expect("open");
+
+        // Bring it only as far as V2, then write what an old scan wrote.
+        for migration in MIGRATIONS.iter().filter(|m| m.version <= 2) {
+            let transaction = connection.transaction().expect("begin");
+            apply(&transaction, migration).expect("apply");
+            transaction.commit().expect("commit");
+        }
+        connection
+            .execute("INSERT INTO objects (id) VALUES (1)", [])
+            .expect("object");
+        connection
+            .execute(
+                "INSERT INTO values_ (object_id, field_path, value)
+                 VALUES (1, 'file#1/present', 'true'), (1, 'title', 'a real value')",
+                [],
+            )
+            .expect("values");
+
+        migrate(&mut connection).expect("migrate");
+
+        let left: Vec<String> = connection
+            .prepare("SELECT field_path FROM values_ ORDER BY field_path")
+            .expect("prepare")
+            .query_map([], |row| row.get(0))
+            .expect("query")
+            .collect::<rusqlite::Result<Vec<String>>>()
+            .expect("rows");
+
+        assert_eq!(left, ["title"], "the marker survived, or a real value did not");
+    }
+
+    #[test]
+    fn a_plugins_own_present_field_is_left_alone() {
+        // `%/present` alone would take a real field from a plugin that happens
+        // to call something `present`. The migration matches only the shape
+        // the scan wrote.
+        let mut connection = Connection::open_in_memory().expect("open");
+        for migration in MIGRATIONS.iter().filter(|m| m.version <= 2) {
+            let transaction = connection.transaction().expect("begin");
+            apply(&transaction, migration).expect("apply");
+            transaction.commit().expect("commit");
+        }
+        connection.execute("INSERT INTO objects (id) VALUES (1)", []).expect("object");
+        connection
+            .execute(
+                "INSERT INTO values_ (object_id, field_path, value) VALUES
+                 (1, 'booth#1/present', 'in stock'),
+                 (1, 'booth#2/present', 'true'),
+                 (1, 'shelf/present', 'true')",
+                [],
+            )
+            .expect("values");
+
+        migrate(&mut connection).expect("migrate");
+
+        let left: Vec<String> = connection
+            .prepare("SELECT field_path FROM values_ ORDER BY field_path")
+            .expect("prepare")
+            .query_map([], |row| row.get(0))
+            .expect("query")
+            .collect::<rusqlite::Result<Vec<String>>>()
+            .expect("rows");
+
+        // `booth#1/present = "in stock"` keeps its value, and `shelf/present`
+        // is a bare field rather than a property instance. `booth#2/present`
+        // is not the shape the scan wrote either -- it only ever wrote #1.
+        assert_eq!(
+            left,
+            ["booth#1/present", "booth#2/present", "shelf/present"],
+            "the migration took a field it should not have"
+        );
+    }
 }
+
 
 /// Change sets: batches of proposed writes, reviewed before they apply.
 ///
@@ -1065,4 +1148,26 @@ CREATE TABLE changes (
 
 CREATE INDEX changes_by_set ON changes (changeset);
 CREATE INDEX changesets_pending ON changesets (created) WHERE applied IS NULL;
+"#;
+
+/// Remove the marker an early scan wrote.
+///
+/// Scanning used to write `file#1/present = true` so that resolution would see
+/// a factual property at all -- resolution drops values under an unmounted
+/// property, and the property had to appear somewhere. It made every object
+/// page show a row reading "present: true", which says nothing.
+///
+/// The scan no longer writes it, but a library scanned before this migration
+/// still holds the rows, and nothing else would ever remove them: a rescan
+/// updates locations and leaves values alone, which is the separation that
+/// makes a rescan safe. So they go here.
+///
+/// Narrow on purpose. `%/present` alone would take a real field from a plugin
+/// that happens to call something `present`; this matches only the shape the
+/// scan wrote, a property instance with `present` as its whole field and
+/// `true` as its whole value.
+const V3: &str = r#"
+DELETE FROM values_
+WHERE field_path LIKE '%#1/present'
+  AND value = 'true';
 "#;

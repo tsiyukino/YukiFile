@@ -92,6 +92,7 @@ pub fn object_flat_in(
     id: i64,
 ) -> Result<FlatObjectView, BridgeError> {
     library.with_connection(|connection| {
+        log::debug!("resolving object {id}");
         let store = values::Values::new();
         let rows = store
             .rows(connection, id)
@@ -313,6 +314,22 @@ pub fn library_scan_in(
             let mut store = values::Values::new();
             let outcome = scan::run(transaction, &mut store, &root, &rules)
                 .map_err(|error| BridgeError::Storage(error.to_string()))?;
+
+            // What a scan did, in one line. This is the line worth having when
+            // somebody reports that a folder did not show up: it says whether
+            // the scan saw it at all.
+            log::info!(
+                "scanned {}: {} added, {} removed, {} moved, {} touched, {} candidates",
+                root.display(),
+                outcome.added,
+                outcome.removed,
+                outcome.moved,
+                outcome.touched,
+                outcome.candidates
+            );
+            for path in &outcome.unreadable {
+                log::warn!("could not read {path}");
+            }
 
             Ok(ScanView {
                 added: outcome.added,

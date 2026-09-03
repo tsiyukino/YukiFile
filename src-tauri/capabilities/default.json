@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "What the application's own window may call.",
+  "windows": ["main"],
+  "permissions": ["log:default"]
+}

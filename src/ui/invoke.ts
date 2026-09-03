@@ -11,6 +11,7 @@
  */
 
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
+import { error } from "@tauri-apps/plugin-log";
 
 import type { Invoke } from "../plugin-host/commands.js";
 
@@ -21,4 +22,14 @@ import type { Invoke } from "../plugin-host/commands.js";
  * are rethrown untouched. Wrapping them in an `Error` here would flatten the
  * tag a caller switches on into a string it would have to match against.
  */
-export const invoke: Invoke = (command, args) => tauriInvoke(command, args);
+export const invoke: Invoke = async (command, args) => {
+  try {
+    return await tauriInvoke(command, args);
+  } catch (thrown) {
+    // Into the same file as the Rust side, so a panel's complaint sits beside
+    // the command it called. Rethrown untouched: the caller switches on the
+    // tag, and swallowing it here would turn a refusal into a silence.
+    error(`${command} failed: ${JSON.stringify(thrown)}`);
+    throw thrown;
+  }
+};
