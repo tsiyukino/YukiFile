@@ -21,6 +21,8 @@ export interface Proposed {
   readonly folders: readonly string[];
   readonly key: string;
   readonly values: Readonly<Record<string, string>>;
+  /** What this object holds, by path. Empty for a file. */
+  readonly contains: readonly string[];
 }
 
 /**
@@ -35,6 +37,8 @@ export interface Proposed {
  * evidence — a manifest, a shop page — is the thing that should say so.
  */
 export function objectsFrom(entries: readonly Entry[]): Proposed[] {
+  const known = new Set(entries.map((entry) => entry.path));
+
   return entries.map((entry) => ({
     paths: [entry.path],
     // The walk saw what it is; the document has to carry that, because an
@@ -44,7 +48,44 @@ export function objectsFrom(entries: readonly Entry[]): Proposed[] {
     // proposes everything again and the import creates a duplicate library.
     key: entry.path,
     values: {},
+    contains: entry.kind === "folder" ? childrenOf(entry.path, entries, known) : [],
   }));
+}
+
+/**
+ * What sits directly inside a folder.
+ *
+ * Direct children only. A folder containing everything below it would make a
+ * library root that contains all 1518 objects, which is true and useless.
+ *
+ * This is not a guess. A path being inside a folder is what the filesystem
+ * says, unlike "this folder and the zip beside it are one product" — which
+ * needs evidence a walk does not have and is what `seed/vrc-lessons.md`
+ * records the cost of getting wrong.
+ */
+export function childrenOf(
+  folder: string,
+  entries: readonly Entry[],
+  known: ReadonlySet<string>,
+): string[] {
+  const prefix = `${folder}/`;
+
+  return entries
+    .map((entry) => entry.path)
+    .filter((path) => path.startsWith(prefix))
+    .filter((path) => !path.slice(prefix.length).includes("/"))
+    .filter((path) => known.has(path));
+}
+
+/**
+ * Objects nothing else contains.
+ *
+ * What a list should show first: a library of 441 paths is a handful of top
+ * folders, and showing every path flat is what makes it unusable to organise.
+ */
+export function topLevel(proposed: readonly Proposed[]): Proposed[] {
+  const contained = new Set(proposed.flatMap((object) => object.contains));
+  return proposed.filter((object) => !object.paths.some((path) => contained.has(path)));
 }
 
 /** What a walk turned into, before anything is written. */
@@ -76,6 +117,7 @@ export function documentFor(plan: Plan): string {
       folders: object.folders,
       id: object.key,
       values: object.values,
+      edges: object.contains.map((path) => ({ kind: "contains", object: path })),
     })),
   });
 }

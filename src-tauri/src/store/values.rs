@@ -319,16 +319,65 @@ pub fn object_ids(
     after: Option<i64>,
     limit: u32,
 ) -> rusqlite::Result<Vec<i64>> {
-    let mut statement = connection.prepare(
-        "SELECT id FROM objects WHERE id > ?1 ORDER BY id LIMIT ?2",
-    )?;
-    // `after` is exclusive, so the caller passes back the last id it saw and
-    // gets what follows. A page number would drift as objects are added.
+    object_ids_where(connection, after, limit, false)
+}
+
+/// Object ids, optionally only the ones nothing contains.
+///
+/// A library of 1518 files is a handful of top folders and everything under
+/// them. Listing all of it flat is what makes it impossible to organise, so
+/// the list asks for the top and walks down.
+///
+/// "Top level" is defined by the absence of a `contains` edge pointing at the
+/// object, which means it follows whatever built those edges rather than a
+/// rule here. A library whose plugin builds no hierarchy is entirely top
+/// level, which is the right answer for one.
+pub fn object_ids_where(
+    connection: &Connection,
+    after: Option<i64>,
+    limit: u32,
+    top_level_only: bool,
+) -> rusqlite::Result<Vec<i64>> {
+    let sql = if top_level_only {
+        "SELECT id FROM objects WHERE id > ?1
+           AND id NOT IN (SELECT dst_object FROM edges
+                          WHERE kind = 'contains' AND dst_object IS NOT NULL)
+         ORDER BY id LIMIT ?2"
+    } else {
+        "SELECT id FROM objects WHERE id > ?1 ORDER BY id LIMIT ?2"
+    };
+
+    let mut statement = connection.prepare(sql)?;
     let rows = statement
         .query_map(params![after.unwrap_or(0), limit], |row| row.get(0))?
         .collect::<rusqlite::Result<Vec<i64>>>()?;
     Ok(rows)
 }
+
+/// How many objects nothing contains.
+pub fn top_level_count(connection: &Connection) -> rusqlite::Result<i64> {
+    connection.query_row(
+        "SELECT count(*) FROM objects
+         WHERE id NOT IN (SELECT dst_object FROM edges
+                          WHERE kind = 'contains' AND dst_object IS NOT NULL)",
+        [],
+        |row| row.get(0),
+    )
+}
+
+/// Objects one object contains, in path order.
+pub fn contained_by(connection: &Connection, object: i64) -> rusqlite::Result<Vec<i64>> {
+    let mut statement = connection.prepare(
+        "SELECT e.dst_object FROM edges e
+         LEFT JOIN object_paths p ON p.object_id = e.dst_object
+         WHERE e.src = ?1 AND e.kind = 'contains' AND e.dst_object IS NOT NULL
+         GROUP BY e.dst_object
+         ORDER BY min(p.path)",
+    )?;
+    let rows = statement.query_map(params![object], |row| row.get(0))?;
+    rows.collect()
+}
+
 
 /// How many objects the library holds.
 pub fn object_count(connection: &Connection) -> rusqlite::Result<i64> {

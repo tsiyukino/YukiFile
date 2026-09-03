@@ -20,6 +20,31 @@ function listApi(rows: Summary[], total = rows.length): Api {
   } as unknown as Api;
 }
 
+/** An api with a folder holding one child. */
+function treeApi(): Api {
+  const top: Summary = {
+    id: "1",
+    name: "Clothing",
+    path: "Clothing",
+    kind: "folder",
+  };
+  const child: Summary = {
+    id: "2",
+    name: "outfit.zip",
+    path: "Clothing/outfit.zip",
+    kind: "file",
+  };
+
+  return {
+    objectIds: async (_after: string | null, _limit: number, within?: string | null) =>
+      within === "1"
+        ? { ids: ["2"], total: 1 }
+        : { ids: ["1"], total: 1 },
+    objectSummaries: async (ids: readonly string[]) =>
+      [top, child].filter((row) => ids.includes(row.id)),
+  } as unknown as Api;
+}
+
 describe("listing what the library holds", () => {
   test("every object in the page gets a row", async () => {
     render(
@@ -204,5 +229,94 @@ describe("after a scan", () => {
     );
 
     await waitFor(() => expect(objectIds).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe("walking down the tree", () => {
+  test("the top level is what nothing contains", async () => {
+    // The answer to a flat list of 441: most rows are inside something, and
+    // the top is a handful.
+    render(
+      <ObjectList api={treeApi()} selected={undefined} onSelect={() => {}} generation={0} />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Clothing")).toBeDefined());
+    expect(screen.queryByText("outfit.zip")).toBeNull();
+  });
+
+  test("a folder offers a way in", async () => {
+    render(
+      <ObjectList api={treeApi()} selected={undefined} onSelect={() => {}} generation={0} />,
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Open")).toBeDefined());
+  });
+
+  test("a file offers no way in", async () => {
+    render(
+      <ObjectList
+        api={listApi([row("1", { kind: "file" })])}
+        selected={undefined}
+        onSelect={() => {}}
+        generation={0}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText("object 1")).toBeDefined());
+    expect(screen.queryByLabelText("Open")).toBeNull();
+  });
+
+  test("opening a folder shows what is inside it", async () => {
+    render(
+      <ObjectList api={treeApi()} selected={undefined} onSelect={() => {}} generation={0} />,
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Open")).toBeDefined());
+    screen.getByLabelText("Open").click();
+
+    await waitFor(() => expect(screen.getByText("outfit.zip")).toBeDefined());
+  });
+
+  test("the way back appears once inside", async () => {
+    render(
+      <ObjectList api={treeApi()} selected={undefined} onSelect={() => {}} generation={0} />,
+    );
+
+    // Nothing to go back to at the top.
+    await waitFor(() => expect(screen.getByLabelText("Open")).toBeDefined());
+    expect(screen.queryByText("Back")).toBeNull();
+
+    screen.getByLabelText("Open").click();
+    await waitFor(() => expect(screen.getByText("Back")).toBeDefined());
+  });
+
+  test("going back returns to the top", async () => {
+    render(
+      <ObjectList api={treeApi()} selected={undefined} onSelect={() => {}} generation={0} />,
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Open")).toBeDefined());
+    screen.getByLabelText("Open").click();
+    await waitFor(() => expect(screen.getByText("Back")).toBeDefined());
+
+    screen.getByText("Back").click();
+    await waitFor(() => expect(screen.queryByText("Back")).toBeNull());
+    expect(screen.getByText("Clothing")).toBeDefined();
+  });
+
+  test("opening a folder is not selecting it", async () => {
+    // A person clicking the name wants to see the folder's own page; clicking
+    // the chevron wants to go inside. Conflating them makes one of the two
+    // impossible.
+    const onSelect = vi.fn();
+    render(
+      <ObjectList api={treeApi()} selected={undefined} onSelect={onSelect} generation={0} />,
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Open")).toBeDefined());
+    screen.getByLabelText("Open").click();
+
+    await waitFor(() => expect(screen.getByText("outfit.zip")).toBeDefined());
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });

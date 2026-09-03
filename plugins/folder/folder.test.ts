@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import type { Api, Entry } from "../../src/plugin-host/commands.js";
-import { documentFor, objectsFrom, planFrom } from "./folder.js";
+import { childrenOf, documentFor, objectsFrom, planFrom, topLevel } from "./folder.js";
 
 function entry(path: string, kind: "file" | "folder" = "file"): Entry {
   return { path, kind, size: kind === "file" ? 100 : null, mtime: null };
@@ -85,5 +85,102 @@ describe("reading the disk", () => {
     const api = { fsWalk: async () => [] } as unknown as Api;
 
     expect((await planFrom(api, null)).proposed).toEqual([]);
+  });
+});
+
+describe("what holds what", () => {
+  test("a folder contains what sits directly inside it", () => {
+    const proposed = objectsFrom([
+      entry("Clothing", "folder"),
+      entry("Clothing/outfit.zip"),
+      entry("Clothing/notes.txt"),
+    ]);
+
+    const folder = proposed.find((p) => p.key === "Clothing");
+    expect(folder?.contains).toEqual(["Clothing/outfit.zip", "Clothing/notes.txt"]);
+  });
+
+  test("a folder does not contain its grandchildren", () => {
+    // A library root containing all 1518 objects is true and useless. Direct
+    // children are what makes a tree navigable one level at a time.
+    const proposed = objectsFrom([
+      entry("a", "folder"),
+      entry("a/b", "folder"),
+      entry("a/b/deep.txt"),
+    ]);
+
+    expect(proposed.find((p) => p.key === "a")?.contains).toEqual(["a/b"]);
+  });
+
+  test("a file contains nothing", () => {
+    expect(objectsFrom([entry("a.txt")])[0]?.contains).toEqual([]);
+  });
+
+  test("a path that looks like a child but was not walked is left out", () => {
+    // childrenOf matches on a prefix, and a prefix match is not proof the
+    // thing exists. An edge to an object nothing proposed would dangle.
+    const walked = [entry("a", "folder"), entry("a/real.txt")];
+    const known = new Set(walked.map((e) => e.path));
+
+    expect(childrenOf("a", walked, known)).toEqual(["a/real.txt"]);
+  });
+
+  test("a sibling whose name starts with the folder's name is not inside it", () => {
+    // `Clothing2` is not in `Clothing`. Matching on the name rather than on
+    // the name plus a separator would put it there.
+    const proposed = objectsFrom([
+      entry("Clothing", "folder"),
+      entry("Clothing2", "folder"),
+    ]);
+
+    expect(proposed.find((p) => p.key === "Clothing")?.contains).toEqual([]);
+  });
+});
+
+describe("what a list should show first", () => {
+  test("only what nothing else contains", () => {
+    // The answer to "441 rows, how does anybody organise this": most of them
+    // are inside something, and the top of the tree is a handful.
+    const proposed = objectsFrom([
+      entry("Clothing", "folder"),
+      entry("Clothing/outfit.zip"),
+      entry("Clothing/AW", "folder"),
+      entry("Clothing/AW/skin.png"),
+      entry("thesis.pdf"),
+    ]);
+
+    expect(topLevel(proposed).map((p) => p.key)).toEqual(["Clothing", "thesis.pdf"]);
+  });
+
+  test("a flat library is all top level", () => {
+    const proposed = objectsFrom([entry("a.txt"), entry("b.txt")]);
+
+    expect(topLevel(proposed)).toHaveLength(2);
+  });
+
+  test("nothing at all has no top", () => {
+    expect(topLevel([])).toEqual([]);
+  });
+});
+
+describe("the document carries the hierarchy", () => {
+  test("a folder's contents become contains edges", () => {
+    const document = JSON.parse(
+      documentFor({
+        proposed: objectsFrom([entry("a", "folder"), entry("a/b.txt")]),
+        skipped: [],
+      }),
+    ) as { objects: Array<{ id?: string; edges?: Array<{ kind: string; object: string }> }> };
+
+    const folder = document.objects.find((o) => o.id === "a");
+    expect(folder?.edges).toEqual([{ kind: "contains", object: "a/b.txt" }]);
+  });
+
+  test("a file carries no edges", () => {
+    const document = JSON.parse(
+      documentFor({ proposed: objectsFrom([entry("a.txt")]), skipped: [] }),
+    ) as { objects: Array<{ edges?: unknown[] }> };
+
+    expect(document.objects[0]?.edges).toEqual([]);
   });
 });

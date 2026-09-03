@@ -211,7 +211,18 @@ export interface Api {
   objectGet(id: ObjectId): Promise<ObjectRecord>;
   objectList(ids: readonly ObjectId[]): Promise<ObjectRecord[]>;
   objectFlat(id: ObjectId): Promise<FlatObject>;
-  objectIds(after: ObjectId | null, limit: number): Promise<ObjectIds>;
+  /**
+   * A page of object ids, from the top of the tree or inside one object.
+   *
+   * `within` names an object and returns what it contains; without it the
+   * page is the top level, meaning objects nothing contains. A library of
+   * 1518 files is a handful of top folders and everything under them.
+   */
+  objectIds(
+    after: ObjectId | null,
+    limit: number,
+    within?: ObjectId | null,
+  ): Promise<ObjectIds>;
   objectSummaries(ids: readonly ObjectId[]): Promise<Summary[]>;
   pluginList(): Promise<Manifest[]>;
   mountOrder(): Promise<MountRow[]>;
@@ -292,7 +303,8 @@ export function apiFor(invoke: Invoke): Api {
     objectGet: (id) => call("object.get", { id }),
     objectList: (ids) => call("object.list", { ids }),
     objectFlat: (id) => call("object.flat", { id }),
-    objectIds: (after, limit) => call("object.ids", { after, limit }),
+    objectIds: (after, limit, within = null) =>
+      call("object.ids", { after, limit, within }),
     objectSummaries: (ids) => call("object.summaries", { ids }),
     pluginList: () => call("plugin.list", {}),
     mountOrder: () => call("mount.order", {}),

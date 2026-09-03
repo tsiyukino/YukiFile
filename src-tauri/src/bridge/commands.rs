@@ -237,15 +237,38 @@ pub fn object_ids_in(
     after: Option<i64>,
     limit: u32,
 ) -> Result<ObjectIdsView, BridgeError> {
+    object_ids_scoped(library, after, limit, None)
+}
+
+/// A page of object ids, from the top of the tree or from inside one object.
+///
+/// `within` names an object and returns what it contains; without it the page
+/// is the top level, meaning objects nothing contains.
+///
+/// A library of 1518 files is a handful of top folders and everything under
+/// them. Listing all of it flat is what makes it impossible to organise, and
+/// what "flat" meant before anything built a hierarchy.
+pub fn object_ids_scoped(
+    library: &Library,
+    after: Option<i64>,
+    limit: u32,
+    within: Option<i64>,
+) -> Result<ObjectIdsView, BridgeError> {
     // A caller asking for everything gets a page anyway. The cap is here and
     // not in the store because it is a boundary decision: the store is free to
     // read what it likes, a plugin is not.
     let limit = limit.clamp(1, 500);
 
     library.with_connection(|connection| {
+        if let Some(parent) = within {
+            let ids = values::contained_by(connection, parent)?;
+            let total = ids.len() as i64;
+            return Ok(ObjectIdsView { ids, total });
+        }
+
         Ok(ObjectIdsView {
-            ids: values::object_ids(connection, after, limit)?,
-            total: values::object_count(connection)?,
+            ids: values::object_ids_where(connection, after, limit, true)?,
+            total: values::top_level_count(connection)?,
         })
     })
 }
@@ -636,6 +659,27 @@ pub fn import_propose_in(
     label: String,
     document: String,
 ) -> Result<ProposalView, BridgeError> {
+    import_propose_in_with(library, None, label, document)
+}
+
+/// Import, mounting whatever the imported paths observably carry.
+///
+/// Mounting is what makes a property's values readable: resolution drops
+/// values under a property the library does not mount, and slot arbitration
+/// only offers a panel or a viewer for a mounted one. The scan used to do this
+/// while it created objects; now that a plugin creates them through an import,
+/// this is where it has to happen or a `.pdf` arrives with no viewer.
+///
+/// The rules come from the manifests, so the core still holds the matching and
+/// none of the extensions. Without a registry nothing is mounted beyond what
+/// the document itself names, which is the honest reading of a library running
+/// no plugins.
+pub fn import_propose_in_with(
+    library: &Library,
+    registry: Option<&Registry>,
+    label: String,
+    document: String,
+) -> Result<ProposalView, BridgeError> {
     let parsed: crate::contract::Document = serde_json::from_str(&document)
         .map_err(|error| BridgeError::BadRequest(format!("cannot read document: {error}")))?;
 
@@ -644,6 +688,28 @@ pub fn import_propose_in(
             let mut store = values::Values::new();
             let outcome = changes::build::import(transaction, &mut store, &parsed, &label)
                 .map_err(|error| BridgeError::BadRequest(error.to_string()))?;
+
+            // Whatever the imported paths observably are. A `.pdf` that is not
+            // mounted has no viewer, because slot arbitration runs over mount
+            // order and an unmounted property is not in it.
+            let rules = rules_from(registry);
+            for record in &parsed.objects {
+                for path in &record.paths {
+                    let entry = crate::scan::walk::Entry {
+                        path: path.clone(),
+                        kind: if record.folders.contains(path) {
+                            crate::scan::walk::Kind::Folder
+                        } else {
+                            crate::scan::walk::Kind::File
+                        },
+                        size: None,
+                        mtime: None,
+                    };
+                    for property in rules.properties(&entry) {
+                        values::mount(transaction, &property, 1)?;
+                    }
+                }
+            }
 
             Ok(ProposalView {
                 written: outcome.written,
@@ -694,9 +760,11 @@ pub fn object_ids(
     library: State<'_, Library>,
     after: Option<String>,
     limit: u32,
+    within: Option<String>,
 ) -> Result<ObjectIdsView, BridgeError> {
     let after = after.map(|id| parse_id(&id)).transpose()?;
-    object_ids_in(&library, after, limit)
+    let within = within.map(|id| parse_id(&id)).transpose()?;
+    object_ids_scoped(&library, after, limit, within)
 }
 
 /// The manifests of every loaded plugin.
@@ -868,10 +936,11 @@ pub fn history_of(
 #[tauri::command]
 pub fn import_propose(
     library: State<'_, Library>,
+    registry: State<'_, Registry>,
     label: String,
     document: String,
 ) -> Result<ProposalView, BridgeError> {
-    import_propose_in(&library, label, document)
+    import_propose_in_with(&library, Some(&registry), label, document)
 }
 
 /// Read an object id sent as a string.

@@ -1041,3 +1041,90 @@ fn a_non_ascii_filename_is_encoded_rather_than_dropped() {
     assert!(url.is_ascii(), "the URL is not transmissible: {url}");
     assert!(url.contains("%"), "nothing was encoded: {url}");
 }
+
+// --- hierarchy ----------------------------------------------------------
+
+/// Record that one object contains another.
+fn contains(library: &Library, parent: i64, child: i64) {
+    library
+        .with_connection(|connection| {
+            yukifile::store::edges::add(
+                connection,
+                parent,
+                "contains",
+                &yukifile::store::edges::Target::Object(child),
+            )?;
+            Ok(())
+        })
+        .expect("edge");
+}
+
+#[test]
+fn a_list_shows_only_what_nothing_contains() {
+    // The answer to "441 rows, how does anybody organise this". Most of a
+    // library is inside something, and the top of the tree is a handful.
+    let (library, _dir) = library();
+    let folder = object_with(&library, &[("title", "Clothing")]);
+    let inside = object_with(&library, &[("title", "outfit.zip")]);
+    let loose = object_with(&library, &[("title", "thesis.pdf")]);
+    contains(&library, folder, inside);
+
+    let page = object_ids_in(&library, None, 40).expect("ids");
+
+    assert_eq!(page.total, 2, "a contained object was counted as top level");
+    assert!(page.ids.contains(&folder));
+    assert!(page.ids.contains(&loose));
+    assert!(!page.ids.contains(&inside), "a contained object was listed at the top");
+}
+
+#[test]
+fn opening_a_folder_lists_what_it_holds() {
+    let (library, _dir) = library();
+    let folder = object_with(&library, &[("title", "Clothing")]);
+    let first = object_with(&library, &[("title", "a.zip")]);
+    let second = object_with(&library, &[("title", "b.zip")]);
+    contains(&library, folder, first);
+    contains(&library, folder, second);
+
+    let page = object_ids_scoped(&library, None, 40, Some(folder)).expect("ids");
+
+    assert_eq!(page.ids.len(), 2);
+    assert_eq!(page.total, 2);
+}
+
+#[test]
+fn a_library_with_no_hierarchy_is_all_top_level() {
+    // A plugin that builds no contains edges gets a flat library, which is
+    // the right answer for one. The filter follows the edges rather than
+    // imposing a shape.
+    let (library, _dir) = library();
+    for _ in 0..3 {
+        object_with(&library, &[]);
+    }
+
+    assert_eq!(object_ids_in(&library, None, 40).expect("ids").total, 3);
+}
+
+#[test]
+fn an_empty_folder_holds_nothing_without_failing() {
+    let (library, _dir) = library();
+    let folder = object_with(&library, &[]);
+
+    let page = object_ids_scoped(&library, None, 40, Some(folder)).expect("ids");
+
+    assert!(page.ids.is_empty());
+    assert_eq!(page.total, 0);
+}
+
+#[test]
+fn nesting_two_deep_still_shows_one_top() {
+    // A grandchild is contained by its parent, so it is not top level either.
+    let (library, _dir) = library();
+    let top = object_with(&library, &[]);
+    let middle = object_with(&library, &[]);
+    let bottom = object_with(&library, &[]);
+    contains(&library, top, middle);
+    contains(&library, middle, bottom);
+
+    assert_eq!(object_ids_in(&library, None, 40).expect("ids").total, 1);
+}
