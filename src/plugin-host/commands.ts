@@ -141,6 +141,21 @@ export interface MountRow {
   readonly instance: number;
 }
 
+/**
+ * One row in a list.
+ *
+ * A name and a path, and nothing else. Resolving each object fully would read
+ * every value and every mount for a row showing one line of text.
+ */
+export interface Summary {
+  readonly id: ObjectId;
+  /** The title, the filename, or nothing for an unnamed grouping. */
+  readonly name: string | null;
+  /** Its first location. Absent for a grouping. */
+  readonly path: string | null;
+  readonly kind: "file" | "folder" | null;
+}
+
 /** One vocabulary term. */
 export interface Term {
   readonly vocab: string;
@@ -186,6 +201,7 @@ export interface Api {
   objectList(ids: readonly ObjectId[]): Promise<ObjectRecord[]>;
   objectFlat(id: ObjectId): Promise<FlatObject>;
   objectIds(after: ObjectId | null, limit: number): Promise<ObjectIds>;
+  objectSummaries(ids: readonly ObjectId[]): Promise<Summary[]>;
   pluginList(): Promise<Manifest[]>;
   mountOrder(): Promise<MountRow[]>;
   objectEdges(id: ObjectId): Promise<unknown[]>;
@@ -264,6 +280,7 @@ export function apiFor(invoke: Invoke): Api {
     objectList: (ids) => call("object.list", { ids }),
     objectFlat: (id) => call("object.flat", { id }),
     objectIds: (after, limit) => call("object.ids", { after, limit }),
+    objectSummaries: (ids) => call("object.summaries", { ids }),
     pluginList: () => call("plugin.list", {}),
     mountOrder: () => call("mount.order", {}),
     objectEdges: (id) => call("object.edges", { id }),

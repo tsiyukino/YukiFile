@@ -56,6 +56,7 @@ macro_rules! register_commands {
             $crate::bridge::commands::object_list,
             $crate::bridge::commands::object_flat,
             $crate::bridge::commands::object_ids,
+            $crate::bridge::commands::object_summaries,
             $crate::bridge::commands::plugin_list,
             $crate::bridge::commands::mount_order,
             $crate::bridge::commands::object_edges,

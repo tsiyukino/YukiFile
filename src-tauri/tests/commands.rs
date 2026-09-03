@@ -892,3 +892,115 @@ fn a_string_id_is_read_back_exactly() {
     assert_eq!(text.parse::<i64>().expect("parse"), id);
     assert!(object_flat_in(&library, None, text.parse().expect("parse")).is_ok());
 }
+
+// --- listing ------------------------------------------------------------
+
+#[test]
+fn a_summary_names_an_object_by_its_filename() {
+    // Most objects have no title: a scan records where things are before
+    // anybody names them, so the filename is the common case rather than a
+    // fallback.
+    let (library, dir) = library();
+    dir.file("outfit.zip", b"not really a zip");
+    library_scan_in(&library, None).expect("scan");
+
+    let ids = object_ids_in(&library, None, 40).expect("ids").ids;
+    let summaries = object_summaries_in(&library, ids).expect("summaries");
+
+    assert_eq!(summaries.len(), 1);
+    assert_eq!(summaries[0].name.as_deref(), Some("outfit.zip"));
+    assert_eq!(summaries[0].path.as_deref(), Some("outfit.zip"));
+    assert_eq!(summaries[0].kind.as_deref(), Some("file"));
+}
+
+#[test]
+fn a_title_wins_over_the_filename() {
+    let (library, _dir) = library();
+    let id = object_with(&library, &[("title", "Cross Maid")]);
+
+    let summaries = object_summaries_in(&library, vec![id]).expect("summaries");
+
+    assert_eq!(summaries[0].name.as_deref(), Some("Cross Maid"));
+}
+
+#[test]
+fn a_grouping_has_no_name_and_no_path() {
+    // An object with no location and no title genuinely has no name until
+    // somebody gives it one. Inventing one would be worse than saying so.
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+
+    let summaries = object_summaries_in(&library, vec![id]).expect("summaries");
+
+    assert_eq!(summaries[0].name, None);
+    assert_eq!(summaries[0].path, None);
+}
+
+#[test]
+fn summaries_come_back_in_the_order_asked_for() {
+    // A list draws rows in the order it asked for them. Returning database
+    // order would scramble a page the caller had already sorted.
+    let (library, _dir) = library();
+    let first = object_with(&library, &[("title", "one")]);
+    let second = object_with(&library, &[("title", "two")]);
+
+    let summaries = object_summaries_in(&library, vec![second, first]).expect("summaries");
+
+    assert_eq!(
+        summaries.iter().map(|s| s.name.as_deref()).collect::<Vec<_>>(),
+        [Some("two"), Some("one")]
+    );
+}
+
+#[test]
+fn an_object_spanning_two_paths_shows_one_in_a_list() {
+    // Both belong on its own page; one belongs in a list, where one name per
+    // row is the whole point.
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+    library
+        .with_connection(|connection| {
+            use yukifile::scan::walk::Kind;
+            yukifile::store::paths::record(
+                connection, id, "Outfit", Kind::Folder, None, None, None,
+            )?;
+            yukifile::store::paths::record(
+                connection, id, "Outfit.zip", Kind::File, Some(9), None, None,
+            )?;
+            Ok(())
+        })
+        .expect("record");
+
+    let summaries = object_summaries_in(&library, vec![id]).expect("summaries");
+
+    assert_eq!(summaries.len(), 1);
+    assert_eq!(summaries[0].path.as_deref(), Some("Outfit"));
+}
+
+#[test]
+fn asking_for_nothing_returns_nothing() {
+    let (library, _dir) = library();
+
+    assert!(object_summaries_in(&library, vec![]).expect("summaries").is_empty());
+}
+
+#[test]
+fn a_page_of_summaries_is_one_pass_over_the_paths_table() {
+    // The reason this command exists: 441 objects should not be 441 reads.
+    // Asking for many and getting them all back is what proves the batch
+    // query works rather than silently returning only the first.
+    let (library, dir) = library();
+    for i in 0..25 {
+        dir.file(&format!("f{i}.txt"), b"x");
+    }
+    library_scan_in(&library, None).expect("scan");
+
+    let ids = object_ids_in(&library, None, 100).expect("ids").ids;
+    let summaries = object_summaries_in(&library, ids.clone()).expect("summaries");
+
+    assert_eq!(summaries.len(), 25);
+    assert!(
+        summaries.iter().all(|s| s.name.is_some()),
+        "some rows came back without a name"
+    );
+}

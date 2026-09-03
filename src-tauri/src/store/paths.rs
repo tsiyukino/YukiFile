@@ -141,6 +141,53 @@ pub fn located(connection: &Connection, object: i64) -> rusqlite::Result<Vec<Kno
     rows.collect()
 }
 
+/// The first location of each object in a page, in one query.
+///
+/// A list shows a name per row, and most objects have no title — the name is
+/// their filename. Reading that per row is one query per row; a library of 441
+/// makes 441 round trips through the connection lock for a screenful of text.
+///
+/// Only the first path per object. An object spanning a folder and the zip
+/// beside it needs both on its own page and neither in a list, where one name
+/// per row is the whole point.
+pub fn first_of_each(
+    connection: &Connection,
+    objects: &[i64],
+) -> rusqlite::Result<std::collections::HashMap<i64, (String, String)>> {
+    if objects.is_empty() {
+        return Ok(std::collections::HashMap::new());
+    }
+
+    // Built rather than bound: rusqlite has no array parameter, and the ids
+    // are i64 read out of this same database rather than anything a caller
+    // typed, so there is nothing here a string could smuggle.
+    let list = objects
+        .iter()
+        .map(|id| id.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+
+    let sql = format!(
+        "SELECT object_id, path, kind FROM object_paths
+         WHERE object_id IN ({list}) ORDER BY object_id, path"
+    );
+
+    let mut statement = connection.prepare(&sql)?;
+    let mut found = std::collections::HashMap::new();
+
+    let rows = statement.query_map([], |row| {
+        Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
+    })?;
+
+    for row in rows {
+        let (object, path, kind) = row?;
+        // ORDER BY path means the first row for an object is the one kept.
+        found.entry(object).or_insert((path, kind));
+    }
+
+    Ok(found)
+}
+
 /// Which object holds a path, if any.
 pub fn object_at(connection: &Connection, path: &str) -> rusqlite::Result<Option<i64>> {
     connection

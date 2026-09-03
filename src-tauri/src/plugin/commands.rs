@@ -83,6 +83,11 @@ pub const ALLOWED: &[Command] = &[
         reason: "slot ordering is mount order, which belongs to the library",
     },
     Command {
+        name: "object.summaries",
+        effect: Effect::Read,
+        reason: "a list needs a name and a path per row, not one read per row",
+    },
+    Command {
         name: "object.edges",
         effect: Effect::Read,
         reason: "a panel shows what an object requires or supports",

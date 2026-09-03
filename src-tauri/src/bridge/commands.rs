@@ -375,6 +375,63 @@ pub struct ScanView {
 }
 
 
+/// A name and a path for each of a page of objects.
+///
+/// What a list needs, and only that. Resolving each object fully would read
+/// every value and every mount for a row that shows one line of text.
+///
+/// The name is the object's title if it has one, and its filename otherwise.
+/// Most objects have no title — a scan records where things are before anybody
+/// names them — so the filename is the common case rather than the fallback.
+pub fn object_summaries_in(
+    library: &Library,
+    ids: Vec<i64>,
+) -> Result<Vec<SummaryView>, BridgeError> {
+    library.with_connection(|connection| {
+        let store = values::Values::new();
+        let located = crate::store::paths::first_of_each(connection, &ids)?;
+
+        let mut summaries = Vec::with_capacity(ids.len());
+        for id in ids {
+            // The bare `title` only. A shop's title is a source for it, and
+            // ranking sources means resolving the object, which is what this
+            // command exists not to do.
+            let title = store
+                .get(connection, id, "title")
+                .map_err(|error| BridgeError::Storage(error.to_string()))?;
+
+            let (path, kind) = match located.get(&id) {
+                Some((path, kind)) => (Some(path.clone()), Some(kind.clone())),
+                None => (None, None),
+            };
+
+            let name = title.clone().or_else(|| {
+                path.as_deref()
+                    .and_then(|p| p.rsplit('/').next())
+                    .map(str::to_string)
+            });
+
+            summaries.push(SummaryView { id, name, path, kind });
+        }
+
+        Ok(summaries)
+    })
+}
+
+/// One row in a list.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct SummaryView {
+    #[serde(with = "crate::bridge::views::id_as_string")]
+    pub id: i64,
+    /// The title, or the filename, or nothing for an unnamed grouping.
+    pub name: Option<String>,
+    /// Its first location. Absent for a grouping.
+    pub path: Option<String>,
+    /// `file` or `folder`, when it has a location.
+    pub kind: Option<String>,
+}
+
+
 /// Several objects at once, for a column rendering across a page.
 ///
 /// Missing ids are left out rather than failing the call: a grid asking for
@@ -594,6 +651,17 @@ pub fn library_scan(
     registry: State<'_, Registry>,
 ) -> Result<ScanView, BridgeError> {
     library_scan_in(&library, Some(&registry))
+}
+
+
+/// A name and a path for each of a page of objects.
+#[tauri::command]
+pub fn object_summaries(
+    library: State<'_, Library>,
+    ids: Vec<String>,
+) -> Result<Vec<SummaryView>, BridgeError> {
+    let parsed = ids.iter().map(|id| parse_id(id)).collect::<Result<Vec<_>, _>>()?;
+    object_summaries_in(&library, parsed)
 }
 
 

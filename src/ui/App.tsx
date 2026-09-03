@@ -16,7 +16,7 @@
  * plugin's panel drawn inside its property's region.
  */
 
-import { Button, Heading, Spinner, Stack, Text } from "@primer/react";
+import { Button, Heading, PageLayout, Spinner, Stack, Text } from "@primer/react";
 import { InlineMessage } from "@primer/react/experimental";
 import { useEffect, useState } from "react";
 
@@ -26,11 +26,13 @@ import {
   type AppApi,
   type Api,
   type FlatObject,
+  type ObjectId,
 } from "../plugin-host/commands.js";
 import { loadAll, type Loaded } from "../plugin-host/loader.js";
 import type { Mount } from "../plugin-host/slots.js";
 import type { Manifest } from "../plugin-host/types.js";
 import { invoke } from "./invoke.js";
+import { ObjectList } from "./ObjectList.js";
 import { ObjectPage } from "./ObjectPage.js";
 
 /** The API every panel is handed, wired to the real Tauri bridge. */
@@ -62,6 +64,32 @@ export function App(): React.JSX.Element {
   // nothing would ever replace: the effect ran once and had no reason to run
   // again, so "reload" meant "show the loading state forever".
   const [generation, setGeneration] = useState(0);
+
+  // Which object the page is showing. Undefined means "whichever the library
+  // hands back first", which is what a freshly opened library shows.
+  const [chosen, setChosen] = useState<ObjectId | undefined>(undefined);
+  const [shown, setShown] = useState<FlatObject | undefined>(undefined);
+
+  useEffect(() => {
+    if (!chosen) {
+      setShown(undefined);
+      return;
+    }
+
+    let current = true;
+    api
+      .objectFlat(chosen)
+      .then((object) => {
+        if (current) setShown(object);
+      })
+      .catch((error: unknown) => {
+        if (current) setProblem(describe(error));
+      });
+
+    return () => {
+      current = false;
+    };
+  }, [chosen]);
 
   useEffect(() => {
     let current = true;
@@ -99,28 +127,45 @@ export function App(): React.JSX.Element {
       <Stack padding="normal" gap="condensed">
         <Heading>Yukifile</Heading>
         <Text>This library holds no objects yet.</Text>
-        <ScanButton onDone={() => setGeneration((n) => n + 1)} />
+        <ScanButton
+          onDone={() => {
+            setChosen(undefined);
+            setGeneration((n) => n + 1);
+          }}
+        />
       </Stack>
     );
   }
 
   return (
-    <Stack gap="none">
-      <Stack direction="horizontal" padding="condensed" gap="condensed" align="center">
-        <Text size="small">
-          {context.total} {context.total === 1 ? "object" : "objects"}
-        </Text>
-        <ScanButton onDone={() => setGeneration((n) => n + 1)} />
-      </Stack>
+    <PageLayout>
+      <PageLayout.Pane position="start" width="medium">
+        <Stack gap="condensed">
+          <ScanButton
+            onDone={() => {
+              setChosen(undefined);
+              setGeneration((n) => n + 1);
+            }}
+          />
+          <ObjectList
+            api={api}
+            selected={chosen ?? context.object.id}
+            onSelect={setChosen}
+            generation={generation}
+          />
+        </Stack>
+      </PageLayout.Pane>
 
-      <ObjectPage
-        api={api}
-        object={context.object}
-        plugins={context.plugins}
-        loaded={context.loaded}
-        mounts={context.mounts}
-      />
-    </Stack>
+      <PageLayout.Content>
+        <ObjectPage
+          api={api}
+          object={shown ?? context.object}
+          plugins={context.plugins}
+          loaded={context.loaded}
+          mounts={context.mounts}
+        />
+      </PageLayout.Content>
+    </PageLayout>
   );
 }
 
