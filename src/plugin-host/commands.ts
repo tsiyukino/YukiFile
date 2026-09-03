@@ -156,6 +156,17 @@ export interface Summary {
   readonly kind: "file" | "folder" | null;
 }
 
+/** One entry on disk. */
+export interface Entry {
+  /** Relative to the walk root, with `/` separators on every platform. */
+  readonly path: string;
+  readonly kind: "file" | "folder";
+  /** Size in bytes. Absent for a folder. */
+  readonly size: number | null;
+  /** Seconds since the Unix epoch, when the filesystem reports one. */
+  readonly mtime: number | null;
+}
+
 /** One vocabulary term. */
 export interface Term {
   readonly vocab: string;
@@ -217,6 +228,15 @@ export interface Api {
    * and can also call `importPropose` can encode what it read into what it
    * proposes.
    */
+  /**
+   * What is on disk, as facts.
+   *
+   * Where an entry is, whether it is a file or a folder, how big. Nothing
+   * about what any of it means: deciding what counts as an object is domain
+   * knowledge, and a plugin submits its conclusion through
+   * {@link Api.importPropose} like any other source.
+   */
+  fsWalk(under: string | null): Promise<Entry[]>;
   fileUrl(path: string): Promise<string>;
   hashOf(path: string): Promise<string>;
   historyOf(id: ObjectId): Promise<HistoryEntry[]>;
@@ -249,35 +269,18 @@ export function methodName(listed: string): string {
   );
 }
 
-/** What a scan did. */
-export interface Scanned {
-  readonly added: number;
-  readonly removed: number;
-  readonly moved: number;
-  readonly touched: number;
-  readonly objects_created: number;
-  /** Paths that might be moves, waiting on a hash to say. */
-  readonly candidates: number;
-  /** Paths that could not be read. A hole in the library, not an absence. */
-  readonly unreadable: readonly string[];
-}
-
 /**
  * What only the application may ask for.
  *
- * Separate from {@link Api} on purpose: a scan writes directly, and plugins
- * are handed an `Api` built from the allowlist with no way to name these.
- * Mirrors `plugin::commands::APP_ONLY`.
+ * Empty today, and kept because the distinction is real: `plugin::commands`
+ * holds the same empty list for the same reason. It held a scan command until
+ * scanning turned out to be domain knowledge the core has none of.
  */
-export interface AppApi {
-  libraryScan(): Promise<Scanned>;
-}
+export type AppApi = Record<string, never>;
 
 /** Build the surface the application's own UI uses. */
-export function appApiFor(invoke: Invoke): AppApi {
-  return {
-    libraryScan: () => invoke(handlerName("library.scan"), {}) as Promise<Scanned>,
-  };
+export function appApiFor(_invoke: Invoke): AppApi {
+  return {};
 }
 
 /** Build the API a plugin is handed. */
@@ -297,6 +300,7 @@ export function apiFor(invoke: Invoke): Api {
     termResolve: (vocab, surface) => call("term.resolve", { vocab, surface }),
     termList: (vocab) => call("term.list", { vocab }),
     archiveList: (path) => call("archive.list", { path }),
+    fsWalk: (under) => call("fs.walk", { under }),
     fileUrl: (path) => call("file.url", { path }),
     hashOf: (path) => call("hash.of", { path }),
     historyOf: (id) => call("history.of", { id }),

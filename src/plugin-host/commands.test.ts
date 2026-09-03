@@ -167,48 +167,31 @@ describe("calling", () => {
 });
 
 describe("the app's own surface is not the plugin's", () => {
-  test("APP_ONLY parses to something", () => {
-    const names = appOnlyCommands();
-
-    expect(names.length).toBeGreaterThan(0);
-    expect(names).toContain("library.scan");
+  test("APP_ONLY is empty, and that is deliberate", () => {
+    // It held a scan command until scanning turned out to be domain knowledge
+    // the core has none of. The list stays because the distinction is real —
+    // a file dialog or a network fetch will need it — but nothing needs it
+    // today, and an empty list is the honest state.
+    expect(appOnlyCommands()).toEqual([]);
+    expect(appApiFor(async () => undefined)).toEqual({});
   });
 
-  test("the two lists do not overlap", () => {
-    // A command on both would make "who may call this" a question with two
-    // answers, which is the confusion the split exists to remove.
-    const plugin = new Set(allowedCommands());
-
-    for (const app of appOnlyCommands()) {
-      expect(plugin.has(app), `${app} is on both lists`).toBe(false);
-    }
-  });
-
-  test("no app-only command is reachable from a plugin api", () => {
-    // The point of the split: a plugin handed an Api cannot name a scan.
+  test("scanning is not reachable from any plugin api", () => {
+    // The capability did not move to another list. It stopped existing: a
+    // plugin walks with fsWalk and submits with importPropose instead.
     const api = apiFor(async () => undefined) as unknown as Record<string, unknown>;
 
-    for (const app of appOnlyCommands()) {
-      expect(api[methodName(app)], `${app} leaked into the plugin api`).toBeUndefined();
-    }
+    expect(api["libraryScan"]).toBeUndefined();
+    expect(typeof api["fsWalk"]).toBe("function");
+    expect(typeof api["importPropose"]).toBe("function");
   });
 
-  test("every app-only command has a method on the app api", () => {
-    const app = appApiFor(async () => undefined) as unknown as Record<string, unknown>;
-    const missing = appOnlyCommands()
-      .map(methodName)
-      .filter((method) => typeof app[method] !== "function");
+  test("what fs.walk returns is facts, not conclusions", () => {
+    // The whole point of the split. If this ever grew a field saying what an
+    // entry means, the core would be back to deciding.
+    const listed = allowedCommands();
 
-    expect(missing).toEqual([]);
-  });
-
-  test("the app api invokes the handler name for its command", () => {
-    const invoke = vi.fn((_command: string, _args: Record<string, unknown>) =>
-      Promise.resolve(undefined as unknown),
-    );
-
-    void appApiFor(invoke).libraryScan();
-
-    expect(invoke).toHaveBeenCalledWith("library_scan", {});
+    expect(listed).toContain("fs.walk");
+    expect(listed).not.toContain("library.scan");
   });
 });

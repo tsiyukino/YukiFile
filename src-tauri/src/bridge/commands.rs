@@ -291,10 +291,14 @@ pub struct MountView {
 
 /// Bring the library up to date with the disk.
 ///
-/// On [`crate::plugin::commands::APP_ONLY`] rather than the plugin list: this
-/// writes directly, and a plugin that could do that is what change sets exist
-/// to prevent. A person pressing a button is a different thing from a plugin
-/// deciding to.
+/// No longer a command. Deciding what counts as an object is domain knowledge
+/// -- one product in a VRChat library is a folder, in a library of papers it
+/// is a file -- and `docs.yml` says the core has none. A plugin walks with
+/// `fs.walk` and submits with `import.propose` instead.
+///
+/// Kept as a function because the tests that exercise it still describe how a
+/// scan behaves, and because a scanning plugin needing Rust-side help would
+/// start here rather than from nothing.
 ///
 /// The whole scan runs in one transaction. Half a scan is a library whose
 /// paths describe a disk that never existed.
@@ -429,6 +433,70 @@ pub struct SummaryView {
     pub path: Option<String>,
     /// `file` or `folder`, when it has a location.
     pub kind: Option<String>,
+}
+
+
+/// What is on disk under a path in the library.
+///
+/// Facts only: where an entry is, whether it is a file or a folder, how big,
+/// when it changed. Nothing here decides what any of it means.
+///
+/// # Why this exists rather than a scan command
+///
+/// `docs.yml` says the core knows nothing about what it stores, and what
+/// counts as an object is exactly that kind of knowledge. In a VRChat library
+/// `Clothing/AW KLASSIK MAID` is one product and the forty files inside it are
+/// its contents; in a library of papers each PDF is its own object; in a
+/// library of music the album folder is. Those are three different answers to
+/// one question, and the core has no business preferring one.
+///
+/// So a plugin walks, decides, and submits through `import.propose` — the same
+/// path an AI import or another machine's export takes. The core supplies the
+/// observation and reviews the conclusion.
+pub fn fs_walk_in(
+    library: &Library,
+    under: Option<String>,
+) -> Result<Vec<EntryView>, BridgeError> {
+    // An empty argument means the library root. Anything else is resolved the
+    // way every other path is, so a plugin cannot walk the disk.
+    let root = match under.as_deref().filter(|path| !path.is_empty()) {
+        Some(path) => library.resolve(path)?,
+        None => library.root().to_path_buf(),
+    };
+
+    let walked = crate::scan::walk::walk(&root);
+
+    for trouble in &walked.trouble {
+        log::warn!("cannot read {}", trouble.path.display());
+    }
+
+    Ok(walked
+        .entries
+        .iter()
+        .filter(|entry| !entry.path.split('/').any(|segment| segment == ".yukifile"))
+        .map(|entry| EntryView {
+            path: entry.path.clone(),
+            kind: match entry.kind {
+                crate::scan::walk::Kind::Folder => "folder".to_string(),
+                crate::scan::walk::Kind::File => "file".to_string(),
+            },
+            size: entry.size,
+            mtime: entry.mtime,
+        })
+        .collect())
+}
+
+/// One entry on disk.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct EntryView {
+    /// Relative to the walk root, with `/` separators on every platform.
+    pub path: String,
+    /// `file` or `folder`.
+    pub kind: String,
+    /// Size in bytes. Absent for a folder.
+    pub size: Option<u64>,
+    /// Seconds since the Unix epoch, when the filesystem reports one.
+    pub mtime: Option<i64>,
 }
 
 
@@ -644,15 +712,6 @@ pub fn mount_order(library: State<'_, Library>) -> Result<Vec<MountView>, Bridge
 }
 
 
-/// Bring the library up to date with the disk.
-#[tauri::command]
-pub fn library_scan(
-    library: State<'_, Library>,
-    registry: State<'_, Registry>,
-) -> Result<ScanView, BridgeError> {
-    library_scan_in(&library, Some(&registry))
-}
-
 
 /// A name and a path for each of a page of objects.
 #[tauri::command]
@@ -730,6 +789,16 @@ pub fn asset_url(resolved: &std::path::Path) -> String {
         .collect();
 
     format!("asset://localhost/{encoded}")
+}
+
+
+/// What is on disk under a path in the library.
+#[tauri::command]
+pub fn fs_walk(
+    library: State<'_, Library>,
+    under: Option<String>,
+) -> Result<Vec<EntryView>, BridgeError> {
+    fs_walk_in(&library, under)
 }
 
 

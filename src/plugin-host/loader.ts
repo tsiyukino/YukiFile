@@ -49,8 +49,8 @@ export type Resolve = (specifier: string, plugin: string) => Promise<unknown>;
 
 /** A module a manifest asked for, and where it was asked for. */
 export interface Needed {
-  /** `panel` or `viewer` — the slots whose value is a module. */
-  readonly slot: "panel" | "viewer";
+  /** Which kind of module this is. */
+  readonly slot: "panel" | "viewer" | "library-action";
   /** The property whose region it renders in. */
   readonly property: string;
   readonly specifier: string;
@@ -96,6 +96,16 @@ export function modulesOf(manifest: Manifest): Needed[] {
 
   collect("panel", manifest.contributes?.panels);
   collect("viewer", manifest.contributes?.viewers);
+
+  // Not keyed by property, so it does not go through `collect`. A library
+  // action belongs to the library rather than to any object, which is the
+  // whole reason it is declared differently.
+  const actions = manifest.contributes?.library_action_module;
+  if (actions && !seen.has(actions)) {
+    seen.add(actions);
+    needed.push({ slot: "library-action", property: "", specifier: actions });
+  }
+
   return needed;
 }
 

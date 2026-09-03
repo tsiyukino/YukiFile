@@ -22,14 +22,13 @@ import { useEffect, useState } from "react";
 
 import {
   apiFor,
-  appApiFor,
-  type AppApi,
   type Api,
   type FlatObject,
   type ObjectId,
 } from "../plugin-host/commands.js";
 import { loadAll, type Loaded } from "../plugin-host/loader.js";
 import type { Mount } from "../plugin-host/slots.js";
+import { libraryAction } from "../plugin-host/panel.js";
 import type { Manifest } from "../plugin-host/types.js";
 import { invoke } from "./invoke.js";
 import { ObjectList } from "./ObjectList.js";
@@ -37,14 +36,6 @@ import { ObjectPage } from "./ObjectPage.js";
 
 /** The API every panel is handed, wired to the real Tauri bridge. */
 export const api: Api = apiFor(invoke);
-
-/**
- * What the application itself may ask for.
- *
- * Held apart from `api` because a scan writes directly, and a plugin that
- * could do that is what change sets exist to prevent. Panels never see this.
- */
-export const appApi: AppApi = appApiFor(invoke);
 
 /** What the shell gathers before a page can draw. */
 export interface Context {
@@ -127,8 +118,10 @@ export function App(): React.JSX.Element {
       <Stack padding="normal" gap="condensed">
         <Heading>Yukifile</Heading>
         <Text>This library holds no objects yet.</Text>
-        <ScanButton
-          onDone={() => {
+        <LibraryActions
+          plugins={context.plugins}
+          loaded={context.loaded}
+          onChanged={() => {
             setChosen(undefined);
             setGeneration((n) => n + 1);
           }}
@@ -141,8 +134,10 @@ export function App(): React.JSX.Element {
     <PageLayout>
       <PageLayout.Pane position="start" width="medium">
         <Stack gap="condensed">
-          <ScanButton
-            onDone={() => {
+          <LibraryActions
+            plugins={context.plugins}
+            loaded={context.loaded}
+            onChanged={() => {
               setChosen(undefined);
               setGeneration((n) => n + 1);
             }}
@@ -170,46 +165,81 @@ export function App(): React.JSX.Element {
 }
 
 /**
- * Look at the disk.
+ * What the installed plugins can do to the library as a whole.
  *
- * `docs.yml` says network access happens when the user presses a button; this
- * is the same rule applied to the filesystem. A scan is not on a timer and not
- * something a plugin can trigger.
+ * Scanning lives here rather than in the core: deciding what counts as an
+ * object is domain knowledge, and `docs.yml` says the core has none. A folder
+ * library, a VRChat library and a library of papers give three different
+ * answers, so the answer arrives as a plugin.
  *
- * `onDone` clears the gathered context, which makes the shell fetch again.
- * Refetching rather than merging is the honest thing after a scan: it may have
- * created objects, moved paths and removed others, and reconstructing that
- * here would be a second implementation of what the scan already decided.
+ * A library with no such plugin installed can still be filled by hand. It just
+ * cannot be filled by walking a disk, because nothing has said what walking
+ * one should produce.
  */
-export function ScanButton({ onDone }: { onDone: () => void }): React.JSX.Element {
-  const [running, setRunning] = useState(false);
+export function LibraryActions({
+  plugins,
+  loaded,
+  onChanged,
+}: {
+  readonly plugins: readonly Manifest[];
+  readonly loaded: readonly Loaded[];
+  readonly onChanged: () => void;
+}): React.JSX.Element | null {
+  const [running, setRunning] = useState<string | undefined>(undefined);
   const [result, setResult] = useState<string | undefined>(undefined);
 
-  const scan = (): void => {
-    setRunning(true);
+  const offered = libraryActionsOf(plugins);
+  if (offered.length === 0) return null;
+
+  const run = (plugin: string, action: string): void => {
+    setRunning(action);
     setResult(undefined);
 
-    appApi
-      .libraryScan()
-      .then((scanned) => {
-        setResult(
-          `found ${scanned.added} ${scanned.added === 1 ? "path" : "paths"}` +
-            (scanned.removed > 0 ? `, ${scanned.removed} gone` : "") +
-            (scanned.moved > 0 ? `, ${scanned.moved} moved` : ""),
-        );
-        onDone();
+    const owner = loaded.find((entry) => entry.manifest.id === plugin);
+    const specifier = plugins.find((p) => p.id === plugin)?.contributes
+      ?.library_action_module;
+    const fn = specifier ? libraryAction(owner?.modules.get(specifier)) : undefined;
+
+    if (!fn) {
+      setResult(`${plugin} could not be loaded`);
+      setRunning(undefined);
+      return;
+    }
+
+    fn({ api, action })
+      .then((outcome) => {
+        setResult(outcome.summary);
+        if (outcome.changed) onChanged();
       })
       .catch((error: unknown) => setResult(describe(error)))
-      .finally(() => setRunning(false));
+      .finally(() => setRunning(undefined));
   };
 
   return (
     <Stack direction="horizontal" gap="condensed" align="center">
-      <Button onClick={scan} disabled={running}>
-        {running ? "Scanning…" : "Scan this folder"}
-      </Button>
+      {offered.map(({ plugin, action }) => (
+        <Button
+          key={`${plugin}:${action}`}
+          disabled={running !== undefined}
+          onClick={() => run(plugin, action)}
+        >
+          {running === action ? `${action}…` : action}
+        </Button>
+      ))}
       {result && <Text size="small">{result}</Text>}
     </Stack>
+  );
+}
+
+/** Every library action the installed plugins offer. */
+export function libraryActionsOf(
+  plugins: readonly Manifest[],
+): Array<{ plugin: string; action: string }> {
+  return plugins.flatMap((plugin) =>
+    (plugin.contributes?.library_actions ?? []).map((action) => ({
+      plugin: plugin.id,
+      action,
+    })),
   );
 }
 

@@ -87,8 +87,23 @@ impl Document {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ObjectRecord {
     /// Locations, relative to the library root. Empty for a grouping.
+    ///
+    /// Plain strings, and a location whose kind matters says so in
+    /// [`Self::folders`]. Two fields rather than a list of structs because a
+    /// path is what matching reads and the overwhelming majority of documents
+    /// name files: making every writer spell out a kind to say the ordinary
+    /// thing is a tax on the common case.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub paths: Vec<String>,
+
+    /// Which of [`Self::paths`] are folders.
+    ///
+    /// An import can name a path that is not on disk yet, so the core cannot
+    /// look to find out — and it is a claim rather than an observation either
+    /// way. Whoever wrote the document knows: a plugin that walked the disk
+    /// saw it, and an export is repeating what the library already recorded.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub folders: Vec<String>,
     /// A stable name for this object across imports.
     ///
     /// Paths are the first thing matched on, but an import can name an object

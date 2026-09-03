@@ -88,6 +88,30 @@ pub struct Contributes {
     /// Property to the list columns it offers.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub columns: BTreeMap<String, Vec<String>>,
+
+    /// Actions that belong to the library rather than to any object.
+    ///
+    /// Scanning, importing and exporting are the shape: they act on the
+    /// library as a whole, and there is no object to hang them on. A fresh
+    /// library has no objects at all, so an action keyed to a property would
+    /// be unreachable exactly when it is most needed.
+    ///
+    /// Deliberately not keyed by property, which means it skips the scoping
+    /// check every other contribution goes through. That check asks "does this
+    /// plugin have a relationship with the region it wants to draw in", and a
+    /// library action draws in no region — there is nothing to be scoped to.
+    /// The permission question it answers instead is whether the plugin is
+    /// installed at all.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub library_actions: Vec<String>,
+
+    /// The module holding this plugin's library actions.
+    ///
+    /// One module for all of them rather than one per action: they share
+    /// whatever the plugin knows, and a scan and an export of the same library
+    /// are two entry points into one body of knowledge.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub library_action_module: String,
 }
 
 /// What a plugin needs from whoever provides it.
@@ -238,6 +262,13 @@ impl Manifest {
         // `.js` after a build, a hashed name after bundling -- and a manifest
         // that spells one of those out has to be edited when the build
         // changes.
+        if names_an_extension(&self.contributes.library_action_module) {
+            return Err(ManifestError::ExtensionInSpecifier {
+                slot: "library action",
+                specifier: self.contributes.library_action_module.clone(),
+            });
+        }
+
         for (slot, modules) in [
             ("panel", &self.contributes.panels),
             ("viewer", &self.contributes.viewers),

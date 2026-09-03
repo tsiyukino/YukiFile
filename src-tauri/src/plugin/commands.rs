@@ -109,6 +109,11 @@ pub const ALLOWED: &[Command] = &[
                  a third of the seed library is visible",
     },
     Command {
+        name: "fs.walk",
+        effect: Effect::Read,
+        reason: "what is on disk is a fact; what counts as an object is not",
+    },
+    Command {
         name: "file.url",
         effect: Effect::Read,
         reason: "a viewer renders a file it is never given the bytes of",
@@ -135,27 +140,20 @@ pub const ALLOWED: &[Command] = &[
 ///
 /// A second list, and the reason it is second rather than more rows in
 /// [`ALLOWED`]: these are things a *person* does through the application's own
-/// interface, not things a plugin may do on their behalf.
+/// interface, not things a plugin may do on their behalf. `docs.yml` draws the
+/// same line for the network — access happens when the user presses a button,
+/// and a plugin is not a button.
 ///
-/// Scanning is the case that forced the split. It writes directly — it creates
-/// objects and records where they sit — which [`ALLOWED`] forbids, and rightly:
-/// a plugin quietly changing data is the failure change sets exist to prevent.
-/// But routing a scan through review is not the answer either. A scan importing
-/// 1518 objects is not 1518 edits; it is those paths existing for the first
-/// time, and asking a person to approve each would make the first run of the
-/// application its worst experience.
+/// Empty today. It held `library.scan` until scanning turned out to be the
+/// wrong thing for the core to do at all: deciding what counts as an object is
+/// domain knowledge, and `docs.yml` says the core has none. A plugin now walks
+/// through `fs.walk` and submits through `import.propose`, so the capability
+/// that needed this list stopped existing rather than moving.
 ///
-/// So the distinction is who is asking. `docs.yml` already draws this line for
-/// the network: access happens when the user presses a button, and a plugin is
-/// not a button. This list is the same rule applied to the filesystem.
-///
-/// Everything here is reachable only from the application's own UI. Plugins
-/// receive an api built from [`ALLOWED`] and have no way to name these.
-pub const APP_ONLY: &[Command] = &[Command {
-    name: "library.scan",
-    effect: Effect::Write,
-    reason: "a library nobody can put anything into is not a library",
-}];
+/// The list stays because the distinction is real and the next thing to need
+/// it — a file dialog, a network fetch — is a question of when rather than
+/// whether.
+pub const APP_ONLY: &[Command] = &[];
 
 /// Whether a name is on either list.
 pub fn is_known(name: &str) -> bool {
@@ -293,10 +291,26 @@ mod tests {
     }
 
     #[test]
-    fn both_lists_are_reachable_by_name() {
+    fn a_listed_command_is_known_and_nothing_else_is() {
         assert!(is_known("archive.list"));
-        assert!(is_known("library.scan"));
         assert!(!is_known("fs.write"));
-        assert!(!is_allowed("library.scan"), "an app command leaked onto the plugin list");
+    }
+
+    #[test]
+    fn scanning_is_not_a_capability_any_more() {
+        // It was on APP_ONLY until deciding what counts as an object turned
+        // out to be domain knowledge the core has none of. A plugin walks
+        // through fs.walk and submits through import.propose instead, so this
+        // is not a command that moved -- it is one that stopped existing.
+        assert!(!is_known("library.scan"));
+        assert!(is_allowed("fs.walk"));
+        assert!(is_allowed("import.propose"));
+    }
+
+    #[test]
+    fn walking_reads_and_does_not_write() {
+        // The split that makes the rest of it work: the core observes, the
+        // plugin concludes, and a person reviews the conclusion.
+        assert_eq!(lookup("fs.walk").expect("listed").effect, Effect::Read);
     }
 }

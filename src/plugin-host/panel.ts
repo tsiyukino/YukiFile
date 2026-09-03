@@ -71,3 +71,37 @@ export function panelComponent(module: unknown): Panel | undefined {
   }
   return undefined;
 }
+
+/** What a library action is given. */
+export interface LibraryActionProps {
+  /** The commands this plugin may call. Built from the allowlist. */
+  readonly api: Api;
+  /** Which of the plugin's library actions was chosen. */
+  readonly action: string;
+}
+
+/** What a library action reports when it finishes. */
+export interface ActionResult {
+  /** One line for a person. */
+  readonly summary: string;
+  /** True when the library changed and callers should re-read it. */
+  readonly changed: boolean;
+}
+
+/** A library action, once it has loaded. */
+export type LibraryAction = (props: LibraryActionProps) => Promise<ActionResult>;
+
+/**
+ * The library action in a loaded module, if there is one.
+ *
+ * A function rather than a component: a scan has no UI of its own, it does
+ * work and reports. Checked rather than trusted, for the same reason
+ * {@link panelComponent} checks — a module whose default export is a number
+ * is a plugin's mistake, not a reason to stop.
+ */
+export function libraryAction(module: unknown): LibraryAction | undefined {
+  if (typeof module !== "object" || module === null) return undefined;
+
+  const exported = (module as { runLibraryAction?: unknown }).runLibraryAction;
+  return typeof exported === "function" ? (exported as LibraryAction) : undefined;
+}

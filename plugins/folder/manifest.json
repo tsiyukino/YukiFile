@@ -1,0 +1,7 @@
+{
+  "id": "yukifile.folder",
+  "contributes": {
+    "library_actions": ["scan"],
+    "library_action_module": "./action"
+  }
+}

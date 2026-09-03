@@ -102,6 +102,26 @@ pub fn import_at(
 
         for path in &record.paths {
             by_path.insert(path.as_str(), object);
+
+            // Record where it sits, not just remember it for edge resolution.
+            // Until scanning moved into a plugin, paths reached the store
+            // through the scanner and an import only ever matched on them --
+            // so an imported object came back with no location at all, which
+            // is a library that cannot say where anything is.
+            //
+            // The document says which paths are folders. The core cannot look
+            // and find out -- an import may name a path that is not on disk
+            // yet -- and whoever wrote the document does know.
+            if !path.is_empty() {
+                let kind = if record.folders.contains(path) {
+                    crate::scan::walk::Kind::Folder
+                } else {
+                    crate::scan::walk::Kind::File
+                };
+                crate::store::paths::record(
+                    connection, object, path, kind, None, None, None,
+                )?;
+            }
         }
 
         for (field_path, value) in &record.values {
@@ -435,12 +455,49 @@ mod tests {
     }
 
     #[test]
-    fn an_imported_object_gets_no_location() {
-        // A document carries values, not disk state. It does not say whether a
-        // path is a file or a folder, and guessing would leave the next scan
-        // arguing with a made-up answer.
+    fn an_imported_object_is_recorded_where_it_sits() {
+        // This asserted the opposite until scanning moved into a plugin. The
+        // reasoning was that a document does not say whether a path is a file
+        // or a folder -- true at the time, and it made an import the one way
+        // into the library that could not say where anything is.
         let (connection, mut values) = library();
-        let doc = document(vec![record("Clothing/not-here-yet", &[("title", "x")])]);
+        let doc = document(vec![record("Clothing/outfit.zip", &[("title", "x")])]);
+
+        import_now(&connection, &mut values, &doc, "import");
+
+        let recorded: String = connection
+            .query_row("SELECT path FROM object_paths", [], |row| row.get(0))
+            .expect("one location");
+        assert_eq!(recorded, "Clothing/outfit.zip");
+    }
+
+    #[test]
+    fn a_document_says_which_of_its_paths_are_folders() {
+        // The core cannot look: an import may name a path that is not on disk
+        // yet. Whoever wrote the document knows, so the document carries it.
+        let (connection, mut values) = library();
+        let mut folder = record("Clothing", &[("title", "clothes")]);
+        folder.folders.push("Clothing".to_string());
+        let doc = document(vec![folder]);
+
+        import_now(&connection, &mut values, &doc, "import");
+
+        let kind: String = connection
+            .query_row("SELECT kind FROM object_paths", [], |row| row.get(0))
+            .expect("one location");
+        assert_eq!(kind, "folder");
+    }
+
+    #[test]
+    fn a_grouping_still_gets_no_location() {
+        // An object with no paths is a grouping, which is a legitimate thing
+        // to be. Inventing a location for it would put it in every listing of
+        // things on disk.
+        let (connection, mut values) = library();
+        let mut grouping = record("", &[("title", "my collection")]);
+        grouping.paths.clear();
+        grouping.id = Some("collection".into());
+        let doc = document(vec![grouping]);
 
         import_now(&connection, &mut values, &doc, "import");
 

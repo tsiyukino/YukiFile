@@ -60,6 +60,23 @@ export interface Contributes {
 
   /** Property to the list columns it offers. */
   readonly columns?: Readonly<Record<string, readonly string[]>>;
+
+  /**
+   * Actions that belong to the library rather than to any object.
+   *
+   * Scanning, importing and exporting act on the library as a whole. A fresh
+   * library has no objects, so an action keyed to a property would be
+   * unreachable exactly when it is most needed.
+   */
+  readonly library_actions?: readonly string[];
+
+  /**
+   * The module holding this plugin's library actions.
+   *
+   * One module for all of them: a scan and an export of the same library are
+   * two entry points into one body of knowledge.
+   */
+  readonly library_action_module?: string;
 }
 
 /**
