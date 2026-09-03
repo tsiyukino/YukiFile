@@ -665,6 +665,74 @@ pub fn object_summaries(
 }
 
 
+/// A URL a viewer can render, for one file.
+///
+/// The plugin never sees the bytes. It is handed a URL the webview knows how
+/// to fetch, and the data goes straight from disk into a `<canvas>`, an
+/// `<img>` or a PDF renderer without passing through plugin JavaScript.
+///
+/// That distinction is the whole reason this is not `file.bytes`. A command
+/// returning contents would let any installed plugin read every file in the
+/// library, and a plugin that can read and can also call `import.propose` can
+/// encode what it read into what it proposes. Reading plus any outbound
+/// channel is an exfiltration channel.
+///
+/// # One file at a time
+///
+/// The asset protocol starts with an empty scope, and this grants exactly the
+/// file asked for. A plugin cannot guess a URL for a file it never asked
+/// about, because an ungranted path is refused by the protocol itself.
+///
+/// The grants accumulate for the life of the process: Tauri's scope has no
+/// revoke, so a file viewed once stays reachable until the application
+/// restarts. That is a real limit rather than a detail, and it is written
+/// here instead of being left for somebody to discover.
+#[tauri::command]
+pub fn file_url(
+    app: tauri::AppHandle,
+    library: State<'_, Library>,
+    path: String,
+) -> Result<String, BridgeError> {
+    use tauri::Manager;
+
+    // The same confinement every other path goes through. Without it the
+    // asset protocol would happily serve whatever the plugin named.
+    let resolved = library.resolve(&path)?;
+
+    app.asset_protocol_scope()
+        .allow_file(&resolved)
+        .map_err(|error| BridgeError::Unreadable(error.to_string()))?;
+
+    log::debug!("granted asset access to {}", resolved.display());
+    Ok(asset_url(&resolved))
+}
+
+/// The URL the webview fetches an allowed file from.
+///
+/// Split out so the two halves can be told apart: granting needs a running
+/// app, spelling a URL does not. The spelling is what a viewer receives, so
+/// it is the half worth a test.
+pub fn asset_url(resolved: &std::path::Path) -> String {
+    // Percent-encoded whole, separators included. A library path holds
+    // spaces, `#` and `?` -- `.AASHAREE/CLOTHS/Cross Maid #2.pdf` is an
+    // ordinary name -- and a `#` left raw truncates the URL at the fragment,
+    // so the viewer would ask for a file whose name stops early.
+    let encoded: String = resolved
+        .display()
+        .to_string()
+        .bytes()
+        .map(|byte| match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' | b'/' => {
+                (byte as char).to_string()
+            }
+            other => format!("%{other:02X}"),
+        })
+        .collect();
+
+    format!("asset://localhost/{encoded}")
+}
+
+
 /// Several objects at once, for a column rendering across a page.
 #[tauri::command]
 pub fn object_list(

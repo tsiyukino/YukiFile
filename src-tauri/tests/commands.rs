@@ -1004,3 +1004,40 @@ fn a_page_of_summaries_is_one_pass_over_the_paths_table() {
         "some rows came back without a name"
     );
 }
+
+// --- viewing ------------------------------------------------------------
+
+#[test]
+fn an_asset_url_encodes_what_a_filename_may_hold() {
+    // Library paths hold spaces, `#` and `?`. A `#` left raw truncates the
+    // URL at the fragment, so the viewer asks for a file whose name stops
+    // early -- and gets a 404 that reads like a missing file.
+    use yukifile::bridge::commands::asset_url;
+
+    let url = asset_url(std::path::Path::new("/lib/Cross Maid #2.pdf"));
+
+    assert!(!url.contains(' '), "a space survived: {url}");
+    assert!(!url.contains('#'), "a fragment marker survived: {url}");
+    assert!(url.starts_with("asset://localhost/"));
+}
+
+#[test]
+fn an_asset_url_keeps_its_separators() {
+    // Encoding the slashes too would turn a path into one long filename.
+    use yukifile::bridge::commands::asset_url;
+
+    let url = asset_url(std::path::Path::new("/lib/Clothing/outfit.pdf"));
+
+    assert!(url.contains("/lib/Clothing/outfit.pdf"), "{url}");
+}
+
+#[test]
+fn a_non_ascii_filename_is_encoded_rather_than_dropped() {
+    // The seed library is bilingual: 桔梗 and マヌカ are ordinary names.
+    use yukifile::bridge::commands::asset_url;
+
+    let url = asset_url(std::path::Path::new("/lib/桔梗.pdf"));
+
+    assert!(url.is_ascii(), "the URL is not transmissible: {url}");
+    assert!(url.contains("%"), "nothing was encoded: {url}");
+}

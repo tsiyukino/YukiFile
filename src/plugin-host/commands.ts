@@ -208,6 +208,16 @@ export interface Api {
   termResolve(vocab: string, surface: string): Promise<string | null>;
   termList(vocab: string): Promise<Term[]>;
   archiveList(path: string): Promise<ArchiveMember[]>;
+  /**
+   * A URL a viewer can render, for one file.
+   *
+   * Not the bytes. The data goes from disk into a `<canvas>` or `<img>`
+   * without passing through plugin JavaScript, so a plugin that can render a
+   * file still cannot read it — which matters because a plugin that can read
+   * and can also call `importPropose` can encode what it read into what it
+   * proposes.
+   */
+  fileUrl(path: string): Promise<string>;
   hashOf(path: string): Promise<string>;
   historyOf(id: ObjectId): Promise<HistoryEntry[]>;
   importPropose(label: string, document: string): Promise<Proposal>;
@@ -287,6 +297,7 @@ export function apiFor(invoke: Invoke): Api {
     termResolve: (vocab, surface) => call("term.resolve", { vocab, surface }),
     termList: (vocab) => call("term.list", { vocab }),
     archiveList: (path) => call("archive.list", { path }),
+    fileUrl: (path) => call("file.url", { path }),
     hashOf: (path) => call("hash.of", { path }),
     historyOf: (id) => call("history.of", { id }),
     importPropose: (label, document) => call("import.propose", { label, document }),

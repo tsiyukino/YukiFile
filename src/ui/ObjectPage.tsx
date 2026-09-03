@@ -32,6 +32,7 @@ import type { Loaded } from "../plugin-host/loader.js";
 import type { Manifest } from "../plugin-host/types.js";
 import { PropertyRegion, type ResolvedPanel } from "./PropertyRegion.js";
 import { SourceList } from "./SourceList.js";
+import { Viewer } from "./Viewer.js";
 
 /** Fields the page draws itself rather than leaving to a region. */
 const HEADLINE = "title";
@@ -108,6 +109,14 @@ export function ObjectPage({
           ))}
         </Stack>
       )}
+
+      <Viewer
+        api={api}
+        object={object}
+        plugins={plugins}
+        loaded={loaded}
+        mounts={mounts}
+      />
 
       {shown.map((region) => (
         <PropertyRegion

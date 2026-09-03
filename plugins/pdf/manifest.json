@@ -1,0 +1,15 @@
+{
+  "id": "yukifile.pdf",
+  "contributes": {
+    "properties": ["pdf"],
+    "file_types": {
+      "pdf": ["pdf"]
+    },
+    "panels": {
+      "pdf": "./panel"
+    },
+    "viewers": {
+      "pdf": "./viewer"
+    }
+  }
+}

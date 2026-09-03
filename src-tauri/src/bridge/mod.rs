@@ -63,6 +63,7 @@ macro_rules! register_commands {
             $crate::bridge::commands::term_resolve,
             $crate::bridge::commands::term_list,
             $crate::bridge::commands::archive_list,
+            $crate::bridge::commands::file_url,
             $crate::bridge::commands::hash_of,
             $crate::bridge::commands::history_of,
             $crate::bridge::commands::import_propose,

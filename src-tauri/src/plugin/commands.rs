@@ -109,6 +109,11 @@ pub const ALLOWED: &[Command] = &[
                  a third of the seed library is visible",
     },
     Command {
+        name: "file.url",
+        effect: Effect::Read,
+        reason: "a viewer renders a file it is never given the bytes of",
+    },
+    Command {
         name: "hash.of",
         effect: Effect::Read,
         reason: "a plugin identifying duplicates needs the same hash the core uses",

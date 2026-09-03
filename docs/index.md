@@ -42,6 +42,9 @@
   allowlist cannot enforce on its own.
 - [2026-09-02 a leading dot does not hide anything](decisions/2026-09-02_dot-prefixed-entries-are-not-hidden.md)
   — why the scan ignores the Unix convention, and what it would have cost.
+- [2026-09-03 a viewer gets a URL, not bytes](decisions/2026-09-03_a-viewer-gets-a-url-not-bytes.md)
+  — why rendering a file and reading it are separate capabilities, and what
+  the split still does not solve.
 
 ## Reference
 
@@ -65,6 +68,8 @@ Generated per module from the source.
   point, and the one door to the Tauri runtime.
 - [object-page.md](reference/object-page.md) — the framework's object page,
   the panel contract, and how a failing plugin stays contained.
+- [pdf-plugin.md](reference/pdf-plugin.md) — the viewer slot's first consumer,
+  and how a plugin renders a file it cannot read.
 
 ## Seed
 
