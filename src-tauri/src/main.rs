@@ -53,7 +53,33 @@ fn library_root() -> Result<PathBuf, String> {
     if let Some(given) = std::env::args().nth(1) {
         return Ok(PathBuf::from(given));
     }
-    std::env::current_dir().map_err(|error| format!("no working directory: {error}"))
+
+    let here =
+        std::env::current_dir().map_err(|error| format!("no working directory: {error}"))?;
+
+    // `tauri dev` runs from `src-tauri/`, so the working directory during
+    // development is the source tree rather than anything a person wants
+    // managed. Scanning it would pull in `target/` and `node_modules/` --
+    // several gigabytes of build output -- which would make the first run of
+    // the application its worst experience.
+    //
+    // Opening a scratch library instead of refusing to start: a GUI that
+    // exits with a message on stderr has, from where the user is sitting,
+    // done nothing at all. A window that opens empty can at least say so.
+    if here.join("Cargo.toml").is_file() || here.join("package.json").is_file() {
+        let scratch = here.join("target").join("scratch-library");
+        std::fs::create_dir_all(&scratch)
+            .map_err(|error| format!("cannot create {}: {error}", scratch.display()))?;
+        eprintln!(
+            "{} is a source tree, so opening {} instead.\n\
+             Pass a folder to open a real library: yukifile <path>",
+            here.display(),
+            scratch.display()
+        );
+        return Ok(scratch);
+    }
+
+    Ok(here)
 }
 
 /// Open the library's database, creating it if this is the first run.

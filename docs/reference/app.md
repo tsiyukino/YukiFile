@@ -90,9 +90,26 @@ shared tokens was the decision, and bypassing the tokens is how they drift.
 ## Building
 
 ```bash
-npm run dev      # tauri dev: vite on 5173, webview pointed at it
-npm run build    # tauri build: vite build, then the release binary
+npm run dev              # vite on 5173, then the window
+npm run dev:lib -- path  # the same, opening a specific library
+npm run build            # vite build, then the release binary
 ```
+
+`cargo run` on its own is **not** enough during development: it starts the
+binary without Vite, and the window points at a dev server that is not there.
+`tauri dev` runs `beforeDevCommand` first, which is what starts Vite.
+
+### Which library opens
+
+The first argument, or the working directory — except when the working
+directory is a source tree, which is what `tauri dev` gives you. Scanning that
+would pull in `target/` and `node_modules/`, several gigabytes of build output,
+so a scratch library under `target/` opens instead and the reason goes to
+stderr.
+
+Opening something rather than refusing to start is deliberate: a GUI that exits
+with a message on stderr has, from where the user is sitting, done nothing at
+all.
 
 Vite uses `strictPort`, so a busy 5173 fails at startup instead of moving to
 another port and leaving the window pointed at nothing.
