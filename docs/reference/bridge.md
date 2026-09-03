@@ -28,6 +28,30 @@ directions fail loudly:
 not a table somebody maintains, so a command cannot be listed under one name
 and implemented under another.
 
+## Two lists, not one
+
+`ALLOWED` is what plugins may call. `APP_ONLY` is what only the application
+itself may call, reachable from its own UI and never from a plugin's `Api`.
+
+The split was forced by a test rather than chosen in advance. `library.scan`
+was written onto `ALLOWED` first, and `no_command_writes_directly` refused it:
+a scan writes objects and paths without review, which the plugin surface
+forbids. Routing a scan through change-set review is not the answer either — a
+scan importing 1518 objects is not 1518 edits, and asking a person to approve
+each would make the first run of the application its worst experience.
+
+So the question is who is asking. `docs.yml` already draws this line for the
+network: access happens when the user presses a button, and a plugin is not a
+button. `APP_ONLY` is the same rule applied to the filesystem.
+
+Both lists are checked the same way. Every `#[tauri::command]` must be on
+exactly one of them, in both directions, and `commands.test.ts` additionally
+asserts that no `APP_ONLY` command is reachable from `apiFor`.
+
+| command        | list     | effect |
+|----------------|----------|--------|
+| `library.scan` | APP_ONLY | Write  |
+
 ## bridge::library
 
 `Library::new(root, connection)` · `resolve(path)` · `with_connection` ·

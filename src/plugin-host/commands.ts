@@ -188,6 +188,37 @@ export function methodName(listed: string): string {
   );
 }
 
+/** What a scan did. */
+export interface Scanned {
+  readonly added: number;
+  readonly removed: number;
+  readonly moved: number;
+  readonly touched: number;
+  readonly objects_created: number;
+  /** Paths that might be moves, waiting on a hash to say. */
+  readonly candidates: number;
+  /** Paths that could not be read. A hole in the library, not an absence. */
+  readonly unreadable: readonly string[];
+}
+
+/**
+ * What only the application may ask for.
+ *
+ * Separate from {@link Api} on purpose: a scan writes directly, and plugins
+ * are handed an `Api` built from the allowlist with no way to name these.
+ * Mirrors `plugin::commands::APP_ONLY`.
+ */
+export interface AppApi {
+  libraryScan(): Promise<Scanned>;
+}
+
+/** Build the surface the application's own UI uses. */
+export function appApiFor(invoke: Invoke): AppApi {
+  return {
+    libraryScan: () => invoke(handlerName("library.scan"), {}) as Promise<Scanned>,
+  };
+}
+
 /** Build the API a plugin is handed. */
 export function apiFor(invoke: Invoke): Api {
   const call = <T>(listed: string, args: Record<string, unknown>): Promise<T> =>

@@ -33,6 +33,9 @@ pub enum Effect {
     Read,
     /// Proposes changes for review. Nothing lands without a person.
     Propose,
+    /// Writes directly. Only ever on [`APP_ONLY`]: a plugin that could write
+    /// without review is the failure change sets exist to prevent.
+    Write,
 }
 
 /// One thing a plugin may ask for.
@@ -117,6 +120,37 @@ pub const ALLOWED: &[Command] = &[
                  document and a person reviews it",
     },
 ];
+
+/// What only the application itself may ask for.
+///
+/// A second list, and the reason it is second rather than more rows in
+/// [`ALLOWED`]: these are things a *person* does through the application's own
+/// interface, not things a plugin may do on their behalf.
+///
+/// Scanning is the case that forced the split. It writes directly — it creates
+/// objects and records where they sit — which [`ALLOWED`] forbids, and rightly:
+/// a plugin quietly changing data is the failure change sets exist to prevent.
+/// But routing a scan through review is not the answer either. A scan importing
+/// 1518 objects is not 1518 edits; it is those paths existing for the first
+/// time, and asking a person to approve each would make the first run of the
+/// application its worst experience.
+///
+/// So the distinction is who is asking. `docs.yml` already draws this line for
+/// the network: access happens when the user presses a button, and a plugin is
+/// not a button. This list is the same rule applied to the filesystem.
+///
+/// Everything here is reachable only from the application's own UI. Plugins
+/// receive an api built from [`ALLOWED`] and have no way to name these.
+pub const APP_ONLY: &[Command] = &[Command {
+    name: "library.scan",
+    effect: Effect::Write,
+    reason: "a library nobody can put anything into is not a library",
+}];
+
+/// Whether a name is on either list.
+pub fn is_known(name: &str) -> bool {
+    is_allowed(name) || APP_ONLY.iter().any(|command| command.name == name)
+}
 
 /// Whether a name is on the list.
 pub fn is_allowed(name: &str) -> bool {
@@ -208,5 +242,51 @@ mod tests {
         // anything needs to know which commands those are without knowing
         // each command.
         assert_eq!(proposing().count(), 1);
+    }
+
+    #[test]
+    fn no_plugin_command_writes_without_review() {
+        // The rule that caught a design error: library.scan was written onto
+        // ALLOWED first, and this refused it. Scanning writes directly, so
+        // either it goes through review -- which would make a first scan 1518
+        // confirmations -- or it is not something a plugin may do. It is the
+        // second.
+        for command in ALLOWED {
+            assert_ne!(
+                command.effect,
+                Effect::Write,
+                "{} writes directly and is on the plugin list",
+                command.name
+            );
+        }
+    }
+
+    #[test]
+    fn the_two_lists_do_not_overlap() {
+        // A command on both would make "who may call this" a question with two
+        // answers, which is the confusion the split exists to remove.
+        for app in APP_ONLY {
+            assert!(
+                !is_allowed(app.name),
+                "{} is on both lists",
+                app.name
+            );
+        }
+    }
+
+    #[test]
+    fn everything_app_only_says_why_it_is_there() {
+        for command in APP_ONLY {
+            assert!(!command.reason.trim().is_empty(), "{} has no reason", command.name);
+            assert!(!command.name.trim().is_empty(), "a command has no name");
+        }
+    }
+
+    #[test]
+    fn both_lists_are_reachable_by_name() {
+        assert!(is_known("archive.list"));
+        assert!(is_known("library.scan"));
+        assert!(!is_known("fs.write"));
+        assert!(!is_allowed("library.scan"), "an app command leaked onto the plugin list");
     }
 }

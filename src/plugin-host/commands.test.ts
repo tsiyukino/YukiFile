@@ -2,7 +2,13 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test, vi } from "vitest";
 
-import { apiFor, handlerName, methodName, type Invoke } from "./commands.js";
+import {
+  apiFor,
+  appApiFor,
+  handlerName,
+  methodName,
+  type Invoke,
+} from "./commands.js";
 
 /**
  * The command names in `plugin::commands::ALLOWED`, read from the Rust source.
@@ -19,7 +25,28 @@ function allowedCommands(): string[] {
 
   const array = source.slice(
     source.indexOf("pub const ALLOWED"),
-    source.indexOf("/// Whether a name is on the list"),
+    source.indexOf("/// What only the application itself may ask for"),
+  );
+
+  return [...array.matchAll(/name:\s*"([^"]+)"/g)].map((match) => match[1] as string);
+}
+
+/**
+ * The command names in `plugin::commands::APP_ONLY`.
+ *
+ * A separate list because these are things a person does through the
+ * application, not things a plugin may do on their behalf. `apiFor` must not
+ * offer them, which is what the test below checks.
+ */
+function appOnlyCommands(): string[] {
+  const source = readFileSync(
+    fileURLToPath(new URL("../../src-tauri/src/plugin/commands.rs", import.meta.url)),
+    "utf8",
+  );
+
+  const array = source.slice(
+    source.indexOf("pub const APP_ONLY"),
+    source.indexOf("/// Whether a name is on either list"),
   );
 
   return [...array.matchAll(/name:\s*"([^"]+)"/g)].map((match) => match[1] as string);
@@ -136,5 +163,52 @@ describe("calling", () => {
     await expect(api.archiveList("../../etc/passwd")).rejects.toMatchObject({
       kind: "outside_library",
     });
+  });
+});
+
+describe("the app's own surface is not the plugin's", () => {
+  test("APP_ONLY parses to something", () => {
+    const names = appOnlyCommands();
+
+    expect(names.length).toBeGreaterThan(0);
+    expect(names).toContain("library.scan");
+  });
+
+  test("the two lists do not overlap", () => {
+    // A command on both would make "who may call this" a question with two
+    // answers, which is the confusion the split exists to remove.
+    const plugin = new Set(allowedCommands());
+
+    for (const app of appOnlyCommands()) {
+      expect(plugin.has(app), `${app} is on both lists`).toBe(false);
+    }
+  });
+
+  test("no app-only command is reachable from a plugin api", () => {
+    // The point of the split: a plugin handed an Api cannot name a scan.
+    const api = apiFor(async () => undefined) as unknown as Record<string, unknown>;
+
+    for (const app of appOnlyCommands()) {
+      expect(api[methodName(app)], `${app} leaked into the plugin api`).toBeUndefined();
+    }
+  });
+
+  test("every app-only command has a method on the app api", () => {
+    const app = appApiFor(async () => undefined) as unknown as Record<string, unknown>;
+    const missing = appOnlyCommands()
+      .map(methodName)
+      .filter((method) => typeof app[method] !== "function");
+
+    expect(missing).toEqual([]);
+  });
+
+  test("the app api invokes the handler name for its command", () => {
+    const invoke = vi.fn((_command: string, _args: Record<string, unknown>) =>
+      Promise.resolve(undefined as unknown),
+    );
+
+    void appApiFor(invoke).libraryScan();
+
+    expect(invoke).toHaveBeenCalledWith("library_scan", {});
   });
 });

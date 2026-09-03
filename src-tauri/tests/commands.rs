@@ -743,3 +743,96 @@ fn a_library_mounting_nothing_has_an_empty_order() {
 
     assert!(mount_order_in(&library).expect("order").is_empty());
 }
+
+// --- scanning -----------------------------------------------------------
+
+#[test]
+fn scanning_finds_what_is_on_disk() {
+    // The command that makes the application usable: without it a library
+    // has no way to learn about anything.
+    let (library, dir) = library();
+    dir.file("a.txt", b"one");
+    dir.file("b.txt", b"two");
+
+    let scanned = library_scan_in(&library, None).expect("scan");
+
+    assert_eq!(scanned.added, 2);
+    assert_eq!(scanned.objects_created, 2);
+}
+
+#[test]
+fn a_scanned_object_can_be_read_back_through_the_page() {
+    // End to end: scan writes it, object.ids finds it, object.flat resolves
+    // it. Each of those was tested alone; this is the first time they are
+    // asked to agree.
+    let (library, dir) = library();
+    dir.file("outfit.zip", b"not really a zip");
+
+    library_scan_in(&library, None).expect("scan");
+
+    let page = object_ids_in(&library, None, 40).expect("ids");
+    assert_eq!(page.total, 1);
+
+    let view = object_flat_in(&library, None, page.ids[0]).expect("flat");
+    assert!(
+        !view.regions.is_empty() || !view.shared.is_empty(),
+        "a scanned object resolved to nothing at all"
+    );
+}
+
+#[test]
+fn scanning_twice_does_not_duplicate_anything() {
+    // The property that makes the button safe to press twice.
+    let (library, dir) = library();
+    dir.file("a.txt", b"one");
+
+    library_scan_in(&library, None).expect("first");
+    let second = library_scan_in(&library, None).expect("second");
+
+    assert_eq!(second.added, 0);
+    assert_eq!(second.objects_created, 0);
+    assert_eq!(object_ids_in(&library, None, 40).expect("ids").total, 1);
+}
+
+#[test]
+fn a_plugins_file_type_reaches_a_scanned_object() {
+    // The core holds the matching and none of the extensions. This is a
+    // manifest's rule reaching an object without the core knowing the plugin.
+    use yukifile::plugin::manifest::Manifest;
+    use yukifile::plugin::registry::Registry;
+
+    let (library, dir) = library();
+    dir.file("outfit.zip", b"not really a zip");
+
+    let registry = Registry::load(vec![Manifest::parse(
+        r#"{"id":"example.archive","contributes":{"properties":["archive"],
+           "file_types":{"zip":["archive"]}}}"#,
+    )
+    .expect("manifest")])
+    .expect("registry");
+
+    library_scan_in(&library, Some(&registry)).expect("scan");
+
+    let page = object_ids_in(&library, None, 40).expect("ids");
+    let view = object_flat_in(&library, None, page.ids[0]).expect("flat");
+
+    assert!(
+        view.regions.iter().any(|r| r.property == "archive"),
+        "the plugin's rule did not reach the object: {:?}",
+        view.regions
+    );
+}
+
+#[test]
+fn a_scan_does_not_record_the_librarys_own_data() {
+    // .yukifile/library.db sits inside the root by design. Recording it would
+    // make the database an object in the library it describes.
+    let (library, dir) = library();
+    std::fs::create_dir_all(dir.path().join(".yukifile")).expect("mkdir");
+    std::fs::write(dir.path().join(".yukifile").join("library.db"), b"x").expect("write");
+    dir.file("a.txt", b"one");
+
+    let scanned = library_scan_in(&library, None).expect("scan");
+
+    assert_eq!(scanned.added, 1, "the library scanned its own data");
+}

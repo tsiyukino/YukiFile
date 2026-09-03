@@ -31,7 +31,8 @@ use crate::bridge::views::{
 };
 use crate::bridge::Library;
 use crate::changes;
-use crate::commands::{archive, hash};
+use crate::commands::{archive, hash, scan};
+use crate::scan::factual::Rules;
 use crate::plugin::manifest::Manifest;
 use crate::plugin::registry::Registry;
 use crate::store::{edges, flatten, history, values, vocab};
@@ -234,6 +235,76 @@ pub fn mount_order_in(library: &Library) -> Result<Vec<MountView>, BridgeError> 
 pub struct MountView {
     pub namespace: String,
     pub instance: u32,
+}
+
+
+/// Bring the library up to date with the disk.
+///
+/// On [`crate::plugin::commands::APP_ONLY`] rather than the plugin list: this
+/// writes directly, and a plugin that could do that is what change sets exist
+/// to prevent. A person pressing a button is a different thing from a plugin
+/// deciding to.
+///
+/// The whole scan runs in one transaction. Half a scan is a library whose
+/// paths describe a disk that never existed.
+pub fn library_scan_in(
+    library: &Library,
+    registry: Option<&Registry>,
+) -> Result<ScanView, BridgeError> {
+    // Which extensions bring which properties comes from the manifests. With
+    // no plugins loaded every file is a `file` and nothing more, which is what
+    // a scan should report rather than guessing on its own.
+    let rules = rules_from(registry);
+
+    let root = library.root().to_path_buf();
+
+    library.with_connection_mut(|connection| {
+        crate::store::schema::in_transaction(connection, |transaction| {
+            let mut store = values::Values::new();
+            let outcome = scan::run(transaction, &mut store, &root, &rules)
+                .map_err(|error| BridgeError::Storage(error.to_string()))?;
+
+            Ok(ScanView {
+                added: outcome.added,
+                removed: outcome.removed,
+                moved: outcome.moved,
+                touched: outcome.touched,
+                objects_created: outcome.objects_created,
+                candidates: outcome.candidates,
+                unreadable: outcome.unreadable,
+            })
+        })
+    })
+}
+
+/// The file-type rules the loaded plugins declare.
+fn rules_from(registry: Option<&Registry>) -> Rules {
+    let mut rules = Rules::new();
+    let Some(registry) = registry else { return rules };
+
+    for plugin in registry.plugins() {
+        for (extension, properties) in &plugin.contributes.file_types {
+            for property in properties {
+                rules.add(extension, property);
+            }
+        }
+    }
+    rules
+}
+
+/// What a scan did.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct ScanView {
+    pub added: usize,
+    pub removed: usize,
+    pub moved: usize,
+    pub touched: usize,
+    pub objects_created: usize,
+    /// Paths that might be moves, waiting on a hash to say.
+    pub candidates: usize,
+    /// Paths that could not be read. Reported rather than dropped: a folder
+    /// the scan could not open is a hole in the library, not an absence.
+    pub unreadable: Vec<String>,
 }
 
 
@@ -445,6 +516,16 @@ pub fn plugin_list(registry: State<'_, Registry>) -> Vec<Manifest> {
 #[tauri::command]
 pub fn mount_order(library: State<'_, Library>) -> Result<Vec<MountView>, BridgeError> {
     mount_order_in(&library)
+}
+
+
+/// Bring the library up to date with the disk.
+#[tauri::command]
+pub fn library_scan(
+    library: State<'_, Library>,
+    registry: State<'_, Registry>,
+) -> Result<ScanView, BridgeError> {
+    library_scan_in(&library, Some(&registry))
 }
 
 

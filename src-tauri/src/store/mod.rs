@@ -6,6 +6,7 @@ pub mod flatten;
 pub mod history;
 pub mod id;
 pub mod path;
+pub mod paths;
 pub mod schema;
 pub mod values;
 pub mod vocab;

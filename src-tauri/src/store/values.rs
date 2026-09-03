@@ -335,6 +335,31 @@ pub fn object_count(connection: &Connection) -> rusqlite::Result<i64> {
     connection.query_row("SELECT count(*) FROM objects", [], |row| row.get(0))
 }
 
+/// Mount a property instance if it is not mounted already.
+///
+/// Appended at the end, so mounting something new never reorders what is
+/// already there. Mount order is a decision the library holds — which shop it
+/// trusts first — and a scan discovering a new property must not silently
+/// rearrange one somebody made.
+///
+/// This exists because until it did, nothing in production wrote to `mounts`
+/// at all: every value a scan recorded was dropped by resolution as
+/// `NotMounted`, so a scanned library resolved to nothing. A property that
+/// appears on an object has to be mounted for its values to be readable, and
+/// the moment it first appears is the only moment anything knows to do it.
+pub fn mount(connection: &Connection, namespace: &str, instance: u32) -> rusqlite::Result<()> {
+    // OR IGNORE on the (namespace, instance) unique constraint rather than a
+    // NOT EXISTS guard: an aggregate makes the SELECT a one-row result whose
+    // WHERE cannot filter it away, so the guarded form computes the same
+    // position twice and collides with itself on the second call.
+    connection.execute(
+        "INSERT OR IGNORE INTO mounts (position, namespace, instance)
+         VALUES ((SELECT COALESCE(MAX(position), -1) + 1 FROM mounts), ?1, ?2)",
+        params![namespace, instance],
+    )?;
+    Ok(())
+}
+
 /// This library's mount order, lowest position first.
 ///
 /// The shared list comes back empty: it is declared in each plugin's manifest,
@@ -710,5 +735,69 @@ mod tests {
     #[test]
     fn an_empty_library_has_no_mounts() {
         assert!(mount_order(&db()).expect("read order").is_empty());
+    }
+
+    #[test]
+    fn mounting_the_same_property_twice_is_not_an_error() {
+        // A scan calls this once per file, and a folder of 400 files carries
+        // `file` 400 times. The guarded form of this query collided with
+        // itself on the second call, which made every scan of more than one
+        // file fail.
+        let connection = db();
+
+        mount(&connection, "file", 1).expect("first");
+        mount(&connection, "file", 1).expect("second");
+
+        assert_eq!(mount_order(&connection).expect("order").len(), 1);
+    }
+
+    #[test]
+    fn mounting_appends_rather_than_reordering() {
+        // Mount order is a decision the library holds -- which shop it trusts
+        // first. A scan discovering a new property must not rearrange one
+        // somebody made.
+        let connection = db();
+
+        mount(&connection, "booth", 1).expect("a");
+        mount(&connection, "gumroad", 1).expect("b");
+        mount(&connection, "file", 1).expect("c");
+
+        let order = mount_order(&connection).expect("order");
+        assert_eq!(
+            order.iter().map(|m| m.namespace.as_str()).collect::<Vec<_>>(),
+            ["booth", "gumroad", "file"]
+        );
+    }
+
+    #[test]
+    fn two_instances_of_one_property_are_mounted_separately() {
+        // Mount order ranks instances, not names: an object carrying booth#1
+        // and booth#2 needs the two ranked.
+        let connection = db();
+
+        mount(&connection, "booth", 1).expect("a");
+        mount(&connection, "booth", 2).expect("b");
+
+        assert_eq!(mount_order(&connection).expect("order").len(), 2);
+    }
+
+    #[test]
+    fn a_mounted_property_is_what_makes_its_values_readable() {
+        // The bug this function exists to fix: resolution drops values under
+        // an unmounted property, so before anything mounted them a scanned
+        // library resolved to nothing at all.
+        let (connection, mut store, object) = library();
+        store.set(&connection, object, "file#1/present", "true").expect("set");
+
+        let rows = store.rows(&connection, object).expect("rows");
+
+        let empty = mount_order(&connection).expect("order");
+        let unmounted = view(&rows, &mounts(&empty));
+        assert!(unmounted.is_empty(), "an unmounted property resolved");
+
+        mount(&connection, "file", 1).expect("mount");
+        let order = mount_order(&connection).expect("order");
+        let mounted = view(&rows, &mounts(&order));
+        assert!(!mounted.is_empty(), "a mounted property still resolved to nothing");
     }
 }

@@ -314,6 +314,7 @@ fn every_implemented_command_is_actually_registered() {
 
     let listed: BTreeSet<String> = yukifile::plugin::commands::ALLOWED
         .iter()
+        .chain(yukifile::plugin::commands::APP_ONLY)
         .map(|command| yukifile::bridge::handler_name(command.name))
         .collect();
 
@@ -327,7 +328,7 @@ fn every_implemented_command_is_actually_registered() {
     );
     assert!(
         phantom.is_empty(),
-        "registered but not on the allowlist: {phantom:?}"
+        "registered but on neither list: {phantom:?}"
     );
 }
 
@@ -349,8 +350,13 @@ fn the_bridge_implements_exactly_what_the_list_allows() {
         implemented.extend(annotated_commands(&source));
     }
 
+    // Two lists: what plugins may call, and what only the application may.
+    // Every annotation has to be on exactly one of them -- a command on
+    // neither is one nobody reviewed, and keeping them apart is what makes
+    // "who may call this" a question with a single answer.
     let listed: BTreeSet<String> = yukifile::plugin::commands::ALLOWED
         .iter()
+        .chain(yukifile::plugin::commands::APP_ONLY)
         .map(|command| yukifile::bridge::handler_name(command.name))
         .collect();
 
@@ -359,13 +365,13 @@ fn the_bridge_implements_exactly_what_the_list_allows() {
 
     assert!(
         missing.is_empty(),
-        "on the allowlist with no implementation in the bridge: {missing:?}"
+        "listed with no implementation in the bridge: {missing:?}"
     );
     assert!(
         unlisted.is_empty(),
-        "implemented in the bridge but not on the allowlist: {unlisted:?}\n\n\
-         Every command a plugin can reach has to be one visible row in \
-         plugin::commands::ALLOWED, with a reason."
+        "implemented in the bridge but on neither list: {unlisted:?}\n\n\
+         Every command has to be one visible row in plugin::commands::ALLOWED \
+         or APP_ONLY, with a reason."
     );
 }
 

@@ -65,6 +65,7 @@ macro_rules! register_commands {
             $crate::bridge::commands::hash_of,
             $crate::bridge::commands::history_of,
             $crate::bridge::commands::import_propose,
+            $crate::bridge::commands::library_scan,
         ])
     };
 }

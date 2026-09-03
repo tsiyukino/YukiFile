@@ -16,11 +16,17 @@
  * plugin's panel drawn inside its property's region.
  */
 
-import { Heading, Spinner, Stack, Text } from "@primer/react";
+import { Button, Heading, Spinner, Stack, Text } from "@primer/react";
 import { InlineMessage } from "@primer/react/experimental";
 import { useEffect, useState } from "react";
 
-import { apiFor, type Api, type FlatObject } from "../plugin-host/commands.js";
+import {
+  apiFor,
+  appApiFor,
+  type AppApi,
+  type Api,
+  type FlatObject,
+} from "../plugin-host/commands.js";
 import { loadAll, type Loaded } from "../plugin-host/loader.js";
 import type { Mount } from "../plugin-host/slots.js";
 import type { Manifest } from "../plugin-host/types.js";
@@ -29,6 +35,14 @@ import { ObjectPage } from "./ObjectPage.js";
 
 /** The API every panel is handed, wired to the real Tauri bridge. */
 export const api: Api = apiFor(invoke);
+
+/**
+ * What the application itself may ask for.
+ *
+ * Held apart from `api` because a scan writes directly, and a plugin that
+ * could do that is what change sets exist to prevent. Panels never see this.
+ */
+export const appApi: AppApi = appApiFor(invoke);
 
 /** What the shell gathers before a page can draw. */
 export interface Context {
@@ -77,7 +91,8 @@ export function App(): React.JSX.Element {
     return (
       <Stack padding="normal" gap="condensed">
         <Heading>Yukifile</Heading>
-        <Text>This library holds no objects yet. A scan will find them.</Text>
+        <Text>This library holds no objects yet.</Text>
+        <ScanButton onDone={() => setContext(undefined)} />
       </Stack>
     );
   }
@@ -90,6 +105,50 @@ export function App(): React.JSX.Element {
       loaded={context.loaded}
       mounts={context.mounts}
     />
+  );
+}
+
+/**
+ * Look at the disk.
+ *
+ * `docs.yml` says network access happens when the user presses a button; this
+ * is the same rule applied to the filesystem. A scan is not on a timer and not
+ * something a plugin can trigger.
+ *
+ * `onDone` clears the gathered context, which makes the shell fetch again.
+ * Refetching rather than merging is the honest thing after a scan: it may have
+ * created objects, moved paths and removed others, and reconstructing that
+ * here would be a second implementation of what the scan already decided.
+ */
+export function ScanButton({ onDone }: { onDone: () => void }): React.JSX.Element {
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<string | undefined>(undefined);
+
+  const scan = (): void => {
+    setRunning(true);
+    setResult(undefined);
+
+    appApi
+      .libraryScan()
+      .then((scanned) => {
+        setResult(
+          `found ${scanned.added} ${scanned.added === 1 ? "path" : "paths"}` +
+            (scanned.removed > 0 ? `, ${scanned.removed} gone` : "") +
+            (scanned.moved > 0 ? `, ${scanned.moved} moved` : ""),
+        );
+        onDone();
+      })
+      .catch((error: unknown) => setResult(describe(error)))
+      .finally(() => setRunning(false));
+  };
+
+  return (
+    <Stack direction="horizontal" gap="condensed" align="center">
+      <Button onClick={scan} disabled={running}>
+        {running ? "Scanning…" : "Scan this folder"}
+      </Button>
+      {result && <Text size="small">{result}</Text>}
+    </Stack>
   );
 }
 
