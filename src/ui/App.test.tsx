@@ -14,6 +14,8 @@ function fakeApi(over: Partial<Api> = {}): Api {
       shared: {},
       regions: [],
       skipped: [],
+      carries: [],
+      locations: [],
     }),
     ...over,
   } as Api;
@@ -35,6 +37,8 @@ describe("gathering what the page needs", () => {
       shared: { title: [{ value: "BE NATURAL", from: null }] },
       regions: [],
       skipped: [],
+      carries: [],
+      locations: [],
     }));
 
     const context = await gather(

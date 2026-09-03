@@ -169,7 +169,7 @@ fn apply(
                 )?;
                 outcome.added += 1;
 
-                write_factual(connection, values, object, added, rules)?;
+                mount_factual(connection, added, rules)?;
             }
         }
     }
@@ -177,15 +177,19 @@ fn apply(
     Ok(outcome)
 }
 
-/// Attach what the entry observably is.
+/// Mount whatever the entry observably is.
 ///
 /// Factual properties only: a `.pdf` is a pdf. Nothing here infers that an
 /// archive is an outfit, because the software cannot tell and a confident
 /// wrong answer is worse than a blank.
-fn write_factual(
+///
+/// Mounting and not writing. Resolution drops values under an unmounted
+/// property, so a property has to be mounted for anything later to be
+/// readable — but the property itself is a fact about the entry rather than a
+/// field with a value, and writing a marker to represent it put a row reading
+/// "present: true" on every object page.
+fn mount_factual(
     connection: &Connection,
-    values: &mut Values,
-    object: i64,
     added: &reconcile::Added,
     rules: &Rules,
 ) -> Result<(), ScanError> {
@@ -196,16 +200,17 @@ fn write_factual(
         mtime: added.mtime,
     };
 
+    // Mounting is what makes a property's values readable: resolution drops
+    // values under a property the library does not mount.
+    //
+    // Nothing is written under the property itself. A factual property is a
+    // fact about the entry, not a field with a value, and the marker this used
+    // to write -- `file#1/present = true` -- put a row reading "present: true"
+    // on every object page, which is a sentence that says nothing. What the
+    // object carries is answered by its locations and by whichever plugin
+    // fills the property in.
     for property in rules.properties(&entry) {
-        // Mount it first. Resolution drops values under a property the library
-        // does not mount, so a value written without one is a value nothing
-        // will ever read back -- which is exactly what happened before this
-        // line existed: a scanned library resolved to nothing at all.
         crate::store::values::mount(connection, &property, 1)?;
-
-        // A factual property with no fields of its own is still a property the
-        // object carries, so it is written as a marker the flattener can see.
-        values.set(connection, object, &format!("{property}#1/present"), "true")?;
     }
 
     Ok(())
@@ -399,10 +404,36 @@ mod tests {
     }
 
     #[test]
-    fn factual_properties_are_attached() {
+    fn factual_properties_are_mounted() {
         // `file` and `folder` come from the core; anything else comes from a
         // plugin's rules, and with no rules there is nothing else.
+        //
+        // Mounted rather than written: the property is a fact about the entry,
+        // and resolution needs it mounted for anything a plugin later writes
+        // under it to be readable.
         let dir = Dir::new("factual");
+        dir.file("a.txt", b"one");
+
+        let connection = library();
+        let mut values = Values::new();
+        run(&connection, &mut values, dir.path(), &Rules::new()).expect("scan");
+
+        let mounted: Vec<String> = crate::store::values::mount_order(&connection)
+            .expect("order")
+            .into_iter()
+            .map(|row| row.namespace)
+            .collect();
+
+        assert!(mounted.contains(&"file".to_string()), "file was not mounted: {mounted:?}");
+    }
+
+    #[test]
+    fn a_scan_writes_no_values_of_its_own() {
+        // A scan records where things are, not what they mean. It used to
+        // write `file#1/present = true` so the flattener would see the
+        // property, which put a row reading "present: true" on every object
+        // page -- a sentence that says nothing.
+        let dir = Dir::new("novalues");
         dir.file("a.txt", b"one");
 
         let connection = library();
@@ -411,10 +442,8 @@ mod tests {
 
         let object = paths::known(&connection).expect("known")[0].object;
         let rows = values.rows(&connection, object).expect("rows");
-        assert!(
-            rows.iter().any(|row| row.path.starts_with("file#1/")),
-            "nothing marked it a file: {rows:?}"
-        );
+
+        assert!(rows.is_empty(), "the scan invented values: {rows:?}");
     }
 
     #[test]
@@ -432,11 +461,15 @@ mod tests {
         let mut values = Values::new();
         run(&connection, &mut values, dir.path(), &rules).expect("scan");
 
-        let object = paths::known(&connection).expect("known")[0].object;
-        let rows = values.rows(&connection, object).expect("rows");
+        let mounted: Vec<String> = crate::store::values::mount_order(&connection)
+            .expect("order")
+            .into_iter()
+            .map(|row| row.namespace)
+            .collect();
+
         assert!(
-            rows.iter().any(|row| row.path.starts_with("archive#1/")),
-            "the rule did not reach the object: {rows:?}"
+            mounted.contains(&"archive".to_string()),
+            "the rule did not reach the library: {mounted:?}"
         );
     }
 

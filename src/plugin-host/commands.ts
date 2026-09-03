@@ -93,6 +93,26 @@ export interface FlatObject {
   readonly shared: Readonly<Record<string, readonly Source[]>>;
   readonly regions: readonly Region[];
   readonly skipped: readonly Skipped[];
+  /**
+   * Every property instance the object carries, filled in or not.
+   *
+   * Panel visibility keys off this rather than off `regions`: a `.zip` is an
+   * archive before any plugin writes a thing about it, so keying on regions
+   * would show a plugin's panel only after that plugin had already written
+   * something.
+   */
+  readonly carries: readonly string[];
+  /** Where it sits on disk. Empty for a grouping. */
+  readonly locations: readonly Location[];
+}
+
+/** One place an object sits. */
+export interface Location {
+  /** Relative to the library root, with `/` separators on every platform. */
+  readonly path: string;
+  readonly kind: "file" | "folder";
+  /** Size in bytes. Absent for a folder. */
+  readonly size: number | null;
 }
 
 /**

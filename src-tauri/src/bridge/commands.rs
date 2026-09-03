@@ -26,7 +26,7 @@ use tauri::State;
 
 use crate::bridge::error::BridgeError;
 use crate::bridge::views::{
-    EdgeView, FlatObjectView, HistoryView, ObjectView, RegionView, SkippedView,
+    EdgeView, FlatObjectView, LocationView, HistoryView, ObjectView, RegionView, SkippedView,
     SourceView, TermView, ValueView,
 };
 use crate::bridge::Library;
@@ -114,7 +114,46 @@ pub fn object_flat_in(
         let mounts = values::mounts(&order);
         let view = flatten::flatten(&rows, &mounts);
 
-        Ok(as_flat_view(id, &view))
+        let located = crate::store::paths::located(connection, id)?;
+        let locations = located
+            .iter()
+            .cloned()
+            .map(|known| LocationView {
+                path: known.path,
+                kind: match known.kind {
+                    crate::scan::walk::Kind::Folder => "folder".to_string(),
+                    crate::scan::walk::Kind::File => "file".to_string(),
+                },
+                size: known.size,
+            })
+            .collect();
+
+        // What the object carries comes from the properties its locations
+        // bring, plus anything values already mention. The first is what a
+        // scan knows; the second is what a plugin has written.
+        let rules = rules_from(registry);
+        let mut carries: std::collections::BTreeSet<String> = view
+            .plugin_mounts()
+            .map(|(namespace, instance)| format!("{namespace}#{instance}"))
+            .collect();
+
+        for known in &located {
+            let entry = crate::scan::walk::Entry {
+                path: known.path.clone(),
+                kind: known.kind,
+                size: known.size,
+                mtime: known.mtime,
+            };
+            for property in rules.properties(&entry) {
+                carries.insert(format!("{property}#1"));
+            }
+        }
+
+        Ok(FlatObjectView {
+            locations,
+            carries: carries.into_iter().collect(),
+            ..as_flat_view(id, &view)
+        })
     })
 }
 
@@ -176,7 +215,14 @@ fn as_flat_view(id: i64, view: &flatten::FlatView<'_>) -> FlatObjectView {
         })
         .collect();
 
-    FlatObjectView { id, shared, regions, skipped }
+    FlatObjectView {
+        id,
+        shared,
+        regions,
+        skipped,
+        carries: Vec::new(),
+        locations: Vec::new(),
+    }
 }
 
 /// A page of object ids, lowest first.

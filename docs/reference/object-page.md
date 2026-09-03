@@ -41,6 +41,34 @@ thing telling them apart. Showing it on one and not the other would be worse
 than showing neither, which is why the count comes from the whole object rather
 than from the instance number.
 
+## Where the object sits
+
+`fs` is a core property in its own table, so locations do not arrive through
+`shared` or `regions` like everything else. `object.flat` carries them anyway:
+a file manager that cannot say where a file is has not said much, and a second
+command to fetch them would make every object page two round trips.
+
+An object with no title is named by its filename. A scan records where things
+are before anybody names them, so that is the common case rather than the
+exception — and "Untitled" over a file that plainly has a name is the page
+refusing to read what is in front of it. A grouping has no location and keeps
+"Untitled", because it genuinely has no name until somebody gives it one.
+
+## Carried, not written
+
+`carries` lists every property instance the object has; `regions` lists only
+the ones holding fields. Panel visibility keys off the first.
+
+The distinction was invisible until the scan stopped writing a marker. It used
+to write `file#1/present = true` so resolution would see the property at all,
+which put a row reading **present: true** on every object page — a sentence
+that says nothing. Removing it was right, and it exposed that keying panels on
+`regions` means a plugin's panel appears only once that plugin has already
+written something. A `.zip` is an archive before anything is written about it.
+
+So a carried property with no fields still gets a region, and the plugin scoped
+to it draws inside.
+
 ## A plugin failing is not the page failing
 
 Two ways a panel can be missing, and both end the same way — the region says

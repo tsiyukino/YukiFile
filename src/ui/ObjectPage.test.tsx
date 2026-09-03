@@ -5,13 +5,38 @@ import type { Api, FlatObject } from "../plugin-host/commands.js";
 import type { Loaded } from "../plugin-host/loader.js";
 import type { Mount } from "../plugin-host/slots.js";
 import type { Manifest } from "../plugin-host/types.js";
-import { instanceCounts, ObjectPage, panelsIn } from "./ObjectPage.js";
+import {
+  fallbackTitle,
+  instanceCounts,
+  ObjectPage,
+  panelsIn,
+  sizeSuffix,
+} from "./ObjectPage.js";
 
 /** An api that answers nothing; these tests never let a panel call one. */
 const api = {} as Api;
 
 function flat(over: Partial<FlatObject> = {}): FlatObject {
-  return { id: "1", shared: {}, regions: [], skipped: [], ...over };
+  const base: FlatObject = {
+    id: "1",
+    shared: {},
+    regions: [],
+    skipped: [],
+    carries: [],
+    locations: [],
+    ...over,
+  };
+
+  // The bridge derives `carries` from what the object holds, so a fixture
+  // that names regions without naming them again as carried would be testing
+  // a state the real thing never produces.
+  if (base.regions.length > 0 && base.carries.length === 0) {
+    return {
+      ...base,
+      carries: base.regions.map((r) => `${r.property}#${r.instance}`),
+    };
+  }
+  return base;
 }
 
 function loadedWith(id: string, specifier: string, module: unknown): Loaded {
@@ -344,5 +369,199 @@ describe("the pure parts", () => {
 
     expect(resolved).toHaveLength(1);
     expect(resolved[0]?.component).toBeUndefined();
+  });
+});
+
+describe("where the object sits", () => {
+  test("a path is shown with its size", () => {
+    // A file manager that cannot say where a file is has not said much.
+    render(
+      <ObjectPage
+        api={api}
+        object={flat({
+          locations: [{ path: "Clothing/outfit.zip", kind: "file", size: 2048 }],
+        })}
+        plugins={[]}
+        loaded={[]}
+        mounts={[]}
+      />,
+    );
+
+    expect(screen.getByText(/Clothing\/outfit\.zip/)).toBeDefined();
+    expect(screen.getByText(/2\.0 KB/)).toBeDefined();
+  });
+
+  test("an object spanning two paths shows both", () => {
+    // 43 seed products are an extracted folder plus the zip it came from.
+    // Showing one would hide half of what the user owns.
+    render(
+      <ObjectPage
+        api={api}
+        object={flat({
+          locations: [
+            { path: "Outfit", kind: "folder", size: null },
+            { path: "Outfit.zip", kind: "file", size: 900 },
+          ],
+        })}
+        plugins={[]}
+        loaded={[]}
+        mounts={[]}
+      />,
+    );
+
+    expect(screen.getByText(/^Outfit\/$/)).toBeDefined();
+    expect(screen.getByText(/Outfit\.zip/)).toBeDefined();
+  });
+
+  test("an object with a location is not called empty", () => {
+    // "Nothing recorded yet" over a file that plainly exists reads as a bug.
+    render(
+      <ObjectPage
+        api={api}
+        object={flat({ locations: [{ path: "a.txt", kind: "file", size: 3 }] })}
+        plugins={[]}
+        loaded={[]}
+        mounts={[]}
+      />,
+    );
+
+    expect(screen.queryByText("Nothing recorded yet")).toBeNull();
+  });
+
+  test("a grouping with nothing at all still says so", () => {
+    render(
+      <ObjectPage api={api} object={flat()} plugins={[]} loaded={[]} mounts={[]} />,
+    );
+
+    expect(screen.getByText("Nothing recorded yet")).toBeDefined();
+  });
+});
+
+describe("what an untitled object is called", () => {
+  test("the filename stands in for a title", () => {
+    render(
+      <ObjectPage
+        api={api}
+        object={flat({
+          locations: [
+            { path: ".AASHAREE/CLOTHS/Cross_Maid.zip", kind: "file", size: 10 },
+          ],
+        })}
+        plugins={[]}
+        loaded={[]}
+        mounts={[]}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
+      "Cross_Maid.zip",
+    );
+  });
+
+  test("a real title wins over the filename", () => {
+    render(
+      <ObjectPage
+        api={api}
+        object={flat({
+          shared: { title: [{ value: "Cross Maid", from: null }] },
+          locations: [{ path: "Cross_Maid.zip", kind: "file", size: 10 }],
+        })}
+        plugins={[]}
+        loaded={[]}
+        mounts={[]}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Cross Maid");
+  });
+
+  test("a grouping has no filename to fall back on", () => {
+    // An object with no location genuinely has no name until somebody gives
+    // it one, and inventing one would be worse than saying so.
+    expect(fallbackTitle(flat())).toBeUndefined();
+  });
+
+  test("a folder path uses its last segment", () => {
+    expect(
+      fallbackTitle(flat({ locations: [{ path: "a/b/Outfit", kind: "folder", size: null }] })),
+    ).toBe("Outfit");
+  });
+});
+
+describe("sizes", () => {
+  test("a folder has none", () => {
+    expect(sizeSuffix(null)).toBe("");
+  });
+
+  test("bytes stay whole and anything larger gets one decimal", () => {
+    expect(sizeSuffix(512)).toBe(" · 512 B");
+    expect(sizeSuffix(2048)).toBe(" · 2.0 KB");
+    expect(sizeSuffix(5_000_000)).toBe(" · 4.8 MB");
+  });
+});
+
+describe("a property with nothing written under it", () => {
+  test("still gets a region and its plugin's panel", () => {
+    // A .zip is an archive before any plugin writes a thing about it. Keying
+    // panel visibility on which properties hold fields would show a plugin's
+    // panel only once that plugin had already written something -- which is
+    // backwards, and is what removing the `present: true` marker exposed.
+    function Panel(): React.JSX.Element {
+      return <span>the archive panel</span>;
+    }
+
+    const archive: Manifest = {
+      id: "yukifile.archive",
+      contributes: { properties: ["archive"], panels: { archive: "./panel" } },
+    };
+
+    render(
+      <ObjectPage
+        api={api}
+        object={flat({
+          carries: ["archive#1"],
+          regions: [],
+          locations: [{ path: "outfit.zip", kind: "file", size: 900 }],
+        })}
+        plugins={[archive]}
+        loaded={[loadedWith("yukifile.archive", "./panel", { default: Panel })]}
+        mounts={[{ namespace: "archive", instance: 1 }]}
+      />,
+    );
+
+    expect(screen.getByText("the archive panel")).toBeDefined();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("archive");
+  });
+
+  test("a carried property with fields keeps them", () => {
+    render(
+      <ObjectPage
+        api={api}
+        object={flat({
+          carries: ["booth#1"],
+          regions: [{ property: "booth", instance: 1, fields: { item_id: "8264237" } }],
+        })}
+        plugins={[]}
+        loaded={[]}
+        mounts={[]}
+      />,
+    );
+
+    expect(screen.getByText("item_id: 8264237")).toBeDefined();
+  });
+
+  test("regions follow the order the object carries them in", () => {
+    render(
+      <ObjectPage
+        api={api}
+        object={flat({ carries: ["archive#1", "file#1"], regions: [] })}
+        plugins={[]}
+        loaded={[]}
+        mounts={[]}
+      />,
+    );
+
+    const headings = screen.getAllByRole("heading", { level: 2 });
+    expect(headings.map((h) => h.textContent)).toEqual(["archive", "file"]);
   });
 });

@@ -106,6 +106,36 @@ pub struct FlatObjectView {
     /// Values that could not be placed. Routine ones are left out; see
     /// [`SkippedView`].
     pub skipped: Vec<SkippedView>,
+
+    /// Every property instance this object carries, whether or not anything
+    /// has filled it in.
+    ///
+    /// Separate from `regions`, which lists only the ones holding fields. A
+    /// factual property is a fact about the entry — a `.zip` is an archive
+    /// before any plugin writes a thing about it — so keying panel visibility
+    /// on `regions` would mean a plugin's panel appears only once that plugin
+    /// has already written something, which is backwards.
+    pub carries: Vec<String>,
+
+    /// Where the object sits on disk. Empty for a grouping.
+    ///
+    /// `fs` is a core property and lives in its own table, so it does not
+    /// arrive through `shared` or `regions` like everything else. It is here
+    /// because a file manager that cannot say where a file is has not said
+    /// much: the page needs it, and going back for a second command to get it
+    /// would make every object page two round trips.
+    pub locations: Vec<LocationView>,
+}
+
+/// One place an object sits.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct LocationView {
+    /// Relative to the library root, with `/` separators on every platform.
+    pub path: String,
+    /// `file` or `folder`.
+    pub kind: String,
+    /// Uncompressed size in bytes. Absent for a folder.
+    pub size: Option<u64>,
 }
 
 /// One source for a shared field.

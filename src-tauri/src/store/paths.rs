@@ -115,6 +115,32 @@ pub fn known(connection: &Connection) -> rusqlite::Result<Vec<Known>> {
     rows.collect()
 }
 
+/// One object's locations, with what is known about each.
+///
+/// Separate from [`of_object`], which returns paths alone: the object page
+/// shows a size beside each path, and asking for the whole library's rows to
+/// find one object's would not scale past the library it was written on.
+pub fn located(connection: &Connection, object: i64) -> rusqlite::Result<Vec<Known>> {
+    let mut statement = connection.prepare(
+        "SELECT object_id, path, kind, size, mtime, hash FROM object_paths
+         WHERE object_id = ?1 ORDER BY path",
+    )?;
+
+    let rows = statement.query_map(params![object], |row| {
+        let kind: String = row.get(2)?;
+        Ok(Known {
+            object: row.get(0)?,
+            path: row.get(1)?,
+            kind: if kind == "folder" { Kind::Folder } else { Kind::File },
+            size: row.get::<_, Option<i64>>(3)?.map(|s| s as u64),
+            mtime: row.get(4)?,
+            hash: row.get(5)?,
+        })
+    })?;
+
+    rows.collect()
+}
+
 /// Which object holds a path, if any.
 pub fn object_at(connection: &Connection, path: &str) -> rusqlite::Result<Option<i64>> {
     connection

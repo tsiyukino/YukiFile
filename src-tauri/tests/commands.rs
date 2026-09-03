@@ -774,10 +774,13 @@ fn a_scanned_object_can_be_read_back_through_the_page() {
     assert_eq!(page.total, 1);
 
     let view = object_flat_in(&library, None, page.ids[0]).expect("flat");
-    assert!(
-        !view.regions.is_empty() || !view.shared.is_empty(),
-        "a scanned object resolved to nothing at all"
-    );
+
+    // Where it sits is what a scan knows. It records no values -- the
+    // property is a fact about the entry, not a field with a value -- so
+    // locations is what proves the object came back whole.
+    assert_eq!(view.locations.len(), 1);
+    assert_eq!(view.locations[0].path, "outfit.zip");
+    assert_eq!(view.locations[0].kind, "file");
 }
 
 #[test]
@@ -813,13 +816,21 @@ fn a_plugins_file_type_reaches_a_scanned_object() {
 
     library_scan_in(&library, Some(&registry)).expect("scan");
 
-    let page = object_ids_in(&library, None, 40).expect("ids");
-    let view = object_flat_in(&library, None, page.ids[0]).expect("flat");
+    // The rule reaching the library is what mounting shows: the property is
+    // now one the library ranks, so anything later written under `archive#1`
+    // resolves instead of being dropped.
+    let mounted: Vec<String> = library
+        .with_connection(|connection| {
+            Ok(yukifile::store::values::mount_order(connection)?
+                .into_iter()
+                .map(|row| row.namespace)
+                .collect())
+        })
+        .expect("order");
 
     assert!(
-        view.regions.iter().any(|r| r.property == "archive"),
-        "the plugin's rule did not reach the object: {:?}",
-        view.regions
+        mounted.contains(&"archive".to_string()),
+        "the plugin's rule did not reach the library: {mounted:?}"
     );
 }
 
