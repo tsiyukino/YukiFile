@@ -1018,7 +1018,23 @@ fn an_asset_url_encodes_what_a_filename_may_hold() {
 
     assert!(!url.contains(' '), "a space survived: {url}");
     assert!(!url.contains('#'), "a fragment marker survived: {url}");
-    assert!(url.starts_with("asset://localhost/"));
+}
+
+#[test]
+fn an_asset_url_points_at_where_the_protocol_answers() {
+    // A custom scheme on Windows is served over `http://<name>.localhost`;
+    // elsewhere the scheme itself is registered. Asking for the wrong one
+    // fails at the connection rather than with a status, so the viewer
+    // reports a response of 0 and nothing says which half is wrong.
+    use yukifile::bridge::commands::asset_url;
+
+    let url = asset_url(std::path::Path::new("/lib/a.pdf"));
+
+    if cfg!(windows) {
+        assert!(url.starts_with("http://asset.localhost/"), "{url}");
+    } else {
+        assert!(url.starts_with("asset://localhost/"), "{url}");
+    }
 }
 
 #[test]
@@ -1040,6 +1056,34 @@ fn a_non_ascii_filename_is_encoded_rather_than_dropped() {
 
     assert!(url.is_ascii(), "the URL is not transmissible: {url}");
     assert!(url.contains("%"), "nothing was encoded: {url}");
+}
+
+#[cfg(windows)]
+#[test]
+fn an_asset_url_drops_the_extended_length_prefix() {
+    // `canonicalize` returns `\\?\E:\...` on Windows, and every path
+    // reaching here has been through it. Encoding the prefix along with the
+    // rest gives a URL nothing serves, which is what the tests above missed
+    // by using paths no Windows canonicalize would ever produce.
+    use yukifile::bridge::commands::asset_url;
+
+    let url = asset_url(std::path::Path::new(r"\\?\E:\lib\a.pdf"));
+
+    assert!(url.ends_with("E%3A%5Clib%5Ca.pdf"), "{url}");
+    assert!(!url.contains("%3F"), "the prefix survived: {url}");
+}
+
+#[cfg(windows)]
+#[test]
+fn a_network_path_keeps_both_leading_separators() {
+    // `\\?\UNC\server\share` is `\\server\share`, not
+    // `server\share`: dropping the whole prefix would turn a network
+    // path into a relative one.
+    use yukifile::bridge::commands::asset_url;
+
+    let url = asset_url(std::path::Path::new(r"\\?\UNC\srv\share\a.pdf"));
+
+    assert!(url.ends_with("%5C%5Csrv%5Cshare%5Ca.pdf"), "{url}");
 }
 
 // --- hierarchy ----------------------------------------------------------

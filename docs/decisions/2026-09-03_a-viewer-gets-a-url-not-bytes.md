@@ -42,9 +42,17 @@ Three shapes are in use:
 
 Tauri's asset protocol starts with an **empty** scope. `file.url` resolves the
 path against the library root the way every other command does, grants that one
-file, and returns an `asset://` URL. pdf.js fetches it through the webview, so
-the document goes from disk to a canvas without passing through plugin
+file, and returns an asset-protocol URL. pdf.js fetches it through the webview,
+so the document goes from disk to a canvas without passing through plugin
 JavaScript.
+
+How that URL is spelled belongs to the webview rather than to us, and both
+halves of the spelling were wrong on Windows at first. A custom scheme there is
+served over `http://asset.localhost`, not `asset://localhost`, so the fetch
+failed at the connection and the viewer reported a response of 0 rather than a
+status. And `canonicalize` returns an extended-length path, which encoded whole
+gives a URL nothing serves. The tests missed both because they used paths no
+Windows `canonicalize` would produce.
 
 A plugin cannot guess a URL for a file it never asked about: an ungranted path
 is refused by the protocol itself.

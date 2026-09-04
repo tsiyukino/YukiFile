@@ -844,9 +844,7 @@ pub fn asset_url(resolved: &std::path::Path) -> String {
     // spaces, `#` and `?` -- `.AASHAREE/CLOTHS/Cross Maid #2.pdf` is an
     // ordinary name -- and a `#` left raw truncates the URL at the fragment,
     // so the viewer would ask for a file whose name stops early.
-    let encoded: String = resolved
-        .display()
-        .to_string()
+    let encoded: String = plainly_written(resolved)
         .bytes()
         .map(|byte| match byte {
             b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' | b'/' => {
@@ -856,7 +854,48 @@ pub fn asset_url(resolved: &std::path::Path) -> String {
         })
         .collect();
 
-    format!("asset://localhost/{encoded}")
+    format!("{ASSET_ORIGIN}/{encoded}")
+}
+
+/// Where the asset protocol answers.
+///
+/// A custom scheme on Windows is served over `http://<name>.localhost`; every
+/// other platform registers the scheme itself. That is the webview's rule
+/// rather than a preference -- nothing listens on `asset://localhost` there,
+/// and a fetch to it fails at the connection instead of with a status, which
+/// is the response of 0 a viewer reports rather than a 404.
+#[cfg(windows)]
+const ASSET_ORIGIN: &str = "http://asset.localhost";
+#[cfg(not(windows))]
+const ASSET_ORIGIN: &str = "asset://localhost";
+
+/// A path spelled the way a URL should carry it.
+///
+/// `canonicalize` on Windows returns an extended-length path, and encoding
+/// that whole thing gives a URL beginning with an encoded `\\?\`. Nothing
+/// serves it.
+///
+/// Dropping the prefix is safe because the asset protocol canonicalizes what
+/// it is asked for before matching it against the grant, so the plain spelling
+/// resolves back to the prefixed one and the scope still recognises it.
+/// Confinement already happened in `Library::resolve`; this only changes how
+/// the result is written down.
+fn plainly_written(path: &std::path::Path) -> String {
+    let written = path.display().to_string();
+
+    #[cfg(windows)]
+    {
+        // `\\?\UNC\server\share` is a network path, whose plain
+        // spelling is `\\server\share` rather than the remainder alone.
+        if let Some(rest) = written.strip_prefix(r"\\?\UNC\") {
+            return format!(r"\\{rest}");
+        }
+        if let Some(rest) = written.strip_prefix(r"\\?\") {
+            return rest.to_string();
+        }
+    }
+
+    written
 }
 
 
