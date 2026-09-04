@@ -25,6 +25,19 @@ if (!window.matchMedia) {
   }));
 }
 
+// jsdom leaves `adoptedStyleSheets` undefined on a document root. Primer's
+// tooltip runs a popover polyfill that iterates it, so a component carrying a
+// tooltip -- the list's chevron does -- throws asynchronously after the test
+// it belongs to has already passed. That reads as an unhandled error attached
+// to whichever test ran last, which is a report nobody can act on.
+if (!(document as unknown as { adoptedStyleSheets?: unknown }).adoptedStyleSheets) {
+  Object.defineProperty(document, "adoptedStyleSheets", {
+    value: [],
+    writable: true,
+    configurable: true,
+  });
+}
+
 // Testing Library only auto-cleans when vitest globals are on, and they are
 // not: an explicit import says where a test's helpers came from.
 afterEach(cleanup);
