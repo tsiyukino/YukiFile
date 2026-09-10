@@ -3,5 +3,6 @@
 
 pub mod commands;
 pub mod discover;
+pub mod enabled;
 pub mod manifest;
 pub mod registry;

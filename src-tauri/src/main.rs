@@ -19,7 +19,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use yukifile::bridge::Library;
-use yukifile::plugin::{discover, registry::Registry};
+use yukifile::plugin::{discover, enabled, registry::Registry};
 use yukifile::register_commands;
 use yukifile::store::schema;
 
@@ -36,7 +36,7 @@ fn main() -> ExitCode {
 fn start() -> Result<(), String> {
     let root = library_root()?;
     let library = open_library(&root)?;
-    let (registry, skipped) = load_plugins()?;
+    let (registry, skipped) = load_plugins(&root.join(DATA))?;
 
     // What happened before the window existed, reported from inside `setup`.
     //
@@ -128,12 +128,19 @@ fn library_root() -> Result<PathBuf, String> {
     Ok(here)
 }
 
+/// Where a library keeps what Yukifile wrote: the database, the plugin list.
+///
+/// Named once because three places need it, and a rename that reached two of
+/// them would open the library in one directory and read its plugin list from
+/// another.
+const DATA: &str = ".yukifile";
+
 /// Open the library's database, creating it if this is the first run.
 ///
 /// Data lives in `.yukifile/` at the library root, so the whole library is
 /// self-contained and can be copied to another machine.
 fn open_library(root: &std::path::Path) -> Result<Library, String> {
-    let data = root.join(".yukifile");
+    let data = root.join(DATA);
     std::fs::create_dir_all(&data)
         .map_err(|error| format!("cannot create {}: {error}", data.display()))?;
 
@@ -149,20 +156,32 @@ fn open_library(root: &std::path::Path) -> Result<Library, String> {
 /// An unsatisfied dependency refuses the whole set, because a partly loaded
 /// set is a library where some objects have panels and others do not for
 /// reasons nobody can see.
-fn load_plugins() -> Result<(Registry, Vec<(String, String)>), String> {
+fn load_plugins(data: &std::path::Path) -> Result<(Registry, Vec<(String, String)>), String> {
     let found = discover::in_directory(&plugins_dir())
         .map_err(|error| format!("cannot read plugins: {error}"))?;
 
     // Carried out rather than logged here: no logger exists yet, and a skip
     // written to one that does not exist is a plugin that silently did not
     // load, which is the thing `discover` reports skips to prevent.
-    let skipped = found
+    let mut skipped: Vec<(String, String)> = found
         .skipped
         .iter()
         .map(|s| (s.directory.clone(), s.reason.clone()))
         .collect();
 
-    let registry = Registry::load(found.manifests).map_err(|error| error.to_string())?;
+    // What is installed is one question; what this library runs is another.
+    // Without the second, every plugin under `plugins/` runs everywhere, and
+    // "record every file and folder" becomes a rule nobody chose.
+    let enabled = enabled::read(data);
+    if let Some(complaint) = &enabled.complaint {
+        skipped.push((DATA.into(), complaint.clone()));
+    }
+    for id in enabled::missing(&found.manifests, enabled.ids.as_ref()) {
+        skipped.push((id, "enabled by this library but not installed".into()));
+    }
+
+    let wanted = enabled::filter(found.manifests, enabled.ids.as_ref());
+    let registry = Registry::load(wanted).map_err(|error| error.to_string())?;
     Ok((registry, skipped))
 }
 

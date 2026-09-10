@@ -67,6 +67,38 @@ hands back what parsed, alongside what did not and why.
 unsatisfied dependency refuses the whole set. See
 [archive-plugin.md](archive-plugin.md) for why the two are separate calls.
 
+## plugin::enabled
+
+`read(data) -> Enabled { ids, complaint }` · `filter(manifests, ids)` ·
+`missing(manifests, ids)`
+
+What is installed on this machine is one question; what this library runs is
+another. Discovery answers the first, this answers the second, and `main`
+filters between them before the registry loads.
+
+A library declares its plugins in `.yukifile/plugins.json`, a JSON array of
+ids. **Absent means all**: a library that has never said anything about plugins
+is not a library that wants none, and starting empty would make every existing
+library go dark. An empty array means none, and the difference between the two
+is the point.
+
+**A broken list runs everything and complains.** Unreadable, malformed, or the
+wrong shape leaves `ids` as `None`, so the library opens with every plugin
+running and a warning rather than opening dark with nothing saying why. The
+same stance `discover` takes on a directory that will not parse.
+
+Ids naming nothing installed are reported through `missing`: a typo and an
+absent install look identical from inside a library that quietly runs without
+the plugin.
+
+### Why this exists
+
+Without it, every plugin under `plugins/` runs in every library. Then "record
+every file and folder" is not a choice anybody made -- it is what happens
+because a directory exists, which is a decision taken where the user cannot see
+or change it. That is the same mistake as putting the scanning rule in the
+core, one layer out.
+
 ## plugin::registry
 
 `Registry::load(Vec<Manifest>) -> Result<Registry, RegistryError>`
