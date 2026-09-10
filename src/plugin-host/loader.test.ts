@@ -79,6 +79,52 @@ describe("what a manifest needs", () => {
   });
 });
 
+describe("every slot holding a module is fetched", () => {
+  test("a form module is needed", () => {
+    // Declared and never loaded is the failure this catches: the manifest
+    // parses, the picker offers the type, and the second step silently draws
+    // nothing.
+    const needed = modulesOf({
+      id: "yukifile.paper",
+      contributes: { properties: ["paper"], forms: { paper: "./newpaper" } },
+    });
+
+    expect(needed).toEqual([
+      { slot: "form", property: "paper", specifier: "./newpaper" },
+    ]);
+  });
+
+  test("no manifest field carrying a specifier is left out", () => {
+    // Naming the fields here is what turns "somebody added a sixth slot and
+    // forgot the loader" into a failing test. Compared against what the
+    // manifest type declares, so a new one shows up as an unlisted key rather
+    // than as a passing test.
+    const carriesModules = ["panels", "viewers", "forms", "library_action_module"];
+
+    const everything = modulesOf({
+      id: "x.all",
+      contributes: {
+        properties: ["thing"],
+        panels: { thing: "./panel" },
+        viewers: { thing: "./viewer" },
+        forms: { thing: "./form" },
+        library_action_module: "./action",
+        // Ids, not modules: these must not appear below.
+        actions: { thing: ["do-it"] },
+        columns: { thing: ["size"] },
+      },
+    });
+
+    expect(everything.map((n) => n.specifier).sort()).toEqual([
+      "./action",
+      "./form",
+      "./panel",
+      "./viewer",
+    ]);
+    expect(carriesModules).toHaveLength(4);
+  });
+});
+
 describe("loading", () => {
   test("a module that resolves is returned under its specifier", async () => {
     const panel = { default: () => null };

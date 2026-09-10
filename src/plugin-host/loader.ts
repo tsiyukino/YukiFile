@@ -50,7 +50,7 @@ export type Resolve = (specifier: string, plugin: string) => Promise<unknown>;
 /** A module a manifest asked for, and where it was asked for. */
 export interface Needed {
   /** Which kind of module this is. */
-  readonly slot: "panel" | "viewer" | "library-action";
+  readonly slot: "panel" | "viewer" | "form" | "library-action";
   /** The property whose region it renders in. */
   readonly property: string;
   readonly specifier: string;
@@ -83,7 +83,7 @@ export function modulesOf(manifest: Manifest): Needed[] {
   const seen = new Set<string>();
 
   const collect = (
-    slot: "panel" | "viewer",
+    slot: "panel" | "viewer" | "form",
     from: Readonly<Record<string, string>> | undefined,
   ): void => {
     for (const [property, specifier] of Object.entries(from ?? {})) {
@@ -96,6 +96,7 @@ export function modulesOf(manifest: Manifest): Needed[] {
 
   collect("panel", manifest.contributes?.panels);
   collect("viewer", manifest.contributes?.viewers);
+  collect("form", manifest.contributes?.forms);
 
   // Not keyed by property, so it does not go through `collect`. A library
   // action belongs to the library rather than to any object, which is the

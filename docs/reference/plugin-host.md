@@ -73,13 +73,71 @@ Round-tripping the number through `String()` rules that out, along with `1.0`,
 objects; two objects both carrying `booth#1` offer that column once. A *second
 instance* is not a duplicate — two Booth listings are two prices.
 
+## plugin-host/picker
+
+`choosable(plugins)` · `formsFor(plugins, chosen, order)`
+
+What a new object can be, and who asks for the rest.
+
+### Arbitration runs the other way round
+
+Every function in `slots` starts from what an object carries. Here there is no
+object: the choice is what will decide the properties. Two of `collect`'s three
+arguments would be empty by definition, which is why this is its own module
+rather than another pass over the same shape.
+
+### A type is a semantic property
+
+Nothing here is a new vocabulary. `choosable` returns the properties plugins
+declare, minus anything named in some plugin's `file_types` — those are factual,
+attached because a `.pdf` is a pdf, and offering one would invite marking a
+`.docx` as a pdf and getting a viewer that cannot read it.
+
+The distinction is derived, not declared. A manifest field saying "this one is
+semantic" could disagree with the `file_types` entry beside it.
+
+### A domain is the dot already in the name
+
+`vrchat.booth` sits under `vrchat` because
+[`2026-09-01_object-property-model.md`](../decisions/2026-09-01_object-property-model.md)
+made nested sub-types property names containing a dot, and storage has parsed
+them since. `Choice.path` is that name split, precomputed so grouping does not
+split strings in a render loop.
+
+The list is sorted by property name, which puts a sub-type next to what it
+extends and keeps the order stable across runs.
+
+### Ordering is mount order
+
+`formsFor` sorts by the library's mount order, the same rule every other slot
+uses. A second priority list would give the user two places to manage one thing.
+
+A chosen property the library has never mounted sorts **last** rather than being
+dropped. The first object to be a paper is exactly when its form matters, and
+that is before anything mounted `paper`. Only instance 1 contributes a rank: a
+new object carries the first instance, and ranking on a `booth#2` that does not
+exist yet would order the forms by nothing.
+
+### Today it returns nothing
+
+The three built-in plugins declare only factual properties — `archive` from
+`.zip`, `pdf` from `.pdf`, and the explorer declares none at all. So the picker
+is empty until a plugin ships a semantic property, which is what the
+architecture predicts: the software never guesses that something is a paper, and
+no built-in claims to know.
+
 ## plugin-host/loader
 
 `modulesOf(manifest)` · `load(manifest, resolve)` · `loadAll(manifests, resolve)`
 
-Panels and viewers are module specifiers. Actions and columns are ids the
-plugin already holds, so `modulesOf` returns only the first two, deduplicated —
-one component keyed to two properties runs its top-level code once.
+Panels, viewers and forms are module specifiers. Actions and columns are ids
+the plugin already holds, so `modulesOf` returns only the three, deduplicated —
+one component keyed to two properties runs its top-level code once. The library
+action module is a fourth, not keyed by property.
+
+A slot whose module is never collected here parses, appears in arbitration and
+draws nothing, so a test names the manifest fields that carry specifiers rather
+than trusting the list to stay in step.
 
 ### Resolution is injected
 
