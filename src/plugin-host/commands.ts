@@ -280,18 +280,54 @@ export function methodName(listed: string): string {
   );
 }
 
+/** One place an object sits, as the person adding it names it. */
+export interface PathAt {
+  readonly path: string;
+  readonly kind: "file" | "folder";
+}
+
+/**
+ * What a new object is made of.
+ *
+ * `properties` is a list because an object is what its properties say it is,
+ * plural: a PDF can be a paper and a VRChat asset at once. `paths` may be empty,
+ * which makes a grouping.
+ *
+ * `values` is nested by property so the core writes `paper#1/doi` itself. A flat
+ * map would put that spelling here, and a form returning a bare `doi` would land
+ * in the shared field space — which is what property namespaces prevent.
+ * `shared` is for fields belonging to no property, like `title`.
+ */
+export interface NewObject {
+  readonly paths?: readonly PathAt[];
+  readonly properties?: readonly string[];
+  readonly values?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  readonly shared?: Readonly<Record<string, string>>;
+}
+
 /**
  * What only the application may ask for.
  *
- * Empty today, and kept because the distinction is real: `plugin::commands`
- * holds the same empty list for the same reason. It held a scan command until
- * scanning turned out to be domain knowledge the core has none of.
+ * The writing a person does. A plugin proposing objects goes through
+ * `importPropose`, where what it proposes is reviewed; handing it a direct write
+ * would route around the review that exists for that reason. `plugin::commands`
+ * draws the same line with a second list rather than more rows in the first.
  */
-export type AppApi = Record<string, never>;
+export interface AppApi {
+  /** Make an object. Returns its id. */
+  objectCreate(object: NewObject): Promise<ObjectId>;
+  /** Remove an object and everything hung on it. Files on disk are untouched. */
+  objectForget(id: ObjectId): Promise<void>;
+}
 
 /** Build the surface the application's own UI uses. */
-export function appApiFor(_invoke: Invoke): AppApi {
-  return {};
+export function appApiFor(invoke: Invoke): AppApi {
+  return {
+    objectCreate: (object) =>
+      invoke(handlerName("object.create"), { object }) as Promise<ObjectId>,
+    objectForget: (id) =>
+      invoke(handlerName("object.forget"), { id }) as Promise<void>,
+  };
 }
 
 /** Build the API a plugin is handed. */

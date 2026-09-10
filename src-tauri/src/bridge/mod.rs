@@ -27,6 +27,7 @@
 //! the schema holds, and the two have separate reasons to change.
 
 pub mod commands;
+pub mod objects;
 pub mod error;
 pub mod library;
 pub mod views;
@@ -65,6 +66,8 @@ macro_rules! register_commands {
             $crate::bridge::commands::archive_list,
             $crate::bridge::commands::fs_walk,
             $crate::bridge::commands::file_url,
+            $crate::bridge::objects::object_create,
+            $crate::bridge::objects::object_forget,
             $crate::bridge::commands::hash_of,
             $crate::bridge::commands::history_of,
             $crate::bridge::commands::import_propose,

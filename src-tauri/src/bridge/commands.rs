@@ -995,7 +995,7 @@ pub fn import_propose(
 /// both directions. Parsing here rather than taking an `i64` parameter is the
 /// point: an `i64` would arrive already rounded, and the lookup would fail
 /// with "no such object" for a reason nothing in the message explains.
-fn parse_id(id: &str) -> Result<i64, BridgeError> {
+pub(crate) fn parse_id(id: &str) -> Result<i64, BridgeError> {
     id.parse()
         .map_err(|_| BridgeError::BadRequest(format!("{id:?} is not an object id")))
 }

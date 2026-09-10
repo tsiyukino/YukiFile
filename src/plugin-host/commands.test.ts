@@ -167,13 +167,51 @@ describe("calling", () => {
 });
 
 describe("the app's own surface is not the plugin's", () => {
-  test("APP_ONLY is empty, and that is deliberate", () => {
-    // It held a scan command until scanning turned out to be domain knowledge
-    // the core has none of. The list stays because the distinction is real —
-    // a file dialog or a network fetch will need it — but nothing needs it
-    // today, and an empty list is the honest state.
-    expect(appOnlyCommands()).toEqual([]);
-    expect(appApiFor(async () => undefined)).toEqual({});
+  test("the two lists do not overlap", () => {
+    // The invariant, rather than either list's contents. A command on both is
+    // one a plugin may call and the app claims only it may — and whichever
+    // check runs first decides, which is not a decision anybody made.
+    const shared = allowedCommands().filter((name) => appOnlyCommands().includes(name));
+
+    expect(shared).toEqual([]);
+  });
+
+  test("writing is on the app's list, not the plugin's", () => {
+    // A plugin writing without review is the failure change sets exist to
+    // prevent. It proposes through importPropose and a person reviews.
+    expect(appOnlyCommands()).toContain("object.create");
+    expect(allowedCommands()).not.toContain("object.create");
+    expect(allowedCommands()).not.toContain("object.forget");
+  });
+
+  test("every app-only command has a method, and nothing else does", () => {
+    // Both directions, the same check apiFor gets: a listed command with no
+    // method is unreachable, and a method not on the list is a capability
+    // nobody granted.
+    const api = appApiFor(async () => undefined) as unknown as Record<string, unknown>;
+    const expected = appOnlyCommands().map(methodName).sort();
+
+    expect(Object.keys(api).sort()).toEqual(expected);
+  });
+
+  test("each app method invokes the handler for its own command", () => {
+    // The copy-paste check: objectForget calling object_create would pass
+    // every test above.
+    for (const listed of appOnlyCommands()) {
+      const invoke = vi.fn(() => Promise.resolve(undefined as unknown));
+      const api = appApiFor(invoke) as unknown as Record<string, (...a: unknown[]) => unknown>;
+
+      void api[methodName(listed)]?.({});
+
+      expect(invoke.mock.calls[0]?.[0]).toBe(handlerName(listed));
+    }
+  });
+
+  test("a plugin api offers no way to write", () => {
+    const api = apiFor(async () => undefined) as unknown as Record<string, unknown>;
+
+    expect(api["objectCreate"]).toBeUndefined();
+    expect(api["objectForget"]).toBeUndefined();
   });
 
   test("scanning is not reachable from any plugin api", () => {

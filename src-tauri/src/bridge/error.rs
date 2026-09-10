@@ -48,6 +48,13 @@ pub enum BridgeError {
     Storage(String),
     /// A value the plugin passed does not make sense.
     BadRequest(String),
+    /// Another object already sits at that path.
+    ///
+    /// Object-to-path is one-to-many; path-to-object stays one-to-one, so
+    /// adding a path a different object holds is refused rather than moved. Its
+    /// own variant because the caller can act on it -- open the object that has
+    /// it -- which "bad request" gives them no way to do.
+    PathTaken(String),
 }
 
 impl fmt::Display for BridgeError {
@@ -57,6 +64,9 @@ impl fmt::Display for BridgeError {
                 write!(f, "{path:?} is outside the library")
             }
             Self::NotFound(path) => write!(f, "nothing at {path:?}"),
+            Self::PathTaken(path) => {
+                write!(f, "another object is already at {path:?}")
+            }
             Self::Unreadable(path) => write!(f, "cannot read {path:?}"),
             Self::NotAnArchive(reason) => write!(f, "not a readable archive: {reason}"),
             Self::NoSuchObject(id) => write!(f, "no object {id:?} in this library"),

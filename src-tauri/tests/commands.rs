@@ -10,6 +10,7 @@
 //! cannot be built outside a running app, and the annotated wrappers do
 //! nothing but unwrap one.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::io::Write;
 
@@ -1255,4 +1256,360 @@ fn detaching_a_property_stops_it_being_carried() {
     let view = object_flat_in(&library, None, id).expect("flat");
 
     assert!(!view.carries.contains(&"vrchat#1".to_string()));
+}
+
+// --- making and unmaking objects ----------------------------------------
+
+use yukifile::bridge::objects::{object_create_in, object_forget_in, NewObject, PathAt};
+
+/// A location the caller names, with the kind they say it is.
+fn at(path: &str, kind: &str) -> PathAt {
+    PathAt { path: path.into(), kind: kind.into() }
+}
+
+/// One property's fields, as `NewObject::values` wants them.
+fn under(property: &str, fields: &[(&str, &str)]) -> BTreeMap<String, BTreeMap<String, String>> {
+    let inner = fields
+        .iter()
+        .map(|(field, value)| ((*field).to_string(), (*value).to_string()))
+        .collect();
+    [(property.to_string(), inner)].into_iter().collect()
+}
+
+/// The id `object_create_in` returned, parsed back for the read side.
+fn created(library: &Library, new: NewObject) -> i64 {
+    object_create_in(library, new).expect("create").parse().expect("id")
+}
+
+#[test]
+fn one_path_makes_an_object_with_one_location() {
+    let (library, dir) = library();
+    std::fs::create_dir_all(dir.path().join("Clothing")).expect("mkdir");
+
+    let id = created(
+        &library,
+        NewObject { paths: vec![at("Clothing", "folder")], ..Default::default() },
+    );
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+    assert_eq!(view.locations.len(), 1);
+    assert_eq!(view.locations[0].path, "Clothing");
+}
+
+#[test]
+fn two_paths_make_one_object_with_two_locations() {
+    // The 43 products in the seed library that exist as a folder and the zip
+    // it came from. One thing, two places, and the model says so.
+    let (library, dir) = library();
+    std::fs::create_dir_all(dir.path().join("Outfit")).expect("mkdir");
+    std::fs::write(dir.path().join("Outfit.zip"), b"z").expect("write");
+
+    let id = created(
+        &library,
+        NewObject {
+            paths: vec![at("Outfit", "folder"), at("Outfit.zip", "file")],
+            ..Default::default()
+        },
+    );
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+    assert_eq!(view.locations.len(), 2);
+}
+
+#[test]
+fn no_path_makes_a_grouping() {
+    // A collection or a series. It has no location and that is not an error.
+    let (library, _dir) = library();
+
+    let id = created(
+        &library,
+        NewObject { properties: vec!["collection".into()], ..Default::default() },
+    );
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+    assert!(view.locations.is_empty());
+    assert!(view.carries.contains(&"collection#1".to_string()));
+}
+
+#[test]
+fn several_properties_are_all_carried() {
+    // An object is what its properties say, plural. A PDF can be a paper and
+    // a VRChat asset at once.
+    let (library, _dir) = library();
+
+    let id = created(
+        &library,
+        NewObject {
+            properties: vec!["paper".into(), "vrchat".into()],
+            ..Default::default()
+        },
+    );
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+    assert!(view.carries.contains(&"paper#1".to_string()), "{:?}", view.carries);
+    assert!(view.carries.contains(&"vrchat#1".to_string()), "{:?}", view.carries);
+}
+
+#[test]
+fn a_property_chosen_with_an_empty_form_is_still_carried() {
+    // Somebody picks two types, fills one form, confirms. The unfilled one is
+    // still a decision they made.
+    let (library, _dir) = library();
+
+    let id = created(
+        &library,
+        NewObject {
+            properties: vec!["paper".into(), "vrchat".into()],
+            values: under("paper", &[("doi", "10.1000/x")]),
+            ..Default::default()
+        },
+    );
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+    assert!(view.carries.contains(&"vrchat#1".to_string()), "{:?}", view.carries);
+}
+
+#[test]
+fn values_are_written_under_the_property_that_owns_them() {
+    // The form hands over a bare `doi`; the core spells `paper#1/doi`. A flat
+    // map would put that spelling in the caller's hands, and a bare field
+    // would land in the shared space.
+    let (library, _dir) = library();
+
+    let id = created(
+        &library,
+        NewObject {
+            properties: vec!["paper".into()],
+            values: under("paper", &[("doi", "10.1000/x")]),
+            ..Default::default()
+        },
+    );
+
+    let region = object_flat_in(&library, None, id)
+        .expect("flat")
+        .regions
+        .into_iter()
+        .find(|region| region.property == "paper")
+        .expect("region");
+    assert_eq!(region.fields.get("doi").map(String::as_str), Some("10.1000/x"));
+}
+
+#[test]
+fn a_shared_field_stays_bare() {
+    let (library, _dir) = library();
+
+    let id = created(
+        &library,
+        NewObject {
+            shared: [("title".to_string(), "A paper".to_string())].into_iter().collect(),
+            ..Default::default()
+        },
+    );
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+    assert_eq!(
+        view.shared.get("title").map(|sources| sources[0].value.as_str()),
+        Some("A paper")
+    );
+}
+
+#[test]
+fn values_for_a_property_the_object_was_not_given_are_refused() {
+    // Writing under a property nobody chose would leave values nothing draws.
+    let (library, _dir) = library();
+
+    let refused = object_create_in(
+        &library,
+        NewObject {
+            properties: vec!["paper".into()],
+            values: under("vrchat", &[("avatar", "manuka")]),
+            ..Default::default()
+        },
+    );
+
+    assert!(matches!(refused, Err(BridgeError::BadRequest(_))), "{refused:?}");
+}
+
+#[test]
+fn a_path_another_object_holds_is_refused_by_name() {
+    // Path-to-object is one-to-one. The raw failure is `UNIQUE constraint
+    // failed: object_paths.path`, which tells somebody adding a folder that
+    // the database is broken.
+    let (library, dir) = library();
+    std::fs::create_dir_all(dir.path().join("Clothing")).expect("mkdir");
+    created(
+        &library,
+        NewObject { paths: vec![at("Clothing", "folder")], ..Default::default() },
+    );
+
+    let refused = object_create_in(
+        &library,
+        NewObject { paths: vec![at("Clothing", "folder")], ..Default::default() },
+    );
+
+    assert!(matches!(refused, Err(BridgeError::PathTaken(_))), "{refused:?}");
+}
+
+#[test]
+fn a_path_outside_the_library_is_refused() {
+    // Something that really is there, and really is outside. A name that does
+    // not exist comes back as missing instead, which would pass a laxer
+    // assertion while testing nothing about confinement.
+    let (library, dir) = library();
+    let outside = dir.path().parent().expect("parent").join("yukifile-outside-probe");
+    fs::create_dir_all(&outside).expect("mkdir");
+
+    let refused = object_create_in(
+        &library,
+        NewObject {
+            paths: vec![at("../yukifile-outside-probe", "folder")],
+            ..Default::default()
+        },
+    );
+    let _ = fs::remove_dir_all(&outside);
+
+    assert!(matches!(refused, Err(BridgeError::OutsideLibrary(_))), "{refused:?}");
+}
+
+#[test]
+fn a_path_that_is_not_on_disk_is_refused() {
+    // Adding a folder means looking at one. An import may describe a library
+    // about to be copied in; a person clicking "add" is looking at the thing.
+    let (library, _dir) = library();
+
+    let refused = object_create_in(
+        &library,
+        NewObject { paths: vec![at("never-existed", "folder")], ..Default::default() },
+    );
+
+    assert!(matches!(refused, Err(BridgeError::NotFound(_))), "{refused:?}");
+}
+
+#[test]
+fn a_kind_that_is_not_one_is_refused() {
+    let (library, _dir) = library();
+
+    let refused = object_create_in(
+        &library,
+        NewObject { paths: vec![at("thing", "sausage")], ..Default::default() },
+    );
+
+    assert!(matches!(refused, Err(BridgeError::BadRequest(_))), "{refused:?}");
+}
+
+#[test]
+fn a_reserved_property_is_refused() {
+    // `carried::attach` refuses it; this checks the refusal reaches the caller
+    // rather than being swallowed into a storage error.
+    let (library, _dir) = library();
+
+    let refused = object_create_in(
+        &library,
+        NewObject { properties: vec!["fs".into()], ..Default::default() },
+    );
+
+    assert!(matches!(refused, Err(BridgeError::BadRequest(_))), "{refused:?}");
+}
+
+#[test]
+fn a_refused_create_leaves_nothing_behind() {
+    // One transaction. A half-made object -- properties attached, values
+    // missing -- is worse than none, because nothing says which half ran.
+    let (library, _dir) = library();
+    let before = library
+        .with_connection(|c| Ok(yukifile::store::values::object_count(c)?))
+        .expect("count");
+
+    let _ = object_create_in(
+        &library,
+        NewObject {
+            properties: vec!["paper".into()],
+            values: under("vrchat", &[("avatar", "manuka")]),
+            ..Default::default()
+        },
+    );
+
+    let after = library
+        .with_connection(|c| Ok(yukifile::store::values::object_count(c)?))
+        .expect("count");
+    assert_eq!(before, after, "a refused create left an object behind");
+}
+
+#[test]
+fn choosing_a_property_mounts_it() {
+    // Nothing draws a region for an unmounted property, so the first object to
+    // be a paper has to mount `paper` or its own form's values never show.
+    let (library, _dir) = library();
+
+    created(
+        &library,
+        NewObject { properties: vec!["paper".into()], ..Default::default() },
+    );
+
+    let mounted = mount_order_in(&library).expect("mounts");
+    assert!(mounted.iter().any(|mount| mount.namespace == "paper"), "{mounted:?}");
+}
+
+#[test]
+fn forgetting_an_object_removes_it() {
+    let (library, _dir) = library();
+    let id = created(
+        &library,
+        NewObject {
+            properties: vec!["paper".into()],
+            shared: [("title".to_string(), "x".to_string())].into_iter().collect(),
+            ..Default::default()
+        },
+    );
+
+    object_forget_in(&library, id).expect("forget");
+
+    assert!(matches!(
+        object_flat_in(&library, None, id),
+        Err(BridgeError::NoSuchObject(_))
+    ));
+}
+
+#[test]
+fn forgetting_frees_the_path_it_held() {
+    // Undoing a mis-click has to let you add the thing again properly.
+    let (library, dir) = library();
+    std::fs::create_dir_all(dir.path().join("Clothing")).expect("mkdir");
+    let id = created(
+        &library,
+        NewObject { paths: vec![at("Clothing", "folder")], ..Default::default() },
+    );
+
+    object_forget_in(&library, id).expect("forget");
+
+    object_create_in(
+        &library,
+        NewObject { paths: vec![at("Clothing", "folder")], ..Default::default() },
+    )
+    .expect("the path was still held");
+}
+
+#[test]
+fn forgetting_something_that_is_not_there_says_so() {
+    let (library, _dir) = library();
+
+    assert!(matches!(
+        object_forget_in(&library, 404),
+        Err(BridgeError::NoSuchObject(_))
+    ));
+}
+
+#[test]
+fn choosing_one_property_twice_is_refused() {
+    let (library, _dir) = library();
+
+    let refused = object_create_in(
+        &library,
+        NewObject {
+            properties: vec!["paper".into(), "paper".into()],
+            ..Default::default()
+        },
+    );
+
+    assert!(matches!(refused, Err(BridgeError::BadRequest(_))), "{refused:?}");
 }

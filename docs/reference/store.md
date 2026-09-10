@@ -414,6 +414,10 @@ Paths are normalised on the way in, so `booth/title` and `booth#1/title` cannot
 both exist naming one value — the primary key compares strings, and without
 this it would not catch them.
 
+`forget_object(c, object)` is the counterpart, returning whether anything was
+there. Everything hung on an object references `objects(id)` with `ON DELETE
+CASCADE`, so one delete is the whole removal.
+
 `create_object` retries a colliding id three times and then fails. Ids carry a
 random tail, so two objects made in the same millisecond can draw the same one
 and the primary key catches it. Retrying forever would turn a broken generator

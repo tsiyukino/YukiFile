@@ -396,6 +396,20 @@ pub fn object_count(connection: &Connection) -> rusqlite::Result<i64> {
 /// `NotMounted`, so a scanned library resolved to nothing. A property that
 /// appears on an object has to be mounted for its values to be readable, and
 /// the moment it first appears is the only moment anything knows to do it.
+/// Remove an object and everything hung on it.
+///
+/// The counterpart to `create_object`. Values, locations, carried properties,
+/// edges and history all reference `objects(id)` with `ON DELETE CASCADE`, so
+/// one delete is the whole removal -- and foreign keys are on, which
+/// `store::carried` proves with a test rather than trusting the declaration.
+///
+/// Returns whether anything was there. A caller deleting something already gone
+/// wants to know, rather than being told it succeeded.
+pub fn forget_object(connection: &Connection, object: i64) -> rusqlite::Result<bool> {
+    let removed = connection.execute("DELETE FROM objects WHERE id = ?1", params![object])?;
+    Ok(removed > 0)
+}
+
 pub fn mount(connection: &Connection, namespace: &str, instance: u32) -> rusqlite::Result<()> {
     // OR IGNORE on the (namespace, instance) unique constraint rather than a
     // NOT EXISTS guard: an aggregate makes the SELECT a one-row result whose

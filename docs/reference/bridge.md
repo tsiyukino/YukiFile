@@ -48,9 +48,15 @@ Both lists are checked the same way. Every `#[tauri::command]` must be on
 exactly one of them, in both directions, and `commands.test.ts` additionally
 asserts that no `APP_ONLY` command is reachable from `apiFor`.
 
-| command        | list     | effect |
-|----------------|----------|--------|
-| `library.scan` | APP_ONLY | Write  |
+| command          | list     | effect |
+|------------------|----------|--------|
+| `object.create`  | APP_ONLY | Write  |
+| `object.forget`  | APP_ONLY | Write  |
+
+`library.scan` was the first row here and is gone: deciding what counts as an
+object turned out to be domain knowledge the core has none of, so the
+capability stopped existing rather than moving lists. What sits here now is the
+writing a person does through the application's own interface.
 
 ### Object ids cross as strings
 
@@ -66,6 +72,72 @@ documenting as a caveat.
 So ids serialise as strings and commands take them as strings, parsing at the
 edge. Narrowing the ids themselves would have traded a boundary detail for a
 real constraint on the store.
+
+## bridge::objects
+
+`object_create_in(library, new)` · `object_forget_in(library, id)`
+
+Making and unmaking objects on somebody's say-so. Separate from
+`bridge::commands` because a read is a read and a write has to be atomic,
+refusable, and reversible.
+
+### What an object is comes from the person
+
+`properties` is a list. An object is what its properties say it is, plural — a
+PDF can be a paper and a VRChat asset at once, and each contributes its own
+fields. The core attaches what it is handed and interprets none of the names.
+
+Choosing a property also mounts it. Nothing draws a region for a property the
+library does not mount, so the first object to be a paper would otherwise never
+show its own form's values.
+
+`paths` may be empty, which makes a grouping. That is a normal thing to make and
+not a special case: an object with no location is one whose properties say what
+it is, same as any other.
+
+### Values arrive nested by property
+
+```
+values: { "paper": { "doi": "10.1000/x" } }   →   paper#1/doi
+shared: { "title": "A paper" }                →   title
+```
+
+The core writes the namespaced path itself. A flat map would put the spelling of
+`paper#1/doi` in the caller's hands, and a form returning a bare `doi` would land
+in the shared field space — which is what property namespaces exist to prevent.
+Values for a property the object was not given are refused rather than written
+somewhere nothing draws.
+
+### One transaction
+
+A half-made object — properties attached, values missing — is worse than no
+object, because nothing in the library says which half ran. A refused create
+leaves the object count unchanged, which is asserted rather than assumed.
+
+### The path has to be there
+
+`Library::resolve` canonicalises, which is what confines it, and a path that is
+not on disk cannot be canonicalised. So adding one that is not there comes back
+as `NotFound`.
+
+That is the opposite of the import contract, deliberately: an import may describe
+a library somebody is about to copy in, while a person clicking "add" is looking
+at the thing. `kind` still comes from the caller, because the disk browser
+already walked and knows.
+
+A path another object holds comes back as `PathTaken` naming it. The raw failure
+is `UNIQUE constraint failed: object_paths.path`, which would tell somebody
+adding a folder that the database is broken.
+
+### Forgetting
+
+`object.forget` removes an object and everything hung on it, through one delete
+and the schema's cascades. The files on disk are untouched — this manages what
+it knows about things, not the things.
+
+It exists because a library where every mistake is permanent is one nobody will
+risk organising. Forgetting frees the path it held, so a mis-click can be redone
+properly.
 
 ## bridge::library
 

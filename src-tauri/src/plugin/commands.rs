@@ -144,16 +144,29 @@ pub const ALLOWED: &[Command] = &[
 /// same line for the network — access happens when the user presses a button,
 /// and a plugin is not a button.
 ///
-/// Empty today. It held `library.scan` until scanning turned out to be the
-/// wrong thing for the core to do at all: deciding what counts as an object is
-/// domain knowledge, and `docs.yml` says the core has none. A plugin now walks
-/// through `fs.walk` and submits through `import.propose`, so the capability
-/// that needed this list stopped existing rather than moving.
+/// It held `library.scan` until scanning turned out to be the wrong thing for
+/// the core to do at all: deciding what counts as an object is domain
+/// knowledge, and `docs.yml` says the core has none. That capability stopped
+/// existing rather than moving here — a plugin walks with `fs.walk` and submits
+/// through `import.propose`.
 ///
-/// The list stays because the distinction is real and the next thing to need
-/// it — a file dialog, a network fetch — is a question of when rather than
-/// whether.
-pub const APP_ONLY: &[Command] = &[];
+/// What lives here now is the writing a person does. Somebody adding a folder
+/// they just found, or undoing a mis-click, is not proposing anything for review
+/// — they are the review. A plugin doing the same thing without review is the
+/// failure change sets exist to prevent, which is why these are not two more
+/// rows in [`ALLOWED`].
+pub const APP_ONLY: &[Command] = &[
+    Command {
+        name: "object.create",
+        effect: Effect::Write,
+        reason: "a person says what a new object is and where it sits;                  nothing proposes it because they are the one deciding",
+    },
+    Command {
+        name: "object.forget",
+        effect: Effect::Write,
+        reason: "the counterpart to creating one — a library where every                  mistake is permanent is one nobody will risk organising",
+    },
+];
 
 /// Whether a name is on either list.
 pub fn is_known(name: &str) -> bool {
