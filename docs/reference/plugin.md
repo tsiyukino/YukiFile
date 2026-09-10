@@ -25,9 +25,10 @@ violation down.
 
 ### UI contributions are keyed by property
 
-`panels`, `actions`, `viewers` and `columns` are all keyed by the property they
-are scoped to. A plugin does not say where on screen it wants to be; the core
-places that property's region, and ordering falls out of mount order.
+`panels`, `actions`, `viewers`, `columns` and `forms` are all keyed by the
+property they are scoped to. A plugin does not say where on screen it wants to
+be; the core places that property's region, and ordering falls out of mount
+order.
 
 Visibility follows from the same key: a contribution appears when the object
 carries the property. Panels, actions and columns need no separate rule.
@@ -36,6 +37,26 @@ carries the property. Panels, actions and columns need no separate rule.
 a property the plugin neither declares nor requires is refused at parse
 (`UnscopedContribution`) — the permission check and the dependency declaration
 are the same statement.
+
+### `forms` draws before its object exists
+
+The one slot whose visibility does not follow from what an object carries,
+because there is no object yet. Someone has picked the property in the picker
+and nothing has been written; the form is what asks for the rest.
+
+```json
+"forms": { "paper": "./newpaper" }
+```
+
+Keyed and scoped like every other contribution, so a plugin that will draw the
+second step for `paper` must declare or require `paper`. Knowing that a paper
+has a DOI belongs to that plugin and nowhere near the core.
+
+Declaring a property without a form is ordinary — the core draws a plain one.
+
+Ordering, when several properties are picked at once, is mount order. That is
+the same rule the other slots use, and inventing a second priority list would
+give the user two places to manage one thing.
 
 ### Reserved names
 

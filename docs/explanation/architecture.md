@@ -267,6 +267,12 @@ palette no matter who drew the page. That is what lets a plugin own an object's
 whole page without stranding the user, and it is why no layout has to reserve a
 slot for other plugins.
 
+A fifth, `forms`, draws in the picker rather than on an object, and it is the
+only one whose visibility does not follow from what an object carries — there
+is no object yet. Somebody has said a new thing will be a paper; the form is
+what asks for the DOI. Keyed and scoped like the rest, so knowing what a DOI is
+stays with the plugin that declared `paper`.
+
 The arbitration is split across the two languages along the line between what
 is decided once and what is asked per object. Rust settles which plugins load
 and in what order, all or nothing, because a partly loaded set is a library

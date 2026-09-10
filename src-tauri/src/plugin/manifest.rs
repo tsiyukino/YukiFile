@@ -89,6 +89,16 @@ pub struct Contributes {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub columns: BTreeMap<String, Vec<String>>,
 
+    /// Property to the module asking for what it needs when an object is made.
+    ///
+    /// The only slot that draws before its object exists. Every other one is
+    /// visible because the object carries the property; here the person has
+    /// just said it will, and nothing has been written yet. A `paper` form
+    /// asks for a DOI, and knowing what a DOI is belongs to that plugin and
+    /// nowhere near the core.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub forms: BTreeMap<String, String>,
+
     /// Actions that belong to the library rather than to any object.
     ///
     /// Scanning, importing and exporting are the shape: they act on the
@@ -241,11 +251,12 @@ impl Manifest {
             .map(String::as_str)
             .collect();
 
-        let keyed: [(&'static str, Vec<&String>); 4] = [
+        let keyed: [(&'static str, Vec<&String>); 5] = [
             ("panel", self.contributes.panels.keys().collect()),
             ("action", self.contributes.actions.keys().collect()),
             ("viewer", self.contributes.viewers.keys().collect()),
             ("column", self.contributes.columns.keys().collect()),
+            ("form", self.contributes.forms.keys().collect()),
         ];
 
         for (slot, properties) in keyed {
@@ -274,6 +285,7 @@ impl Manifest {
         for (slot, modules) in [
             ("panel", &self.contributes.panels),
             ("viewer", &self.contributes.viewers),
+            ("form", &self.contributes.forms),
         ] {
             for specifier in modules.values() {
                 if names_an_extension(specifier) {
@@ -308,6 +320,81 @@ mod tests {
         manifest.contributes.properties.push("thing".into());
         manifest.contributes.panels.insert("thing".into(), specifier.into());
         manifest
+    }
+
+    /// A manifest whose only contribution is one keyed slot, scoped to a
+    /// property it does not declare.
+    fn unscoped(slot: &str) -> Manifest {
+        let mut manifest = Manifest { id: "test.plugin".into(), ..Default::default() };
+        manifest.contributes.properties.push("mine".into());
+        match slot {
+            "panel" => manifest.contributes.panels.insert("theirs".into(), "./m".into()),
+            "viewer" => manifest.contributes.viewers.insert("theirs".into(), "./m".into()),
+            "form" => manifest.contributes.forms.insert("theirs".into(), "./m".into()),
+            "action" => {
+                manifest.contributes.actions.insert("theirs".into(), vec!["a".into()]);
+                None
+            }
+            "column" => {
+                manifest.contributes.columns.insert("theirs".into(), vec!["c".into()]);
+                None
+            }
+            other => panic!("unknown slot {other}"),
+        };
+        manifest
+    }
+
+    #[test]
+    fn every_keyed_slot_is_scope_checked() {
+        // One list, five entries, and a sixth slot added later is checked only
+        // if somebody remembers to extend it. Naming each slot here is what
+        // turns forgetting into a failing test rather than a plugin placing a
+        // form in a region it has no relationship to.
+        for slot in ["panel", "action", "viewer", "column", "form"] {
+            assert!(
+                matches!(
+                    unscoped(slot).check(),
+                    Err(ManifestError::UnscopedContribution { .. })
+                ),
+                "a {slot} scoped to somebody else's property was allowed"
+            );
+        }
+    }
+
+    #[test]
+    fn a_form_is_scoped_like_every_other_contribution() {
+        // Requiring a property is the ticket, same as for a panel: a plugin
+        // that will draw the second step of `paper` has to have a declared
+        // relationship with `paper`.
+        let mut manifest = Manifest { id: "test.plugin".into(), ..Default::default() };
+        manifest.requires.properties.push("paper".into());
+        manifest.contributes.forms.insert("paper".into(), "./newpaper".into());
+
+        assert!(manifest.check().is_ok());
+    }
+
+    #[test]
+    fn a_form_specifier_may_not_name_an_extension() {
+        // Same rule as a panel's: which extension a module has on disk is the
+        // resolver's business.
+        let mut manifest = Manifest { id: "test.plugin".into(), ..Default::default() };
+        manifest.contributes.properties.push("paper".into());
+        manifest.contributes.forms.insert("paper".into(), "./newpaper.tsx".into());
+
+        assert!(matches!(
+            manifest.check(),
+            Err(ManifestError::ExtensionInSpecifier { slot: "form", .. })
+        ));
+    }
+
+    #[test]
+    fn a_manifest_with_no_form_is_ordinary() {
+        // Declaring a type without a form is legal; the core draws a plain one.
+        let mut manifest = Manifest { id: "test.plugin".into(), ..Default::default() };
+        manifest.contributes.properties.push("paper".into());
+
+        assert!(manifest.check().is_ok());
+        assert!(manifest.contributes.forms.is_empty());
     }
 
     #[test]

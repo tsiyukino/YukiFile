@@ -62,6 +62,15 @@ export interface Contributes {
   readonly columns?: Readonly<Record<string, readonly string[]>>;
 
   /**
+   * Property to the module asking for what it needs when an object is made.
+   *
+   * The only slot that draws before its object exists. Every other one is
+   * visible because the object carries the property; here the person has just
+   * said it will, and nothing has been written yet.
+   */
+  readonly forms?: Readonly<Record<string, string>>;
+
+  /**
    * Actions that belong to the library rather than to any object.
    *
    * Scanning, importing and exporting act on the library as a whole. A fresh
