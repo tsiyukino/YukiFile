@@ -156,6 +156,13 @@ fn open_library(root: &std::path::Path) -> Result<Library, String> {
 /// An unsatisfied dependency refuses the whole set, because a partly loaded
 /// set is a library where some objects have panels and others do not for
 /// reasons nobody can see.
+///
+/// That refusal was written for a broken install, which a person could not
+/// cause. A library's plugin list is a text file they edit, and disabling one
+/// plugin that another requires reaches the same refusal -- so a typo would
+/// stop the application opening, with the reason on stderr where a GUI user
+/// never sees it. An enablement that cannot load falls back to everything
+/// installed and says so, matching what a malformed list already does.
 fn load_plugins(data: &std::path::Path) -> Result<(Registry, Vec<(String, String)>), String> {
     let found = discover::in_directory(&plugins_dir())
         .map_err(|error| format!("cannot read plugins: {error}"))?;
@@ -180,8 +187,23 @@ fn load_plugins(data: &std::path::Path) -> Result<(Registry, Vec<(String, String
         skipped.push((id, "enabled by this library but not installed".into()));
     }
 
-    let wanted = enabled::filter(found.manifests, enabled.ids.as_ref());
-    let registry = Registry::load(wanted).map_err(|error| error.to_string())?;
+    let wanted = enabled::filter(found.manifests.clone(), enabled.ids.as_ref());
+    let chosen = enabled.ids.is_some();
+
+    let registry = match Registry::load(wanted) {
+        Ok(registry) => registry,
+        // Only a library that chose gets the fallback. With no list there is
+        // nothing to fall back to, and the set really is broken.
+        Err(error) if chosen => {
+            skipped.push((
+                DATA.into(),
+                format!("running every installed plugin instead: {error}"),
+            ));
+            Registry::load(found.manifests).map_err(|error| error.to_string())?
+        }
+        Err(error) => return Err(error.to_string()),
+    };
+
     Ok((registry, skipped))
 }
 

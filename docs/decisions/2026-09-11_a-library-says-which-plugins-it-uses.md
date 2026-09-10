@@ -52,6 +52,13 @@ written by an import, and turning the explorer off going forward leaves them
 where they are. Withdrawing what an import created is real work and does not
 exist yet; today the answer is a fresh library.
 
+A library can disable a plugin that another one requires. `Registry::load`
+refuses such a set, which was written for a broken install -- a state a person
+could not previously cause. Now they can, by editing a file, so an enablement
+that will not load falls back to every installed plugin and says why rather
+than stopping the application from opening. Overriding the library's stated
+choice is the lesser harm, and it is loud.
+
 There is no interface for editing the list. It is a file, edited by hand, and a
 toggle in the application is the obvious next thing rather than a missing part
 of this one.

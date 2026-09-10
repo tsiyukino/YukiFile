@@ -91,6 +91,20 @@ Ids naming nothing installed are reported through `missing`: a typo and an
 absent install look identical from inside a library that quietly runs without
 the plugin.
 
+### Disabling a dependency does not stop the application
+
+`Registry::load` refuses the whole set when a plugin requires a property
+nothing provides, and that is right for a broken install. But a plugin list is
+a text file a person edits, so disabling one plugin that another requires
+reaches the same refusal -- and a GUI that exits with a message on stderr has,
+from where the user is sitting, done nothing at all.
+
+When a library supplied a list and the resulting set will not load, `main`
+falls back to every installed plugin and reports why. The library's choice is
+overridden, loudly, which is the lesser harm against an application that will
+not open. A set that will not load with **no** list is a genuinely broken
+install and still refuses.
+
 ### Why this exists
 
 Without it, every plugin under `plugins/` runs in every library. Then "record
