@@ -25,11 +25,13 @@ const FORBIDDEN: &[&str] = &[
     "yukifile.pdf",
     "yukifile.vrc",
     "yukifile.folder",
+    "yukifile.explorer",
     "yukifile.file",
     "yukifile.archive",
     "plugins/pdf",
     "plugins/vrc",
     "plugins/folder",
+    "plugins/explorer",
     "plugins/file",
     "plugins/archive",
 ];

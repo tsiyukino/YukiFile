@@ -5,16 +5,14 @@
  * the part that is a judgement. `docs.yml` says the core knows nothing about
  * what it stores, and "what counts as an object" is exactly that.
  *
- * The answer here is the plainest one: every file and every folder is an
- * object. That is right for a library of loose documents and wrong for a
- * VRChat library, where a product folder is the object and its forty contents
- * are not. Being wrong for some libraries is the point — the library that
- * disagrees installs a different plugin, and the core never had an opinion to
- * change.
+ * The judgement itself lives in `explorer.ts`: every file and every folder
+ * becomes an object. This file only carries it to the core, which is why the
+ * two are separate — the rule is worth reading on its own, and submitting it
+ * is the same work whatever the rule turns out to be.
  */
 
 import type { LibraryActionProps, ActionResult } from "../../src/plugin-host/panel.js";
-import { documentFor, planFrom } from "./folder.js";
+import { documentFor, planFrom } from "./explorer.js";
 
 export async function runLibraryAction({
   api,
@@ -33,7 +31,7 @@ export async function runLibraryAction({
   // is written; anything that would overwrite a decision waits for a person.
   // A scan gets no shortcut around that, which is what keeps a plugin from
   // quietly replacing values somebody set.
-  const outcome = await api.importPropose("folder scan", documentFor(plan));
+  const outcome = await api.importPropose("file explorer scan", documentFor(plan));
 
   const parts = [`${outcome.objects_created} added`];
   if (outcome.unchanged > 0) parts.push(`${outcome.unchanged} unchanged`);

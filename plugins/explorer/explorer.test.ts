@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 
 import type { Api, Entry } from "../../src/plugin-host/commands.js";
-import { childrenOf, documentFor, objectsFrom, planFrom, topLevel } from "./folder.js";
+import { childrenOf, documentFor, objectsFrom, planFrom, topLevel } from "./explorer.js";
 
 function entry(path: string, kind: "file" | "folder" = "file"): Entry {
   return { path, kind, size: kind === "file" ? 100 : null, mtime: null };

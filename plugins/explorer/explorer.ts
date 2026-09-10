@@ -1,15 +1,19 @@
 /**
- * What a folder library decides, apart from what it draws.
+ * A file explorer, as a plugin.
  *
  * This plugin answers one question the core deliberately does not: **what
- * counts as an object here?** In a library of loose files the answer is "every
- * file, and every folder that holds them", which is the plainest reading of a
- * directory tree and wrong for plenty of libraries — a VRChat library wants
- * the product folder and not its forty contents.
+ * counts as an object here?** Its answer is the one a file explorer gives:
+ * every file and every folder, each on its own. Nothing is left out and
+ * nothing is grouped.
  *
- * Being replaceable is the point. A library with a different answer installs a
- * different plugin, and nothing in the core has to change, because the core
- * never held an opinion to change.
+ * That is a rule, not a default. A library of 441 paths gets 441 objects,
+ * including the 281 textures under one folder that nobody will ever organise
+ * individually. Install this when a file explorer is what you want; a library
+ * that wants a product folder to be the object, and its forty contents not to
+ * be, installs a plugin that says so instead.
+ *
+ * The core never held an opinion here, so there is nothing in it to change
+ * when the answer does.
  */
 
 import type { Api, Entry } from "../../src/plugin-host/commands.js";
@@ -28,9 +32,9 @@ export interface Proposed {
 /**
  * Which entries become objects.
  *
- * Every file and every folder, each on its own. The folders matter: a person
- * who put forty textures in `Clothing/AW KLASSIK MAID` named that folder for a
- * reason, and it is the thing they would open.
+ * All of them. The folders matter as much as the files: a person who put forty
+ * textures in `Clothing/AW KLASSIK MAID` named that folder for a reason, and it
+ * is the thing they would open.
  *
  * Nothing here decides that a folder and the zip beside it are one product.
  * `seed/vrc-lessons.md` records what guessing that costs, and a plugin with
@@ -111,7 +115,7 @@ export async function planFrom(api: Api, under: string | null): Promise<Plan> {
 export function documentFor(plan: Plan): string {
   return JSON.stringify({
     version: 1,
-    source: "folder scan",
+    source: "file explorer scan",
     objects: plan.proposed.map((object) => ({
       paths: object.paths,
       folders: object.folders,
