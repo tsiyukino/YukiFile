@@ -26,6 +26,19 @@ booth#1/title          a field under one mounted property instance
 vrchat.clothing/parts  a property whose type name contains a dot
 ```
 
+### Reserved namespaces
+
+`FS` · `PIN` · `IMPORT` · `RESERVED` · `is_reserved(namespace)`
+
+The namespaces the core keeps: `fs` is the one core property
+(`2026-09-02_core-properties.md`), `@pin` and `@import` are its own prefixes.
+
+They live here rather than in the plugin layer because they are the core's own
+schema, and because storage has to be able to refuse them without depending on
+the plugin layer to have looked first. Three copies of this list existed across
+`plugin::manifest`, `plugin::registry` and `store::flatten` before it was
+collected here.
+
 ### `ValuePath<'a>`
 
 A parsed path, borrowing from the input rather than allocating.
@@ -436,6 +449,17 @@ does not mount; its values wait in storage, exactly as
 `attach` is idempotent — choosing a type twice is one decision. `detach` leaves
 the values alone, so undoing a mis-click does not destroy what was typed before
 it, and they read back the moment the property returns.
+
+### Reserved names are refused here too
+
+`attach` returns `CarriedError::Reserved` for anything in
+[`path::RESERVED`](#storepath), and `NotAName` for a blank.
+
+The other two guards on reserved namespaces do not reach this table.
+`plugin::manifest` refuses a plugin *declaring* `fs`, and flattening never lets
+a stored field compete with a core one — but these writes never reach `values_`
+and never pass through a manifest. Attaching `fs` would put `fs#1` into the list
+that drives slot arbitration, through a door neither guard watches.
 
 ### Where `object.flat` gets `carries`
 

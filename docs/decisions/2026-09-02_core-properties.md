@@ -99,6 +99,14 @@ several. `kind`, `size`, `mtime` and `hash` hang on the instance rather than on
 the object, because they describe a location and an object may have more than
 one. See `2026-09-02_objects-may-span-paths.md`.
 
+`store::carried` added a third way in, and neither existing guard covered it: a
+carried property never reaches `values_`, so non-competition does not apply, and
+it never passes through a manifest, so the reservation was not consulted.
+Attaching `fs` put `fs#1` into the list driving slot arbitration. `attach` now
+refuses reserved names itself, reading the same list — which is also why that
+list moved to `store::path`, where storage can see it without depending on the
+plugin layer.
+
 Reserving the names gives a second line of defence behind a mechanism that
 already covers most of it: fields do not compete by default
 (`2026-09-02_fields-have-sources-not-winners.md`), so nothing would shadow

@@ -29,6 +29,36 @@
 
 use rusqlite::{params, Connection};
 
+use crate::store::path;
+
+/// A property that cannot be carried.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CarriedError {
+    /// A namespace the core keeps for itself.
+    Reserved(String),
+    /// An empty or whitespace-only namespace.
+    NotAName(String),
+    Storage(String),
+}
+
+impl std::fmt::Display for CarriedError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Reserved(name) => write!(f, "{name:?} is reserved by the core"),
+            Self::NotAName(name) => write!(f, "{name:?} is not a property name"),
+            Self::Storage(error) => write!(f, "{error}"),
+        }
+    }
+}
+
+impl std::error::Error for CarriedError {}
+
+impl From<rusqlite::Error> for CarriedError {
+    fn from(error: rusqlite::Error) -> Self {
+        Self::Storage(error.to_string())
+    }
+}
+
 /// Record that an object carries a property.
 ///
 /// Idempotent: choosing a type twice is one decision, not an error. A second
@@ -39,12 +69,31 @@ use rusqlite::{params, Connection};
 /// inserting it. Nothing cascades from this table today, so the two behave
 /// identically and no test tells them apart — but the day something references
 /// it, replace would quietly take that with it.
+///
+/// # Reserved names are refused here
+///
+/// `plugin::manifest` already refuses a plugin *declaring* `fs` or `@pin`, and
+/// flattening never lets a stored field compete with a core one. Neither guard
+/// covers this table: its writes never reach `values_`, and nothing about being
+/// carried goes through a manifest. Attaching `fs` would put `fs#1` into the
+/// list that drives slot arbitration, through a door the other two do not
+/// watch.
+///
+/// The list comes from `store::path` rather than being repeated here, because a
+/// second copy of the core's schema is one that disagrees with the first.
 pub fn attach(
     connection: &Connection,
     object: i64,
     namespace: &str,
     instance: u32,
-) -> rusqlite::Result<()> {
+) -> Result<(), CarriedError> {
+    if namespace.trim().is_empty() {
+        return Err(CarriedError::NotAName(namespace.to_string()));
+    }
+    if path::is_reserved(namespace) {
+        return Err(CarriedError::Reserved(namespace.to_string()));
+    }
+
     connection.execute(
         "INSERT OR IGNORE INTO object_properties (object_id, namespace, instance)
          VALUES (?1, ?2, ?3)",
@@ -176,6 +225,39 @@ mod tests {
         let (connection, id) = library();
 
         detach(&connection, id, "paper", 1).expect("detach");
+    }
+
+    #[test]
+    fn a_reserved_namespace_is_refused() {
+        // `plugin::manifest` refuses a plugin *declaring* `fs`, and flattening
+        // stops a stored field competing with a core one. Neither guard sees
+        // this table, so attaching `fs` would put `fs#1` into the list that
+        // drives slot arbitration through a door nobody watches.
+        let (connection, id) = library();
+
+        for reserved in path::RESERVED {
+            assert_eq!(
+                attach(&connection, id, reserved, 1),
+                Err(CarriedError::Reserved((*reserved).to_string())),
+                "{reserved} was accepted"
+            );
+        }
+        assert!(of_object(&connection, id).unwrap().is_empty());
+    }
+
+    #[test]
+    fn a_namespace_that_is_not_a_name_is_refused() {
+        // An empty string reads back as a property with no name, which no
+        // plugin can ever be scoped to -- it would sit in `carries` forever
+        // with nothing able to draw it.
+        let (connection, id) = library();
+
+        for blank in ["", "   "] {
+            assert_eq!(
+                attach(&connection, id, blank, 1),
+                Err(CarriedError::NotAName(blank.to_string()))
+            );
+        }
     }
 
     #[test]
