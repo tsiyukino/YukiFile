@@ -45,6 +45,10 @@
 - [2026-09-03 a viewer gets a URL, not bytes](decisions/2026-09-03_a-viewer-gets-a-url-not-bytes.md)
   — why rendering a file and reading it are separate capabilities, and what
   the split still does not solve.
+- [2026-09-11 a library says which plugins it uses](decisions/2026-09-11_a-library-says-which-plugins-it-uses.md)
+  — what is installed and what a library runs are two questions.
+- [2026-09-11 choosing a type is storable](decisions/2026-09-11_choosing-a-type-is-storable.md)
+  — why a property chosen and left blank still has to be carried.
 
 ## Reference
 

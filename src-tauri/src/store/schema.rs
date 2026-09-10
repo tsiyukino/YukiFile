@@ -23,6 +23,7 @@ const MIGRATIONS: &[Migration] = &[
     Migration { version: 1, sql: V1 },
     Migration { version: 2, sql: V2 },
     Migration { version: 3, sql: V3 },
+    Migration { version: 4, sql: V4 },
 ];
 
 /// The version this build expects.
@@ -342,6 +343,7 @@ mod tests {
                 "history",
                 "mounts",
                 "object_paths",
+                "object_properties",
                 "objects",
                 "terms",
                 "values_",
@@ -1170,4 +1172,25 @@ const V3: &str = r#"
 DELETE FROM values_
 WHERE field_path LIKE '%#1/present'
   AND value = 'true';
+"#;
+
+/// Which properties an object carries by decision rather than by having
+/// values.
+///
+/// "This is a paper" and "this paper has a DOI" are different statements, and
+/// storing only the second loses the first: a person who picks a type and
+/// fills nothing in gets an object that carries nothing, so the choice they
+/// made silently evaporates along with its panels and viewers.
+///
+/// A separate table rather than a marker field under `values_`, for the reason
+/// V3 exists: a fake field has to be understood by flattening, filtered out of
+/// every read, and cleaned up when the idea is abandoned. This shape keeps
+/// flattening about values, which is all it should ever have been about.
+const V4: &str = r#"
+CREATE TABLE object_properties (
+    object_id  INTEGER NOT NULL REFERENCES objects(id) ON DELETE CASCADE,
+    namespace  TEXT    NOT NULL,
+    instance   INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (object_id, namespace, instance)
+);
 "#;

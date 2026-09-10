@@ -129,9 +129,12 @@ pub fn object_flat_in(
             })
             .collect();
 
-        // What the object carries comes from the properties its locations
-        // bring, plus anything values already mention. The first is what a
-        // scan knows; the second is what a plugin has written.
+        // What the object carries comes from three places: what a person
+        // decided it is, what its locations observably bring, and what values
+        // already mention. The first is the only one that survives an empty
+        // form -- choosing a type and filling nothing in used to leave an
+        // object carrying nothing, so the decision vanished along with its
+        // panels and viewers.
         let rules = rules_from(registry);
         let mut carries: std::collections::BTreeSet<String> = view
             .plugin_mounts()
@@ -148,6 +151,10 @@ pub fn object_flat_in(
             for property in rules.properties(&entry) {
                 carries.insert(format!("{property}#1"));
             }
+        }
+
+        for (namespace, instance) in crate::store::carried::of_object(connection, id)? {
+            carries.insert(format!("{namespace}#{instance}"));
         }
 
         Ok(FlatObjectView {

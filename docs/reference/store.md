@@ -3,10 +3,18 @@
 Objects, the values hung on them, the edges between them, and the vocabularies
 those edges point at.
 
-Eight modules, and the layer is complete. `path` and `flatten` are pure — they
-take what they need as arguments and touch no database, no filesystem and no
-clock. `schema` owns the database, `id` owns the clock and the randomness, and
-`values`, `edges`, `vocab` and `history` read and write.
+Ten modules. `path` and `flatten` are pure — they take what they need as
+arguments and touch no database, no filesystem and no clock. `schema` owns the
+database, `id` owns the clock and the randomness, and `values`, `carried`,
+`edges`, `vocab` and `history` read and write.
+
+Three of them answer different questions about one object: `paths` says where it
+lives, `values` what it holds, `carried` what it is. They change on different
+schedules — a rescan rewrites locations, an import rewrites values, and only a
+person changes what something is.
+
+`store::paths` has no entry below. It predates this file's last pass and is
+worth writing up.
 
 ## store::path
 
@@ -397,6 +405,43 @@ this it would not catch them.
 random tail, so two objects made in the same millisecond can draw the same one
 and the primary key catches it. Retrying forever would turn a broken generator
 into a hang instead of an error.
+
+## store::carried
+
+`attach(c, object, namespace, instance)` · `detach(...)` · `of_object(c, object)`
+
+Which properties an object carries **by decision**. "This is a paper" and "this
+paper has a DOI" are two statements, and only the second used to be storable.
+
+Carried properties used to be derived from the values written under them, so
+somebody who chose a type in the picker and filled nothing in got an object
+carrying nothing — no panel, no viewer, no region, and no message saying the
+choice had been dropped. Under multi-select that is the common case rather than
+an edge one: people confirm with some forms left blank.
+
+### Not a marker field
+
+`paper#1/present = true` was tried, and migration V3 exists to delete those
+rows. A marker has to be understood by flattening, filtered out of every read,
+and cleaned up when abandoned. A table keeps flattening about values, which is
+all it was ever for.
+
+### Carrying is not mounting
+
+A mount is library-wide and orders every object's regions. This is one object
+saying which properties apply to it. An object can carry a property the library
+does not mount; its values wait in storage, exactly as
+[architecture.md](../explanation/architecture.md) describes.
+
+`attach` is idempotent — choosing a type twice is one decision. `detach` leaves
+the values alone, so undoing a mis-click does not destroy what was typed before
+it, and they read back the moment the property returns.
+
+### Where `object.flat` gets `carries`
+
+Three sources, collapsed into a set: properties carried by decision, properties
+the object's locations observably bring (a `.pdf` is a pdf), and properties that
+values already mention. Only the first survives an empty form.
 
 ## store::edges
 

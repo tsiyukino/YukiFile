@@ -1172,3 +1172,87 @@ fn nesting_two_deep_still_shows_one_top() {
 
     assert_eq!(object_ids_in(&library, None, 40).expect("ids").total, 1);
 }
+
+// --- carrying a property by decision ------------------------------------
+
+/// An object that carries the named properties by decision, with the library
+/// mounting each. Values are optional: the point of this table is the object
+/// that has none.
+fn object_carrying(library: &Library, properties: &[&str], values: &[(&str, &str)]) -> i64 {
+    library
+        .with_connection(|connection| {
+            let mut store = Values::new();
+            let id = store.create_object(connection).expect("create");
+            for (path, value) in values {
+                store.set(connection, id, path, value).expect("set");
+            }
+            for property in properties {
+                yukifile::store::carried::attach(connection, id, property, 1).expect("attach");
+                yukifile::store::values::mount(connection, property, 1).expect("mount");
+            }
+            Ok(id)
+        })
+        .expect("build object")
+}
+
+#[test]
+fn a_property_chosen_and_left_blank_is_still_carried() {
+    // The defect this table was built for. Someone picks "VRChat" in the
+    // picker, is shown its form, fills nothing in, and confirms. Deriving
+    // carried properties from stored values alone loses that: no panel, no
+    // viewer, no region, and nothing saying the choice was dropped.
+    let (library, _dir) = library();
+    let id = object_carrying(&library, &["vrchat"], &[]);
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+
+    assert!(
+        view.carries.contains(&"vrchat#1".to_string()),
+        "the choice evaporated: {:?}",
+        view.carries
+    );
+}
+
+#[test]
+fn several_chosen_properties_are_all_carried() {
+    // An object is what its properties say, plural. A PDF can be a paper and
+    // a VRChat asset, and picking both has to keep both.
+    let (library, _dir) = library();
+    let id = object_carrying(&library, &["paper", "vrchat"], &[]);
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+
+    assert!(view.carries.contains(&"paper#1".to_string()), "{:?}", view.carries);
+    assert!(view.carries.contains(&"vrchat#1".to_string()), "{:?}", view.carries);
+}
+
+#[test]
+fn a_property_with_values_is_carried_once_not_twice() {
+    // Two sources now report the same property. A set collapses them; a list
+    // would draw the region twice.
+    let (library, _dir) = library();
+    let id = object_carrying(&library, &["paper"], &[("paper#1/doi", "10.1000/x")]);
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+    let papers = view.carries.iter().filter(|c| c.starts_with("paper")).count();
+
+    assert_eq!(papers, 1, "carried twice: {:?}", view.carries);
+}
+
+#[test]
+fn detaching_a_property_stops_it_being_carried() {
+    // Undoing a mis-click has to actually undo it, values or not.
+    let (library, _dir) = library();
+    let id = object_carrying(&library, &["vrchat"], &[]);
+
+    library
+        .with_connection(|connection| {
+            yukifile::store::carried::detach(connection, id, "vrchat", 1).expect("detach");
+            Ok(())
+        })
+        .expect("detach");
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+
+    assert!(!view.carries.contains(&"vrchat#1".to_string()));
+}
