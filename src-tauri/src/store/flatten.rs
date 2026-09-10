@@ -39,7 +39,7 @@ use crate::store::path::{MountRef, ParseError, ValuePath};
 
 /// The namespace pins are stored under. Reserved: no plugin may contribute a
 /// pin on the user's behalf.
-pub const PIN_NAMESPACE: &str = "@pin";
+pub const PIN_NAMESPACE: &str = crate::store::path::PIN;
 
 /// One stored value, as it comes out of the `values_` table.
 #[derive(Debug, Clone, PartialEq, Eq)]

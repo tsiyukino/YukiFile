@@ -299,7 +299,7 @@ mod tests {
         // fs is the core property the scanner needs; @pin and @import are the
         // core's own. A plugin shadowing one would break something it does not
         // know exists.
-        for reserved in ["fs", "@pin", "@import"] {
+        for reserved in crate::store::path::RESERVED {
             let json = format!(r#"{{"id": "x", "contributes": {{"properties": ["{reserved}"]}}}}"#);
             assert!(
                 matches!(Manifest::parse(&json), Err(ManifestError::Reserved(_))),

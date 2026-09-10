@@ -17,6 +17,33 @@
 
 use std::fmt;
 
+/// The one core property: where an object sits on disk.
+pub const FS: &str = "fs";
+
+/// The namespace a pin's target is written under.
+pub const PIN: &str = "@pin";
+
+/// The namespace an import's bookkeeping is written under.
+pub const IMPORT: &str = "@import";
+
+/// Namespaces the core keeps for itself.
+///
+/// `fs` is the one core property, stored in its own typed table rather than in
+/// `values_` (`2026-09-02_core-properties.md`); the other two are prefixes for
+/// a pin's target and an import's bookkeeping.
+///
+/// Here rather than in the plugin layer because these are the core's own
+/// schema, the same kind of thing as a language's keyword table, and because
+/// storage has to be able to refuse them without depending on the plugin layer
+/// to have looked first. Two copies of this list existed before it was
+/// collected here, which is what a list living in the wrong place produces.
+pub const RESERVED: &[&str] = &[FS, PIN, IMPORT];
+
+/// Whether a namespace is one the core keeps.
+pub fn is_reserved(namespace: &str) -> bool {
+    RESERVED.contains(&namespace)
+}
+
 /// A parsed value path.
 ///
 /// The lifetime ties the borrowed parts to the input string; nothing here

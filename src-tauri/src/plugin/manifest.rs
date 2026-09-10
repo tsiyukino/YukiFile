@@ -170,9 +170,11 @@ impl std::fmt::Display for ManifestError {
 
 impl std::error::Error for ManifestError {}
 
-/// Namespaces the core keeps for itself. A plugin declaring one is refused at
-/// load rather than allowed to shadow a core property.
-const RESERVED: &[&str] = &["fs", "@pin", "@import"];
+/// Namespaces the core keeps for itself, from `store::path`.
+///
+/// Read from there rather than repeated here: the list is the core's schema,
+/// and a second copy is one that disagrees with the first eventually.
+use crate::store::path::RESERVED;
 
 /// Whether a specifier's last segment carries a file extension.
 ///
