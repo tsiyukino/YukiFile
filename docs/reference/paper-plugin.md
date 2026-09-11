@@ -65,9 +65,21 @@ one and got an object without it would have no idea why.
 
 ### The title is a guess, offered
 
-`titleFrom` drops the extension and turns separators into spaces. It does not
+`titleFrom` drops the extension and turns underscores into spaces. It does not
 look for an author or a year — `seed/vrc-lessons.md` records what guessing costs,
 and a filename is what the person already calls the thing.
+
+**Underscores separate; hyphens join.** The rule is not symmetric, and the first
+version wrote it as though it were. Counted over the seed library: 318 filenames
+hold an underscore and 34 hold a hyphen. The underscores are separators
+(`Predicting_Oral_Disintegrating_Tablet_Formulations`); the hyphens are joiners —
+`small-molecule` is a compound adjective, `CS-Chem` a course, `Intro-v2` a
+version.
+
+Replacing them turned a paper about small-molecule solubility into one about
+"small molecule solubility", with nothing on screen to say it had happened. A
+filename that really does use hyphens as separators keeps them, which is visible
+and one keystroke to fix.
 
 ## The panel
 

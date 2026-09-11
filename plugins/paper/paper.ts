@@ -52,23 +52,46 @@ export function normaliseDoi(typed: string): Doi | undefined {
 /**
  * A title guessed from a filename, for the form to start with.
  *
- * A guess offered as a default, never written on its own. The seed library's
- * lesson is that a confident wrong answer costs more than a blank, so this only
- * does what is safe: drop the extension, turn separators into spaces, and stop.
- * It does not try to find an author or a year.
+ * A guess offered as a default, never written on its own. `seed/vrc-lessons.md`
+ * records that a confident wrong answer costs more than a blank, so this does
+ * only what is safe: drop the extension, turn underscores into spaces, and
+ * stop. It does not look for an author or a year.
+ *
+ * # Underscores separate, hyphens join
+ *
+ * The rule is not symmetric, and writing it as though it were destroyed real
+ * titles. Counted over the seed library: 318 filenames contain an underscore
+ * and 34 contain a hyphen.
+ *
+ * The underscores are unambiguously separators —
+ * `Predicting_Oral_Disintegrating_Tablet_Formulations`. The hyphens are
+ * joiners: `small-molecule` is a compound adjective, `CS-Chem` is a course,
+ * `Intro-v2` is a version, `L5-0701` is a date. Replacing them turned a paper
+ * about small-molecule solubility into one about "small molecule solubility"
+ * and there is nothing on screen to say it happened.
+ *
+ * A filename that really does use hyphens as separators keeps them, which is
+ * visible and one keystroke to fix. A destroyed compound word is invisible
+ * unless you already knew the original.
  */
 export function titleFrom(path: string): string {
   const name = path.split("/").pop() ?? "";
   const withoutExtension = name.replace(/\.[^.]+$/, "");
 
-  return withoutExtension.replace(/[_\-]+/g, " ").replace(/\s+/g, " ").trim();
+  return withoutExtension.replace(/_+/g, " ").replace(/\s+/g, " ").trim();
 }
 
-/** The fields a paper form hands back. */
-export interface PaperFields {
-  readonly doi?: string;
-  readonly title?: string;
-}
+/**
+ * The fields a paper form hands back.
+ *
+ * A map of what was filled in, not a record with a slot per field. Optional
+ * properties would describe the same values and describe them wrongly: the
+ * result never holds a key whose value is absent, because an empty field is
+ * left out rather than written blank. Saying `doi?: string` invites a caller to
+ * read `values.doi` and find `undefined`, which cannot happen, and it forced a
+ * cast at the one place the values cross into the host.
+ */
+export type PaperFields = Readonly<Record<string, string>>;
 
 /**
  * What to write, given what was typed.
@@ -84,7 +107,7 @@ export function fieldsFrom(typed: {
   doi: string;
   title: string;
 }): { ok: true; values: PaperFields } | { ok: false; problem: string } {
-  const values: { doi?: string; title?: string } = {};
+  const values: Record<string, string> = {};
 
   if (typed.doi.trim() !== "") {
     const doi = normaliseDoi(typed.doi);

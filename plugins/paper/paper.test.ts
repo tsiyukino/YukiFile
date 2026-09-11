@@ -53,10 +53,28 @@ describe("a title guessed from a filename", () => {
     );
   });
 
-  test("separators become spaces", () => {
-    expect(titleFrom("deep_learning-for_chemistry.pdf")).toBe(
-      "deep learning for chemistry",
+  test("underscores become spaces", () => {
+    expect(titleFrom("Predicting_Oral_Disintegrating_Tablet_Formulations.pdf")).toBe(
+      "Predicting Oral Disintegrating Tablet Formulations",
     );
+  });
+
+  test("a hyphen is left where it is", () => {
+    // Counted over the seed library: 318 filenames use an underscore and 34 a
+    // hyphen, and every hyphen is a joiner. Replacing them turned this paper
+    // into one about "small molecule solubility", with nothing on screen to
+    // say it had happened.
+    expect(titleFrom("Prediction of small-molecule compound solubility.pdf")).toBe(
+      "Prediction of small-molecule compound solubility",
+    );
+  });
+
+  test("a hyphen survives in a code, a version and a date", () => {
+    // All three are real names from the library, and all three mean something
+    // different with the hyphen taken out.
+    expect(titleFrom("CS-Chem")).toBe("CS-Chem");
+    expect(titleFrom("Intro-v2.docx")).toBe("Intro-v2");
+    expect(titleFrom("SAT_L5-0701.docx")).toBe("SAT L5-0701");
   });
 
   test("a file with no extension is its own name", () => {
