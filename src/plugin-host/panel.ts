@@ -72,6 +72,57 @@ export function panelComponent(module: unknown): Panel | undefined {
   return undefined;
 }
 
+/**
+ * What a form is given when a new object is being made.
+ *
+ * No object id: there is no object yet, which is what makes this the one slot
+ * that draws before its subject exists. `paths` is what the person selected, so
+ * a form can read a filename or peer into an archive to fill something in.
+ */
+export interface FormProps {
+  /** The commands this plugin may call. Built from the allowlist. */
+  readonly api: Api;
+  /** The property this form was scoped to: `paper`. */
+  readonly property: string;
+  /** Where the new object will sit. Empty when it is a grouping. */
+  readonly paths: readonly FormPath[];
+  /** What this form returned last time, so going back does not lose typing. */
+  readonly initial: Readonly<Record<string, string>>;
+  /**
+   * Hand over what was filled in, or say why not.
+   *
+   * A `Result` rather than a plain callback because a form may do real work —
+   * a DOI lookup is a network call — and a failure needs somewhere to go other
+   * than a thrown error in the host's render.
+   */
+  readonly onDone: (result: FormResult) => void;
+}
+
+/** One place the new object will sit, as the picker selected it. */
+export interface FormPath {
+  readonly path: string;
+  readonly kind: "file" | "folder";
+}
+
+/** What a form hands back. */
+export type FormResult =
+  | { readonly ok: true; readonly values: Readonly<Record<string, string>> }
+  | { readonly ok: false; readonly problem: string };
+
+/** A form, once it has loaded. */
+export type Form = ComponentType<FormProps>;
+
+/**
+ * The form in a loaded module, if there is one.
+ *
+ * Same check as {@link panelComponent} and for the same reason, but kept a
+ * separate function so the two can diverge without one silently accepting the
+ * other's shape: a panel takes an object id and a form cannot have one.
+ */
+export function formComponent(module: unknown): Form | undefined {
+  return panelComponent(module) as Form | undefined;
+}
+
 /** What a library action is given. */
 export interface LibraryActionProps {
   /** The commands this plugin may call. Built from the allowlist. */

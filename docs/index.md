@@ -72,6 +72,7 @@ Generated per module from the source.
   point, and the one door to the Tauri runtime.
 - [object-page.md](reference/object-page.md) — the framework's object page,
   the panel contract, and how a failing plugin stays contained.
+- [paper-plugin.md](reference/paper-plugin.md) — the first semantic property, and the first form.
 - [pdf-plugin.md](reference/pdf-plugin.md) — the viewer slot's first consumer,
   and how a plugin renders a file it cannot read.
 

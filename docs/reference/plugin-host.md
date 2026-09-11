@@ -118,13 +118,54 @@ that is before anything mounted `paper`. Only instance 1 contributes a rank: a
 new object carries the first instance, and ranking on a `booth#2` that does not
 exist yet would order the forms by nothing.
 
-### Today it returns nothing
+### What it offers today
 
-The three built-in plugins declare only factual properties — `archive` from
-`.zip`, `pdf` from `.pdf`, and the explorer declares none at all. So the picker
-is empty until a plugin ships a semantic property, which is what the
-architecture predicts: the software never guesses that something is a paper, and
-no built-in claims to know.
+One property: `paper`, from [the paper plugin](paper-plugin.md). The other three
+built-ins declare only factual properties — `archive` from `.zip`, `pdf` from
+`.pdf`, and the explorer declares none — so none of them appears.
+
+It was empty until `paper` shipped, and that was honest rather than broken: the
+software never guesses that something is a paper, and until then no built-in
+claimed to know.
+
+## plugin-host/panel
+
+`PanelProps` · `FormProps` · `FormResult` · `panelComponent()` ·
+`formComponent()` · `LibraryActionProps` · `libraryAction()`
+
+What a loaded module has to be. Each slot's contract and the check that a module
+matches it.
+
+### Everything is passed in
+
+A panel receives its `api` rather than importing one, which is the same
+injection the loader and the command API use and has the same payoff: a panel is
+testable with a fake api, and one reaching for a module-level singleton would
+only work inside a running app.
+
+It also means a panel cannot widen its own reach. The `api` it is handed is
+built from the allowlist, so what it can ask for is what the allowlist says.
+
+### A plugin is external code
+
+`panelComponent` checks what came back rather than trusting it. A module whose
+default export is a number is not a bug in the host, and letting React throw
+mid-render would take down the object page over one bad plugin. It is refused
+the way a module that failed to fetch is: reported, and the rest of the page
+draws.
+
+### `FormProps` has no object id
+
+The one contract that cannot have one, because the form draws before its object
+exists. It gets the `paths` the person selected instead, so a form can read a
+filename or look inside an archive to fill something in.
+
+`onDone` takes a `FormResult` rather than plain values: a form may do real work —
+a DOI lookup is a network call — and a failure needs somewhere to go other than a
+thrown error in the host's render.
+
+`formComponent` is `panelComponent` under another name, kept separate so the two
+can diverge without one silently accepting the other's shape.
 
 ## plugin-host/loader
 

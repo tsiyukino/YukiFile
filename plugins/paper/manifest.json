@@ -1,0 +1,10 @@
+{
+  "id": "yukifile.paper",
+  "contributes": {
+    "properties": ["paper"],
+    "shared": ["title"],
+    "forms": { "paper": "./form" },
+    "panels": { "paper": "./panel" }
+  },
+  "requires": { "properties": ["pdf"] }
+}
