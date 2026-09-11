@@ -42,7 +42,7 @@ export default function PaperForm({
     }
 
     setProblem(undefined);
-    onDone({ ok: true, values: result.values as Record<string, string> });
+    onDone({ ok: true, values: result.values });
   };
 
   return (
