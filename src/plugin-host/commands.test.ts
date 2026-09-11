@@ -198,7 +198,9 @@ describe("the app's own surface is not the plugin's", () => {
     // The copy-paste check: objectForget calling object_create would pass
     // every test above.
     for (const listed of appOnlyCommands()) {
-      const invoke = vi.fn(() => Promise.resolve(undefined as unknown));
+      const invoke = vi.fn((_command: string, _args: Record<string, unknown>) =>
+        Promise.resolve(undefined as unknown),
+      );
       const api = appApiFor(invoke) as unknown as Record<string, (...a: unknown[]) => unknown>;
 
       void api[methodName(listed)]?.({});
