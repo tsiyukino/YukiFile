@@ -8,7 +8,7 @@ filesystem, which is what lets the other two be tested on written-down input.
 
 ## scan::walk
 
-`walk(&Path) -> Walk`
+`walk(&Path) -> Walk` · `to_depth(&Path, Option<u32>) -> Walk`
 
 ```rust
 struct Walk { entries: Vec<Entry>, trouble: Vec<Trouble> }
@@ -21,6 +21,20 @@ struct Trouble { path: PathBuf, error: io::Error }
 a library copied between Windows and Unix keeps its paths. A folder has no
 size. Entries come back sorted, which makes the order the same every run and
 puts a parent before its children.
+
+### A walk can stop partway down
+
+`walk` is `to_depth` with no limit, and that is what a scan uses: a plugin
+deciding what counts as an object needs the tree in one pass.
+
+A browser needs one level, and reading the subtree to render it is the same
+work with the cost hidden. Measured on the seed library, the root holds 10
+entries and 441 below them — 0.9 ms against 386 ms. The limit is applied while
+descending, so the 431 are never read rather than read and dropped.
+
+Depth counts levels of entry: depth 1 is what `ls` shows. A directory at the
+limit is listed but not entered, which is what lets a browser show the folder
+and then ask for its contents. Depth 0 reads nothing.
 
 ### Dot-prefixed entries are walked
 

@@ -72,10 +72,33 @@ pub struct Walk {
 /// following links means the same bytes can appear under two paths, which the
 /// one-path-one-object rule has no answer for.
 pub fn walk(root: &Path) -> Walk {
-    let mut found = Walk::default();
-    let mut pending = vec![root.to_path_buf()];
+    to_depth(root, None)
+}
 
-    while let Some(directory) = pending.pop() {
+/// Read a tree, stopping after `depth` levels.
+///
+/// `None` reads all of it, which is what a scan wants: a plugin deciding what
+/// counts as an object needs the whole tree in one pass.
+///
+/// A browser wants one level. Reading the subtree and throwing it away is the
+/// same work with the cost hidden -- one directory in the seed library holds
+/// 281 entries, and rendering ten of them should not walk the other 271. So the
+/// limit is applied while descending rather than to the result.
+///
+/// Depth counts levels of entry, not of directory: depth 1 is what `ls` shows.
+/// Depth 0 reads nothing, which is the honest reading of "no levels" and lets a
+/// caller pass a computed number without special-casing zero.
+pub fn to_depth(root: &Path, depth: Option<u32>) -> Walk {
+    let mut found = Walk::default();
+    if depth == Some(0) {
+        return found;
+    }
+
+    // The depth each pending directory sits at. The root is level 0, so its
+    // entries are level 1.
+    let mut pending = vec![(root.to_path_buf(), 0u32)];
+
+    while let Some((directory, level)) = pending.pop() {
         let listing = match fs::read_dir(&directory) {
             Ok(listing) => listing,
             Err(error) => {
@@ -123,7 +146,11 @@ pub fn walk(root: &Path) -> Walk {
                     size: None,
                     mtime: mtime_of(&metadata),
                 });
-                pending.push(path);
+                // Its entries would sit one level deeper than this
+                // directory's, so stop when that would pass the limit.
+                if depth.is_none_or(|limit| level + 1 < limit) {
+                    pending.push((path, level + 1));
+                }
             } else {
                 found.entries.push(Entry {
                     path: relative,
@@ -234,6 +261,94 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    /// A tree three levels deep, for the depth tests.
+    fn layered(label: &str) -> TempTree {
+        let tree = TempTree::new(label);
+        tree.file("top.txt", "a")
+            .dir("one")
+            .file("one/inside.txt", "b")
+            .dir("one/two")
+            .file("one/two/deep.txt", "c");
+        tree
+    }
+
+    #[test]
+    fn depth_one_is_what_ls_shows() {
+        // A browser rendering one level should not walk the subtree under it.
+        // One directory in the seed library holds 281 entries.
+        let tree = layered("depth-one");
+
+        let walked = to_depth(tree.path(), Some(1));
+
+        assert_eq!(paths(&walked), ["one", "top.txt"]);
+    }
+
+    #[test]
+    fn depth_two_reaches_the_level_below() {
+        let tree = layered("depth-two");
+
+        let walked = to_depth(tree.path(), Some(2));
+
+        assert_eq!(paths(&walked), ["one", "one/inside.txt", "one/two", "top.txt"]);
+    }
+
+    #[test]
+    fn no_depth_reads_the_whole_tree() {
+        // What a scan wants: a plugin deciding what counts as an object needs
+        // the tree in one pass.
+        let tree = layered("depth-none");
+
+        let walked = to_depth(tree.path(), None);
+
+        assert_eq!(
+            paths(&walked),
+            ["one", "one/inside.txt", "one/two", "one/two/deep.txt", "top.txt"]
+        );
+    }
+
+    #[test]
+    fn walk_is_the_undepthed_form() {
+        // The existing callers pass no depth, so the two have to agree or the
+        // scan quietly changed shape.
+        let tree = layered("depth-same");
+
+        assert_eq!(paths(&walk(tree.path())), paths(&to_depth(tree.path(), None)));
+    }
+
+    #[test]
+    fn depth_zero_reads_nothing() {
+        // The honest reading of "no levels", so a caller passing a computed
+        // number does not have to special-case it.
+        let tree = layered("depth-zero");
+
+        let walked = to_depth(tree.path(), Some(0));
+
+        assert!(walked.entries.is_empty());
+        assert!(walked.trouble.is_empty(), "reading nothing is not a problem");
+    }
+
+    #[test]
+    fn a_depth_past_the_bottom_is_not_an_error() {
+        let tree = layered("depth-past");
+
+        let walked = to_depth(tree.path(), Some(99));
+
+        assert_eq!(paths(&walked), paths(&walk(tree.path())));
+    }
+
+    #[test]
+    fn a_directory_at_the_limit_is_listed_but_not_entered() {
+        // The distinction that makes a browser work: you see the folder and
+        // can ask for its contents, rather than seeing nothing and wondering.
+        let tree = layered("depth-edge");
+
+        let walked = to_depth(tree.path(), Some(1));
+        let folder = walked.entries.iter().find(|e| e.path == "one").expect("folder");
+
+        assert_eq!(folder.kind, Kind::Folder);
+        assert!(!paths(&walked).iter().any(|p| p.starts_with("one/")));
     }
 
     fn paths(found: &Walk) -> Vec<&str> {

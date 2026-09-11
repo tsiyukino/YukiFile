@@ -483,9 +483,22 @@ pub struct SummaryView {
 /// So a plugin walks, decides, and submits through `import.propose` — the same
 /// path an AI import or another machine's export takes. The core supplies the
 /// observation and reviews the conclusion.
+///
+/// # Paths come back relative to `under`
+///
+/// Walking `Clothing` reports `outfit.zip`, not `Clothing/outfit.zip`. A caller
+/// descending a level at a time already knows where it is and joining the two
+/// is its business; returning the whole path would make the root case and the
+/// descending case differ for no reason.
+///
+/// `depth` stops the walk rather than filtering its result. One directory in
+/// the seed library holds 281 entries, and rendering ten of them should not
+/// read the other 271. `None` reads the whole tree, which is what a scanning
+/// plugin needs.
 pub fn fs_walk_in(
     library: &Library,
     under: Option<String>,
+    depth: Option<u32>,
 ) -> Result<Vec<EntryView>, BridgeError> {
     // An empty argument means the library root. Anything else is resolved the
     // way every other path is, so a plugin cannot walk the disk.
@@ -494,7 +507,7 @@ pub fn fs_walk_in(
         None => library.root().to_path_buf(),
     };
 
-    let walked = crate::scan::walk::walk(&root);
+    let walked = crate::scan::walk::to_depth(&root, depth);
 
     for trouble in &walked.trouble {
         log::warn!("cannot read {}", trouble.path.display());
@@ -911,8 +924,9 @@ fn plainly_written(path: &std::path::Path) -> String {
 pub fn fs_walk(
     library: State<'_, Library>,
     under: Option<String>,
+    depth: Option<u32>,
 ) -> Result<Vec<EntryView>, BridgeError> {
-    fs_walk_in(&library, under)
+    fs_walk_in(&library, under, depth)
 }
 
 

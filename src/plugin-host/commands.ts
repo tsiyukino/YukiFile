@@ -247,7 +247,18 @@ export interface Api {
    * knowledge, and a plugin submits its conclusion through
    * {@link Api.importPropose} like any other source.
    */
-  fsWalk(under: string | null): Promise<Entry[]>;
+  /**
+   * What is on disk, as facts.
+   *
+   * Paths come back relative to `under`: walking `Clothing` reports
+   * `outfit.zip`, not `Clothing/outfit.zip`.
+   *
+   * `depth` stops the walk rather than filtering its result — one directory in
+   * the seed library holds 281 entries, and rendering ten should not read the
+   * other 271. Omitting it reads the whole tree, which is what a scanning
+   * plugin needs and a browser does not.
+   */
+  fsWalk(under: string | null, depth?: number | null): Promise<Entry[]>;
   fileUrl(path: string): Promise<string>;
   hashOf(path: string): Promise<string>;
   historyOf(id: ObjectId): Promise<HistoryEntry[]>;
@@ -348,7 +359,7 @@ export function apiFor(invoke: Invoke): Api {
     termResolve: (vocab, surface) => call("term.resolve", { vocab, surface }),
     termList: (vocab) => call("term.list", { vocab }),
     archiveList: (path) => call("archive.list", { path }),
-    fsWalk: (under) => call("fs.walk", { under }),
+    fsWalk: (under, depth = null) => call("fs.walk", { under, depth }),
     fileUrl: (path) => call("file.url", { path }),
     hashOf: (path) => call("hash.of", { path }),
     historyOf: (id) => call("history.of", { id }),

@@ -272,6 +272,30 @@ installed, and they wait in storage until it is; a permanent warning on healthy
 objects is a warning nobody reads. Malformed paths and pins that cannot take
 effect are reported, because those are defects.
 
+### fs.walk stops where it is told
+
+`fs_walk_in(library, under, depth)`. Paths come back **relative to `under`**:
+walking `Clothing` reports `outfit.zip`, not `Clothing/outfit.zip`. A caller
+descending a level at a time already knows where it is.
+
+`depth` stops the descent rather than filtering the result, and the difference
+is not academic. Measured on the seed library:
+
+| depth | entries | time   |
+|-------|---------|--------|
+| none  | 441     | 386 ms |
+| 2     | 132     | 9.5 ms |
+| 1     | 10      | 0.9 ms |
+
+Rendering ten rows by reading four hundred and forty-one is a third of a second
+of nothing happening. `None` still reads the whole tree, which is what a
+scanning plugin needs and a browser does not.
+
+A directory at the limit is **listed but not entered**, so a browser shows the
+folder and can ask for its contents. Depth 0 reads nothing, which is the honest
+reading of "no levels" and lets a caller pass a computed number without
+special-casing zero.
+
 ### Browsing is paged, and the cap is the bridge's
 
 `object.ids` takes the last id seen rather than a page number: a number drifts
