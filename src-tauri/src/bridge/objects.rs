@@ -172,12 +172,25 @@ fn kind_of(named: &str) -> Result<Kind, BridgeError> {
 /// back as `UNIQUE constraint failed`. Passing that through would tell somebody
 /// adding a folder that the database is broken.
 fn taken_or_storage(error: rusqlite::Error, path: &str) -> BridgeError {
-    let message = error.to_string();
-    if message.contains("UNIQUE constraint failed: object_paths.path") {
-        return BridgeError::PathTaken(path.to_string());
+    // The extended code rather than the message. SQLITE_CONSTRAINT_UNIQUE is
+    // 2067 and is not going to change; the wording after it is SQLite's to
+    // reword, and matching on it would fail silently the day it does -- turning
+    // "another object is already there" into "the database is broken".
+    //
+    // `ConstraintViolation` alone would be too wide: every constraint on the
+    // table answers to it, so a CHECK added later would report as a path
+    // collision.
+    if let rusqlite::Error::SqliteFailure(failure, _) = &error {
+        if failure.extended_code == UNIQUE_VIOLATION {
+            return BridgeError::PathTaken(path.to_string());
+        }
     }
-    BridgeError::Storage(message)
+    BridgeError::Storage(error.to_string())
 }
+
+/// `SQLITE_CONSTRAINT_UNIQUE`. The only unique constraint this function's
+/// caller can trip is `object_paths.path`.
+const UNIQUE_VIOLATION: i32 = 2067;
 
 /// Make an object on somebody's say-so.
 #[tauri::command]

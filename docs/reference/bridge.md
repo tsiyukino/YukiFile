@@ -108,11 +108,28 @@ in the shared field space — which is what property namespaces exist to prevent
 Values for a property the object was not given are refused rather than written
 somewhere nothing draws.
 
+A property name that is not one is refused by `store::carried`, which asks
+`store::path::is_namespace`. `paper#1` with instance 1 would spell `paper#1#1`,
+which parses as nothing: no region draws it and no skip list mentions it, since
+that list is built from values and a property chosen with an empty form has
+none.
+
 ### One transaction
 
 A half-made object — properties attached, values missing — is worse than no
 object, because nothing in the library says which half ran. A refused create
 leaves the object count unchanged, which is asserted rather than assumed.
+
+### Creating writes no history
+
+`store::history` is written by `changes::apply`, when an accepted change set
+overwrites a field that already held something. Creation writes only empty
+fields, so there is nothing to record an old value for.
+
+That matches what the architecture says about a scan importing 1518 objects:
+"not 1518 edits; it is those fields existing for the first time." Editing an
+object afterwards is a different question, and the command for it does not exist
+yet.
 
 ### The path has to be there
 
