@@ -81,15 +81,28 @@ impl From<rusqlite::Error> for CarriedError {
 ///
 /// The list comes from `store::path` rather than being repeated here, because a
 /// second copy of the core's schema is one that disagrees with the first.
+///
+/// # So is a name that is not one
+///
+/// A namespace arrives whole here, so `/` and `#` are in it rather than having
+/// been consumed as separators -- and both are exactly what must not be there
+/// when the instance is a separate argument. `store::path::is_namespace` is the
+/// rule, not `MountRef::parse`, which given `booth#1` succeeds and hands back
+/// `("booth", 1)`: that discards a caller's mistake instead of reporting it.
 pub fn attach(
     connection: &Connection,
     object: i64,
     namespace: &str,
     instance: u32,
 ) -> Result<(), CarriedError> {
-    if namespace.trim().is_empty() {
-        return Err(CarriedError::NotAName(namespace.to_string()));
-    }
+    // Shape first. `store::path` owns what a namespace may look like, and a
+    // string that fails there cannot be spelled back into a value path: with
+    // instance 1, `paper#1` writes `paper#1#1`, which parses as nothing, draws
+    // no region, and appears in no skip list -- the skip list is built from
+    // values, and a property chosen with an empty form has none.
+    path::is_namespace(namespace)
+        .map_err(|error| CarriedError::NotAName(format!("{namespace:?}: {error}")))?;
+
     if path::is_reserved(namespace) {
         return Err(CarriedError::Reserved(namespace.to_string()));
     }
@@ -247,17 +260,46 @@ mod tests {
 
     #[test]
     fn a_namespace_that_is_not_a_name_is_refused() {
-        // An empty string reads back as a property with no name, which no
-        // plugin can ever be scoped to -- it would sit in `carries` forever
-        // with nothing able to draw it.
+        // Each of these would be stored and then spelled back into a value path
+        // that parses as nothing: `paper#1` with instance 1 becomes
+        // `paper#1#1`. It draws no region and appears in no skip list, because
+        // that list is built from values and a property chosen with an empty
+        // form has none. Silent junk, permanently.
         let (connection, id) = library();
 
-        for blank in ["", "   "] {
-            assert_eq!(
-                attach(&connection, id, blank, 1),
-                Err(CarriedError::NotAName(blank.to_string()))
+        for bad in ["", "   ", "paper#1", "paper/doi", "a b", "#", "/"] {
+            assert!(
+                matches!(attach(&connection, id, bad, 1), Err(CarriedError::NotAName(_))),
+                "{bad:?} was accepted"
             );
         }
+        assert!(of_object(&connection, id).unwrap().is_empty());
+    }
+
+    #[test]
+    fn a_refusal_says_which_name_and_why() {
+        // "not a property name" alone leaves somebody looking at a picker with
+        // no idea which of their choices was the problem.
+        let (connection, id) = library();
+
+        let Err(refused) = attach(&connection, id, "paper#1", 1) else {
+            panic!("accepted");
+        };
+
+        let said = refused.to_string();
+        assert!(said.contains("paper#1"), "{said}");
+        assert!(said.contains("instance"), "{said}");
+    }
+
+    #[test]
+    fn a_dotted_property_is_a_name() {
+        // `vrchat.booth` is a sub-type, not a separator: the property model
+        // makes nested types names containing a dot.
+        let (connection, id) = library();
+
+        attach(&connection, id, "vrchat.booth", 1).expect("attach");
+
+        assert_eq!(of_object(&connection, id).unwrap(), [("vrchat.booth".to_string(), 1)]);
     }
 
     #[test]

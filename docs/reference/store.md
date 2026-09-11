@@ -450,6 +450,13 @@ saying which properties apply to it. An object can carry a property the library
 does not mount; its values wait in storage, exactly as
 [architecture.md](../explanation/architecture.md) describes.
 
+`attach` refuses a name that is not one, asking
+[`path::is_namespace`](#reserved-namespaces): a namespace arrives whole here, so
+`/` and `#` are still in it, and both are what must not be there when the
+instance is a separate argument. `MountRef::parse` is the wrong tool — given
+`booth#1` it succeeds and returns `("booth", 1)`, discarding the caller's
+mistake rather than reporting it.
+
 `attach` is idempotent — choosing a type twice is one decision. `detach` leaves
 the values alone, so undoing a mis-click does not destroy what was typed before
 it, and they read back the moment the property returns.

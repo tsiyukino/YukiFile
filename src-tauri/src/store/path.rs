@@ -39,6 +39,31 @@ pub const IMPORT: &str = "@import";
 /// collected here, which is what a list living in the wrong place produces.
 pub const RESERVED: &[&str] = &[FS, PIN, IMPORT];
 
+/// Whether a string is usable as a namespace on its own.
+///
+/// Not the same question `check_name` answers. That one runs after `/` and `#`
+/// have been consumed as separators, so it only has to reject whitespace. A
+/// namespace arriving whole -- from a picker, a manifest, an import -- still
+/// contains them, and they are exactly what must not be there.
+///
+/// `MountRef::parse` is the wrong tool for it: given `booth#1` it succeeds and
+/// hands back `("booth", 1)`, which silently discards a caller's mistake rather
+/// than reporting it. A caller passing a namespace alongside a separate
+/// instance has already said the counter is not in the string.
+///
+/// A namespace that does not pass this cannot be spelled back into a value
+/// path: `paper#1` with instance 1 writes `paper#1#1`, which parses as nothing,
+/// draws no region, and is reported by no skip list -- permanent silent junk.
+pub fn is_namespace(name: &str) -> Result<(), ParseError> {
+    if name.contains('/') {
+        return Err(ParseError::TooManySegments);
+    }
+    if name.contains('#') {
+        return Err(ParseError::BadInstance);
+    }
+    check_name(name)
+}
+
 /// Whether a namespace is one the core keeps.
 pub fn is_reserved(namespace: &str) -> bool {
     RESERVED.contains(&namespace)
@@ -205,6 +230,29 @@ fn check_name(name: &str) -> Result<(), ParseError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_namespace_on_its_own_refuses_the_separators() {
+        // `check_name` runs after `/` and `#` have been consumed, so it only
+        // rejects whitespace. A namespace arriving whole still contains them.
+        assert!(is_namespace("paper").is_ok());
+        assert!(is_namespace("vrchat.booth").is_ok(), "a dot is part of a name");
+        assert!(is_namespace("@pin").is_ok(), "reserved is a separate question");
+
+        assert_eq!(is_namespace("paper#1"), Err(ParseError::BadInstance));
+        assert_eq!(is_namespace("paper/doi"), Err(ParseError::TooManySegments));
+        assert_eq!(is_namespace(""), Err(ParseError::Empty));
+        assert_eq!(is_namespace("a b"), Err(ParseError::NotAName));
+    }
+
+    #[test]
+    fn a_namespace_check_is_not_a_mount_ref_parse() {
+        // MountRef::parse("booth#1") succeeds and returns ("booth", 1). Using
+        // it to validate a namespace would silently discard the caller's
+        // mistake rather than reporting it.
+        assert!(MountRef::parse("booth#1").is_ok());
+        assert!(is_namespace("booth#1").is_err());
+    }
 
     fn parse(path: &str) -> ValuePath<'_> {
         ValuePath::parse(path).expect("should parse")

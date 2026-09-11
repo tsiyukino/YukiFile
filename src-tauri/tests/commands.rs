@@ -1613,3 +1613,38 @@ fn choosing_one_property_twice_is_refused() {
 
     assert!(matches!(refused, Err(BridgeError::BadRequest(_))), "{refused:?}");
 }
+
+#[test]
+fn a_property_name_that_is_not_one_is_refused() {
+    // `paper#1` with instance 1 spells `paper#1#1`, which parses as nothing.
+    // Stored, it would sit in `carries` drawing no region and appearing in no
+    // skip list -- that list is built from values, and a property chosen with
+    // an empty form has none.
+    let (library, _dir) = library();
+
+    for bad in ["paper#1", "paper/doi", "a b", "   "] {
+        let refused = object_create_in(
+            &library,
+            NewObject { properties: vec![bad.into()], ..Default::default() },
+        );
+        assert!(
+            matches!(refused, Err(BridgeError::BadRequest(_))),
+            "{bad:?} was accepted: {refused:?}"
+        );
+    }
+}
+
+#[test]
+fn a_dotted_property_is_an_ordinary_name() {
+    // `vrchat.booth` is a sub-type. Refusing it would break the one way the
+    // model has of nesting a property under another.
+    let (library, _dir) = library();
+
+    let id = created(
+        &library,
+        NewObject { properties: vec!["vrchat.booth".into()], ..Default::default() },
+    );
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+    assert!(view.carries.contains(&"vrchat.booth#1".to_string()), "{:?}", view.carries);
+}
