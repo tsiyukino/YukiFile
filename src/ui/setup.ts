@@ -38,6 +38,23 @@ if (!(document as unknown as { adoptedStyleSheets?: unknown }).adoptedStyleSheet
   });
 }
 
+// jsdom has no ResizeObserver. Primer's dialog watches its body for overflow
+// with one, so a component that opens a dialog -- the forget button does --
+// throws from an effect after it has rendered. Nothing here measures anything;
+// the observer only has to exist.
+if (!("ResizeObserver" in globalThis)) {
+  class StillResizeObserver {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  Object.defineProperty(globalThis, "ResizeObserver", {
+    value: StillResizeObserver,
+    writable: true,
+    configurable: true,
+  });
+}
+
 // Testing Library only auto-cleans when vitest globals are on, and they are
 // not: an explicit import says where a test's helpers came from.
 afterEach(cleanup);

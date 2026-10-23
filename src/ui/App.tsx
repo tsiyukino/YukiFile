@@ -8,34 +8,57 @@
  * All of it is fetched once. The page is a function of those four things, and
  * re-fetching per render would make it a function of the network instead.
  *
- * # There is no grid yet
+ * # Two panes on the left, one page on the right
  *
- * Browsing is a later layer. This lists object ids and shows the first one,
- * which is enough to prove the chain end to end: a manifest on disk, through
- * discovery and the registry, through slot arbitration and the loader, to a
- * plugin's panel drawn inside its property's region.
+ * The left pane lists either what the library holds or what the disk has;
+ * the two are the same files seen from two sides, and switching between them
+ * is how a person finds the thing they are thinking of. The right side shows
+ * one object, or the flow that makes one.
+ *
+ * There is no thumbnail grid yet. `2026-09-01_ui-primer-not-github-clone.md`
+ * says thumbnails get designed around rather than bolted on, and nothing
+ * generates one; the lists are what the review screens use and stay when the
+ * grid arrives.
  */
 
-import { Button, Heading, PageLayout, Spinner, Stack, Text } from "@primer/react";
-import { InlineMessage } from "@primer/react/experimental";
+import { Button, Heading, PageLayout, SegmentedControl, Spinner, Stack, Text } from "@primer/react";
+import { Blankslate, InlineMessage } from "@primer/react/experimental";
 import { useEffect, useState } from "react";
 
 import {
   apiFor,
+  appApiFor,
   type Api,
+  type AppApi,
   type FlatObject,
   type ObjectId,
+  type PathAt,
 } from "../plugin-host/commands.js";
 import { loadAll, type Loaded } from "../plugin-host/loader.js";
 import type { Mount } from "../plugin-host/slots.js";
 import { libraryAction } from "../plugin-host/panel.js";
 import type { Manifest } from "../plugin-host/types.js";
+import { AddObject } from "./AddObject.js";
+import { DiskBrowser } from "./DiskBrowser.js";
+import { ForgetButton } from "./Forget.js";
 import { invoke } from "./invoke.js";
+import { describe } from "./problem.js";
 import { ObjectList } from "./ObjectList.js";
-import { ObjectPage } from "./ObjectPage.js";
+import { fallbackTitle, ObjectPage } from "./ObjectPage.js";
 
 /** The API every panel is handed, wired to the real Tauri bridge. */
 export const api: Api = apiFor(invoke);
+
+/**
+ * What only the application's own screens may call.
+ *
+ * Built from `APP_ONLY` rather than the allowlist, and never handed to a
+ * plugin: a form returns values and this is what writes them.
+ */
+export const app: AppApi = appApiFor(invoke);
+
+/** Which side of the same files the left pane is showing. */
+type Pane = "library" | "disk";
 
 /** What the shell gathers before a page can draw. */
 export interface Context {
@@ -51,15 +74,22 @@ export function App(): React.JSX.Element {
   const [context, setContext] = useState<Context | undefined>(undefined);
   const [problem, setProblem] = useState<string | undefined>(undefined);
 
-  // Bumped when a scan finishes. Clearing the context alone left a spinner
-  // nothing would ever replace: the effect ran once and had no reason to run
-  // again, so "reload" meant "show the loading state forever".
+  // Bumped when the library changes: a scan, an add, a forget. Clearing the
+  // context alone left a spinner nothing would ever replace: the effect ran
+  // once and had no reason to run again, so "reload" meant "show the loading
+  // state forever".
   const [generation, setGeneration] = useState(0);
 
   // Which object the page is showing. Undefined means "whichever the library
   // hands back first", which is what a freshly opened library shows.
   const [chosen, setChosen] = useState<ObjectId | undefined>(undefined);
   const [shown, setShown] = useState<FlatObject | undefined>(undefined);
+
+  const [pane, setPane] = useState<Pane>("library");
+
+  // Something on disk a person is in the middle of making an object of. While
+  // it is set the page shows the add flow instead of an object.
+  const [adding, setAdding] = useState<PathAt | undefined>(undefined);
 
   useEffect(() => {
     if (!chosen) {
@@ -84,9 +114,11 @@ export function App(): React.JSX.Element {
 
   useEffect(() => {
     let current = true;
-    setContext(undefined);
     setProblem(undefined);
 
+    // The old context stays up while the new one is read. Clearing it would
+    // unmount the panes, and a person who just added one file three folders
+    // down would find the browser back at the root.
     gather(api)
       .then((next) => {
         if (current) setContext(next);
@@ -113,52 +145,104 @@ export function App(): React.JSX.Element {
     return <Spinner aria-label="Opening the library" />;
   }
 
-  if (!context.object) {
-    return (
-      <Stack padding="normal" gap="condensed">
-        <Heading>Yukifile</Heading>
-        <Text>This library holds no objects yet.</Text>
-        <LibraryActions
-          plugins={context.plugins}
-          loaded={context.loaded}
-          onChanged={() => {
-            setChosen(undefined);
-            setGeneration((n) => n + 1);
-          }}
-        />
-      </Stack>
-    );
-  }
+  // The library changed under the page: an object was added, forgotten, or a
+  // scan ran. Re-read everything and let the first object be whichever the
+  // library hands back now.
+  const changed = (): void => {
+    setChosen(undefined);
+    setGeneration((n) => n + 1);
+  };
+
+  const current = shown ?? context.object;
 
   return (
     <PageLayout>
       <PageLayout.Pane position="start" width="medium">
         <Stack gap="condensed">
-          <LibraryActions
-            plugins={context.plugins}
-            loaded={context.loaded}
-            onChanged={() => {
-              setChosen(undefined);
-              setGeneration((n) => n + 1);
-            }}
-          />
-          <ObjectList
-            api={api}
-            selected={chosen ?? context.object.id}
-            onSelect={setChosen}
-            generation={generation}
-          />
+          <LibraryActions plugins={context.plugins} loaded={context.loaded} onChanged={changed} />
+
+          <SegmentedControl
+            aria-label="What the pane lists"
+            fullWidth
+            onChange={(index) => setPane(index === 0 ? "library" : "disk")}
+          >
+            <SegmentedControl.Button selected={pane === "library"}>Library</SegmentedControl.Button>
+            <SegmentedControl.Button selected={pane === "disk"}>Disk</SegmentedControl.Button>
+          </SegmentedControl>
+
+          {pane === "library" ? (
+            <ObjectList
+              api={api}
+              selected={chosen ?? context.object?.id}
+              onSelect={(id) => {
+                setAdding(undefined);
+                setChosen(id);
+              }}
+              generation={generation}
+            />
+          ) : (
+            <DiskBrowser
+              api={api}
+              generation={generation}
+              onSelect={(id) => {
+                setAdding(undefined);
+                setChosen(id);
+              }}
+              onAdd={setAdding}
+            />
+          )}
         </Stack>
       </PageLayout.Pane>
 
       <PageLayout.Content>
-        <ObjectPage
-          api={api}
-          object={shown ?? context.object}
-          plugins={context.plugins}
-          loaded={context.loaded}
-          mounts={context.mounts}
-        />
+        {adding ? (
+          <AddObject
+            // Keyed on the path so picking a different row starts over rather
+            // than carrying one file's half-filled forms to another.
+            key={adding.path}
+            api={api}
+            app={app}
+            at={adding}
+            plugins={context.plugins}
+            loaded={context.loaded}
+            mounts={context.mounts}
+            onAdded={(id) => {
+              setAdding(undefined);
+              // Show what was just made, and re-read the library so the
+              // browser marks it and the list holds it.
+              setGeneration((n) => n + 1);
+              setChosen(id);
+            }}
+            onCancel={() => setAdding(undefined)}
+          />
+        ) : current ? (
+          <Stack gap="none">
+            <Stack direction="horizontal" justify="end" padding="condensed">
+              <ForgetButton
+                key={current.id}
+                app={app}
+                object={current.id}
+                name={current.shared["title"]?.[0]?.value ?? fallbackTitle(current) ?? "this object"}
+                onForgotten={changed}
+              />
+            </Stack>
+            <ObjectPage
+              api={api}
+              object={current}
+              plugins={context.plugins}
+              loaded={context.loaded}
+              mounts={context.mounts}
+            />
+          </Stack>
+        ) : (
+          <Blankslate>
+            <Blankslate.Heading>This library holds no objects yet</Blankslate.Heading>
+            <Blankslate.Description>
+              Scan it, if an installed plugin offers to, or open the Disk pane
+              and add something by hand.
+            </Blankslate.Description>
+          </Blankslate>
+        )}
       </PageLayout.Content>
     </PageLayout>
   );
@@ -319,12 +403,4 @@ export async function gather(api: Api): Promise<Context> {
     object: first === undefined ? undefined : await api.objectFlat(first),
     total: page.total,
   };
-}
-
-/** A thrown value in words, whatever shape it arrived in. */
-export function describe(error: unknown): string {
-  if (typeof error === "object" && error !== null && "kind" in error) {
-    return `the core refused: ${String((error as { kind: unknown }).kind)}`;
-  }
-  return error instanceof Error ? error.message : String(error);
 }

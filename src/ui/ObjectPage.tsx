@@ -201,8 +201,11 @@ export function fallbackTitle(object: FlatObject): string | undefined {
 
 /** A size a person can read, or nothing when there is none. */
 export function sizeSuffix(size: number | null): string {
-  if (size === null) return "";
+  return size === null ? "" : ` · ${sizeInWords(size)}`;
+}
 
+/** A size in bytes as a person reads it: `512 B`, `2.0 KB`. */
+export function sizeInWords(size: number): string {
   const units = ["B", "KB", "MB", "GB"];
   let value = size;
   let unit = 0;
@@ -210,7 +213,7 @@ export function sizeSuffix(size: number | null): string {
     value /= 1024;
     unit += 1;
   }
-  return unit === 0 ? ` · ${value} B` : ` · ${value.toFixed(1)} ${units[unit]}`;
+  return unit === 0 ? `${value} B` : `${value.toFixed(1)} ${units[unit]}`;
 }
 
 /** How many instances of each property the object carries. */

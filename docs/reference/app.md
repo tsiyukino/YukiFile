@@ -57,6 +57,29 @@ that belong here anyway.
 | `src/ui/theme.ts` | follows the operating system's colour mode |
 | `src/ui/invoke.ts` | the only file that imports `@tauri-apps/api` |
 | `src/ui/App.tsx` | the shell |
+| `src/ui/problem.ts` | a thrown value in words, for every screen that shows one |
+
+### The shell
+
+A pane on the left and a page on the right.
+
+The pane lists either what the library holds (`ObjectList`) or what the disk
+has (`DiskBrowser`), switched with a segmented control. They are the same files
+seen from two sides: the list shows objects as a plugin grouped them, the
+browser shows directories as they sit, and which one finds the thing a person
+is thinking of depends on what they remember about it. See
+[disk-browser.md](disk-browser.md).
+
+The page shows one object, with a **Forget** button above it, or — while
+something on disk is being made into an object — the add flow in its place.
+A library with nothing in it shows a blank slate that names both ways of
+filling it: a scan, if an installed plugin offers one, or the Disk pane.
+
+The shell holds two API objects. `api` is built from the allowlist and is what
+every panel, viewer and form is handed. `app` is built from `APP_ONLY` and
+reaches only the shell's own screens: a form returns values, and `app` is what
+writes them. Keeping them as two values rather than one with more methods is
+what makes "a plugin cannot write" a thing the type system says.
 
 ### One door to the runtime
 

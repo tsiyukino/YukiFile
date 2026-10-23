@@ -118,6 +118,12 @@ that is before anything mounted `paper`. Only instance 1 contributes a rank: a
 new object carries the first instance, and ranking on a `booth#2` that does not
 exist yet would order the forms by nothing.
 
+### Who asks
+
+`src/ui/AddObject.tsx` is the consumer: the picker's choices become checkboxes,
+and the forms `formsFor` returns are shown one at a time, in that order. See
+[disk-browser.md](disk-browser.md).
+
 ### What it offers today
 
 One property: `paper`, from [the paper plugin](paper-plugin.md). The other three

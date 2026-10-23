@@ -1,7 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 
 import type { Api } from "../plugin-host/commands.js";
-import { describe as inWords, gather } from "./App.js";
+import { gather } from "./App.js";
+import { describe as inWords } from "./problem.js";
 
 /** An api answering only what `gather` asks for. */
 function fakeApi(over: Partial<Api> = {}): Api {
@@ -95,6 +96,18 @@ describe("gathering what the page needs", () => {
 describe("saying what went wrong", () => {
   test("a refusal from the core keeps its tag", () => {
     expect(inWords({ kind: "outside_library" })).toContain("outside_library");
+  });
+
+  test("a taken path names the path", () => {
+    // The one refusal a person adding an object can act on: open the object
+    // that has it. The tag alone gives them nothing to open.
+    expect(inWords({ kind: "path_taken", detail: "Clothing/outfit.zip" })).toBe(
+      "another object already sits at Clothing/outfit.zip",
+    );
+  });
+
+  test("a vanished path says it is gone", () => {
+    expect(inWords({ kind: "not_found", detail: "a.txt" })).toContain("a.txt");
   });
 
   test("an ordinary error keeps its message", () => {
