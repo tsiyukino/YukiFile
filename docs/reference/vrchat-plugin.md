@@ -49,12 +49,20 @@ is where the answer shows.
 `productsFrom` in `vrchat.ts`, pure and tested. A product is one folder or one
 file, and which folders are products is decided **by content, never by name**:
 
-- a folder that directly holds any file is a product, and nothing below it is
-  an object — the forty textures inside an outfit are the outfit's;
-- a folder that holds only folders is a grouping, holding each thing directly
-  inside it through `contains`;
-- a file outside any product folder is a product by itself;
+- a folder that directly holds a **loose** file — a texture, a mesh, a
+  readme — is a product, and nothing below it is an object: the forty
+  textures inside an outfit are the outfit's;
+- a zip, a unitypackage, a rar or a 7z is never loose content; it is a
+  product by itself wherever it sits, which is what makes `_Archive/`
+  forty-two products rather than one;
+- a folder that holds only folders and packaged things is a grouping, holding
+  each thing directly inside it through `contains`;
 - an empty folder is a thing somebody made, not a grouping.
+
+Naming those four extensions is the one place the plugin judges a file by its
+name, and it is a judgement about packaging rather than about meaning: a
+package is a thing somebody bought and put there. The core may not name an
+extension; a plugin may.
 
 The rule reads an organised library (`Clothing/outfit/`) and an unorganised
 one (`.AASHAREE/CLOTHS/AW KLASSIK MAID/`) the same way, at any depth. It has
@@ -62,10 +70,14 @@ to: before a library is organised nobody knows what any of it is, and the scan
 is what makes it possible to find out. `vrc-lessons.md` is where the rule comes
 from, and where its opposite — judging `Texture/` by its name — was made twice.
 
-**Known cost.** A grouping with one stray file in it (a `readme.txt` beside the
-product folders) reads as a product holding everything below it. The person
-fixes that by hand; the alternative, deciding by the file's name, is the
-mistake the lessons made.
+**Known costs, both fixed by hand.** A grouping with one stray loose file in
+it — a `readme.txt` beside the product folders — reads as a product holding
+everything below it. A folder holding nothing but a single package reads as a
+grouping of one, with the package as the product; usually a readme or a
+license sits beside the package and the folder is the product. The
+alternatives are deciding by the file's name, which is the mistake the
+lessons made, and deciding by count, which `_Archive/` and its forty-two zips
+rule out.
 
 **The scan writes no values.** A folder's name is where a thing sits, not what
 it is, and one library has `Clothes`, `Cloths` and `CLOTHS`. The category

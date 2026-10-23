@@ -1,7 +1,16 @@
 import { describe, expect, test } from "vitest";
 
 import type { Entry } from "../../src/plugin-host/commands.js";
-import { boothFields, boothItem, boothUrl, categorySuggestedBy, documentFor, productsFrom, vrchatFields } from "./vrchat.js";
+import {
+  boothFields,
+  boothItem,
+  boothUrl,
+  categorySuggestedBy,
+  documentFor,
+  isLoose,
+  productsFrom,
+  vrchatFields,
+} from "./vrchat.js";
 
 function entry(path: string, kind: "file" | "folder" = "file"): Entry {
   return { path, kind, size: kind === "file" ? 100 : null, mtime: null };
@@ -43,6 +52,7 @@ describe("what counts as a product", () => {
       entry(".AASHAREE/CLOTHS", "folder"),
       entry(".AASHAREE/CLOTHS/AW KLASSIK MAID", "folder"),
       entry(".AASHAREE/CLOTHS/AW KLASSIK MAID/outfit.unitypackage"),
+      entry(".AASHAREE/CLOTHS/AW KLASSIK MAID/readme.txt"),
       entry(".AASHAREE/CLOTHS/Cross_Maid.zip"),
     ]);
 
@@ -55,18 +65,66 @@ describe("what counts as a product", () => {
     expect(proposed[1]?.contains).toEqual([".AASHAREE/CLOTHS/AW KLASSIK MAID", ".AASHAREE/CLOTHS/Cross_Maid.zip"]);
   });
 
-  test("a file beside product folders is a product by itself", () => {
+  test("a package beside product folders is a product by itself", () => {
+    // A zip or a unitypackage is never loose content. The old layout kept
+    // product folders and product zips side by side in one folder, and
+    // _Archive/ holds forty-two zips that are forty-two things.
     const proposed = productsFrom([
       entry("Hair", "folder"),
       entry("Hair/pony", "folder"),
       entry("Hair/pony/a.fbx"),
       entry("Hair/loose.unitypackage"),
+      entry("_Archive", "folder"),
+      entry("_Archive/a.zip"),
+      entry("_Archive/b.ZIP"),
     ]);
 
-    // Hair holds a file, so by the rule it is a product. That is the rule's
-    // known cost, and the person fixes it by hand; the alternative, judging
-    // by the file's name, is the mistake the lessons made twice.
+    expect(proposed.map((p) => p.path)).toEqual([
+      "Hair",
+      "Hair/pony",
+      "Hair/loose.unitypackage",
+      "_Archive",
+      "_Archive/a.zip",
+      "_Archive/b.ZIP",
+    ]);
+    expect(proposed[0]?.contains).toEqual(["Hair/pony", "Hair/loose.unitypackage"]);
+  });
+
+  test("a folder holding only a package is a grouping of one", () => {
+    // The rule's other known cost. A Booth download unpacked to a folder
+    // holding just its unitypackage reads as a grouping and the package as
+    // the product. Usually a readme or a license sits beside it and the
+    // folder is the product; when not, the person says so by hand. Deciding
+    // by count -- "one package means the folder is it" -- would be a guess,
+    // and _Archive/ with its forty-two zips is why the count cannot decide.
+    const proposed = productsFrom([
+      entry("Hair", "folder"),
+      entry("Hair/pony", "folder"),
+      entry("Hair/pony/pony.unitypackage"),
+    ]);
+
+    expect(proposed.map((p) => p.path)).toEqual(["Hair", "Hair/pony", "Hair/pony/pony.unitypackage"]);
+  });
+
+  test("a loose file beside product folders makes the folder a product", () => {
+    // The rule's known cost: a readme dropped into a category folder. The
+    // person fixes it by hand; the alternative, judging the readme by its
+    // name, is the mistake the lessons made twice with Texture/.
+    const proposed = productsFrom([
+      entry("Hair", "folder"),
+      entry("Hair/pony", "folder"),
+      entry("Hair/pony/a.fbx"),
+      entry("Hair/readme.txt"),
+    ]);
+
     expect(proposed.map((p) => p.path)).toEqual(["Hair"]);
+  });
+
+  test("what is loose and what is packaged", () => {
+    expect(isLoose(entry("a/skin.png"))).toBe(true);
+    expect(isLoose(entry("a/outfit.unitypackage"))).toBe(false);
+    expect(isLoose(entry("a/outfit.ZIP"))).toBe(false);
+    expect(isLoose(entry("a/folder", "folder"))).toBe(false);
   });
 
   test("a file at the root is a product", () => {

@@ -24,13 +24,16 @@
  * that mistake twice with `Texture/`, which is sometimes loose PNGs belonging
  * to a product and sometimes a category holding eighteen of them.
  *
- * So: a folder that directly holds any file is a product, and nothing below
- * it is an object; the forty textures inside an outfit are the outfit's. A
- * folder that holds only folders is a grouping, and each thing directly
- * inside it is an object of its own. A file outside any product folder is a
- * product by itself. That reads an organised library and an unorganised one
- * the same way, which it has to: before a library is organised nobody knows
- * what any of it is, and the scan is what makes it possible to find out.
+ * So: a folder that directly holds a loose file -- a texture, a mesh, a
+ * readme -- is a product, and nothing below it is an object; the forty
+ * textures inside an outfit are the outfit's. A folder that holds only
+ * folders and packaged things is a grouping, and each thing directly inside
+ * it is an object of its own. A zip or a unitypackage is never loose content:
+ * it is a product by itself, wherever it sits, which is what makes
+ * `_Archive/` forty-two products rather than one. That reads an organised
+ * library and an unorganised one the same way, which it has to: before a
+ * library is organised nobody knows what any of it is, and the scan is what
+ * makes it possible to find out.
  *
  * # What this does not decide
  *
@@ -73,6 +76,25 @@ export interface Proposed {
 }
 
 /**
+ * Files that are a product in themselves rather than part of one.
+ *
+ * An archive or a package sitting in a folder is a thing somebody bought and
+ * put there; a texture or a mesh sitting in a folder is part of the thing the
+ * folder is. The plugin may name extensions where the core may not, and this
+ * is the one place it does.
+ */
+const PACKAGED: readonly string[] = ["zip", "unitypackage", "rar", "7z"];
+
+/** Whether a file is part of whatever folder it sits in, rather than a thing of its own. */
+export function isLoose(entry: Entry): boolean {
+  if (entry.kind !== "file") return false;
+  const name = entry.path.split("/").pop() ?? "";
+  const dot = name.lastIndexOf(".");
+  const extension = dot === -1 ? "" : name.slice(dot + 1).toLowerCase();
+  return !PACKAGED.includes(extension);
+}
+
+/**
  * Which entries become objects.
  *
  * Decided from the whole walk, because whether a folder is a product depends
@@ -111,11 +133,12 @@ export function productsFrom(entries: readonly Entry[]): Proposed[] {
     }
   };
 
-  // A folder holding only folders. An empty folder is not a grouping: it is
-  // a thing somebody made, with nothing in it yet.
+  // A folder holding nothing loose: only folders and packaged things. An
+  // empty folder is not a grouping: it is a thing somebody made, with
+  // nothing in it yet.
   const isGrouping = (folder: string): boolean => {
     const inside = children.get(folder) ?? [];
-    return inside.length > 0 && inside.every((entry) => entry.kind === "folder");
+    return inside.length > 0 && !inside.some(isLoose);
   };
 
   group("");
