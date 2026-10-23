@@ -380,6 +380,18 @@ It is on the plugin list rather than `APP_ONLY` because it is a read, and a
 scanning plugin has as good a reason to want it: proposing what is already
 recorded is work the import then discards.
 
+### term.objects is the reverse lookup
+
+`term_objects_in(library, vocab, term)`: every object pointing at a term, with
+the kind of each edge. One indexed query, which is what the edge table was
+built for. An object with two kinds of edge to the term appears twice; the
+kind is the difference between "supports" and "owned". A term that does not
+exist lists nothing rather than refusing, so a page for it still draws.
+
+`term_vocabularies_in` lists the vocabularies the library holds a term in,
+from the terms table. The manifests say what a plugin draws; the table says
+what an import brought, and the seed's avatars arrive the second way.
+
 ### Browsing is paged, and the cap is the bridge's
 
 `object.ids` takes the last id seen rather than a page number: a number drifts

@@ -237,6 +237,13 @@ export type Edge = { readonly kind: string } & EdgeTarget;
 /** What setting a value did. */
 export type Written = "added" | "replaced" | "cleared" | "unchanged";
 
+/** One object pointing at a term, and how. */
+export interface Pointer {
+  readonly object: ObjectId;
+  /** `supports`, `owned`, whatever the edge said. */
+  readonly kind: string;
+}
+
 /** One vocabulary term. */
 export interface Term {
   readonly vocab: string;
@@ -299,6 +306,15 @@ export interface Api {
   objectEdges(id: ObjectId): Promise<Edge[]>;
   termResolve(vocab: string, surface: string): Promise<string | null>;
   termList(vocab: string): Promise<Term[]>;
+  /** Every vocabulary the library holds a term in. From the terms, not the manifests. */
+  termVocabularies(): Promise<string[]>;
+  /**
+   * Every object pointing at a term, with the kind of each edge.
+   *
+   * The reverse lookup: what fits Manuka, answered from what is owned. An
+   * object with two kinds of edge to the term appears twice.
+   */
+  termObjects(vocab: string, term: string): Promise<Pointer[]>;
   archiveList(path: string): Promise<ArchiveMember[]>;
   /**
    * A URL a viewer can render, for one file.
@@ -507,6 +523,8 @@ export function apiFor(invoke: Invoke): Api {
     objectEdges: (id) => call("object.edges", { id }),
     termResolve: (vocab, surface) => call("term.resolve", { vocab, surface }),
     termList: (vocab) => call("term.list", { vocab }),
+    termVocabularies: () => call("term.vocabularies", {}),
+    termObjects: (vocab, term) => call("term.objects", { vocab, term }),
     archiveList: (path) => call("archive.list", { path }),
     fsWalk: (under, depth = null) => call("fs.walk", { under, depth }),
     pathList: () => call("path.list", {}),

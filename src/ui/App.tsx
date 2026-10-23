@@ -46,6 +46,7 @@ import { describe } from "./problem.js";
 import { ObjectList } from "./ObjectList.js";
 import { fallbackTitle, ObjectPage } from "./ObjectPage.js";
 import { ReviewList, ReviewPage } from "./Review.js";
+import { TermList, TermPage, type TermRef } from "./Terms.js";
 
 /** The API every panel is handed, wired to the real Tauri bridge. */
 export const api: Api = apiFor(invoke);
@@ -59,9 +60,9 @@ export const api: Api = apiFor(invoke);
 export const app: AppApi = appApiFor(invoke);
 
 /** What the left pane is listing. */
-type Pane = "library" | "disk" | "review";
+type Pane = "library" | "disk" | "terms" | "review";
 
-const PANES: readonly Pane[] = ["library", "disk", "review"];
+const PANES: readonly Pane[] = ["library", "disk", "terms", "review"];
 
 /** What the shell gathers before a page can draw. */
 export interface Context {
@@ -98,6 +99,9 @@ export function App(): React.JSX.Element {
 
   // The change set under review, when the page is showing one.
   const [reviewing, setReviewing] = useState<number | undefined>(undefined);
+
+  // The term on the page, when it is showing one.
+  const [term, setTerm] = useState<TermRef | undefined>(undefined);
 
   useEffect(() => {
     if (!chosen) {
@@ -182,6 +186,7 @@ export function App(): React.JSX.Element {
           >
             <SegmentedControl.Button selected={pane === "library"}>Library</SegmentedControl.Button>
             <SegmentedControl.Button selected={pane === "disk"}>Disk</SegmentedControl.Button>
+            <SegmentedControl.Button selected={pane === "terms"}>Terms</SegmentedControl.Button>
             <SegmentedControl.Button selected={pane === "review"}>
               {context.pending > 0 ? `Review (${context.pending})` : "Review"}
             </SegmentedControl.Button>
@@ -194,6 +199,7 @@ export function App(): React.JSX.Element {
               onSelect={(id) => {
                 setAdding(undefined);
                 setReviewing(undefined);
+                setTerm(undefined);
                 setChosen(id);
               }}
               generation={generation}
@@ -206,11 +212,25 @@ export function App(): React.JSX.Element {
               onSelect={(id) => {
                 setAdding(undefined);
                 setReviewing(undefined);
+                setTerm(undefined);
                 setChosen(id);
               }}
               onAdd={(at) => {
                 setReviewing(undefined);
+                setTerm(undefined);
                 setAdding(at);
+              }}
+            />
+          )}
+          {pane === "terms" && (
+            <TermList
+              api={api}
+              generation={generation}
+              selected={term}
+              onSelect={(chosenTerm) => {
+                setAdding(undefined);
+                setReviewing(undefined);
+                setTerm(chosenTerm);
               }}
             />
           )}
@@ -221,6 +241,7 @@ export function App(): React.JSX.Element {
               selected={reviewing}
               onSelect={(set) => {
                 setAdding(undefined);
+                setTerm(undefined);
                 setReviewing(set);
               }}
             />
@@ -229,7 +250,20 @@ export function App(): React.JSX.Element {
       </PageLayout.Pane>
 
       <PageLayout.Content>
-        {reviewing !== undefined ? (
+        {term ? (
+          <TermPage
+            key={`${term.vocab}:${term.id}`}
+            api={api}
+            term={term}
+            generation={generation}
+            onSelect={(id) => {
+              // Opening an object from a term page is a way in; leave the
+              // term behind so the page shows the object.
+              setTerm(undefined);
+              setChosen(id);
+            }}
+          />
+        ) : reviewing !== undefined ? (
           <ReviewPage
             key={reviewing}
             api={api}

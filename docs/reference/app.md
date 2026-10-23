@@ -64,8 +64,8 @@ that belong here anyway.
 A pane on the left and a page on the right.
 
 The pane lists what the library holds (`ObjectList`), what the disk has
-(`DiskBrowser`), or what is waiting to be reviewed (`ReviewList`), switched
-with a segmented control. The first two are the same files seen from two
+(`DiskBrowser`), the library's vocabularies (`TermList`), or what is waiting
+to be reviewed (`ReviewList`), switched with a segmented control. The first two are the same files seen from two
 sides: the list shows objects as a plugin grouped them, the browser shows
 directories as they sit, and which one finds the thing a person is thinking of
 depends on what they remember about it. See [disk-browser.md](disk-browser.md).
@@ -74,7 +74,8 @@ decide is noticed without opening it. See [review.md](review.md).
 
 The page shows one object, with a **Forget** button above it; or the add flow,
 while something on disk is being made into an object; or a change set, while
-one is being reviewed. A library with nothing in it shows a blank slate that
+one is being reviewed; or a term, with everything that points at it
+([term-page.md](term-page.md)). A library with nothing in it shows a blank slate that
 names both ways of filling it: a scan, if an installed plugin offers one, or
 the Disk pane.
 

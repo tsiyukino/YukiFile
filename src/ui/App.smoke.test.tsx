@@ -12,6 +12,7 @@ vi.mock("./invoke.js", () => ({
       case "object_summaries": return [{ id: "1", name: "Cross Maid", path: "a.zip", kind: "file" }];
       case "object_edges": return [];
       case "path_list": return [];
+      case "term_vocabularies": return [];
       default: throw new Error(`unexpected ${command}`);
     }
   },

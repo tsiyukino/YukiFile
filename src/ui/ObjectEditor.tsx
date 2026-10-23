@@ -152,7 +152,11 @@ function Links({ api, app, object, plugins, onChanged }: ObjectEditorProps): Rea
   const [paths, setPaths] = useState<KnownPath[]>([]);
   const [reading, setReading] = useState<string | undefined>(undefined);
 
-  const vocabularies = vocabulariesOf(plugins);
+  // Declared by a manifest or held by the library: the seed's avatars arrive
+  // by import before any plugin draws them, and a person can still say an
+  // outfit fits one.
+  const [held, setHeld] = useState<string[]>([]);
+  const vocabularies = [...new Set([...vocabulariesOf(plugins), ...held])].sort();
 
   // New-edge form.
   const [kind, setKind] = useState("supports");
@@ -163,18 +167,22 @@ function Links({ api, app, object, plugins, onChanged }: ObjectEditorProps): Rea
   useEffect(() => {
     let current = true;
     const read = async (): Promise<void> => {
-      const held = await api.objectEdges(object.id);
-      const targets = objectTargets(held);
-      const [named, known, ...vocabTerms] = await Promise.all([
+      const found = await api.objectEdges(object.id);
+      const targets = objectTargets(found);
+      const [named, known, inLibrary] = await Promise.all([
         targets.length > 0 ? api.objectSummaries(targets) : Promise.resolve([]),
         api.pathList(),
-        ...vocabularies.map((vocab) => api.termList(vocab)),
+        api.termVocabularies(),
       ]);
+      const every = [...new Set([...vocabulariesOf(plugins), ...inLibrary])].sort();
+      const vocabTerms = await Promise.all(every.map((vocab) => api.termList(vocab)));
       if (!current) return;
-      setEdges(held);
+      setEdges(found);
       setNames(named);
       setPaths(known);
+      setHeld(inLibrary);
       setTerms(vocabTerms.flat());
+      setAim((chosen) => (chosen === "object" || every.includes(chosen) ? chosen : every[0] ?? "object"));
     };
     read().catch((error: unknown) => {
       if (current) setReading(describe(error));
@@ -183,8 +191,8 @@ function Links({ api, app, object, plugins, onChanged }: ObjectEditorProps): Rea
       current = false;
     };
     // The object identity changes on every re-read, which is when edges may
-    // have changed; the vocabulary list is a function of the manifests.
-  }, [api, object, vocabularies.join(",")]);
+    // have changed.
+  }, [api, object, plugins]);
 
   const target = (): EdgeTarget | string => {
     if (aim === "object") {

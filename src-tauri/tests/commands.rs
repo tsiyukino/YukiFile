@@ -2418,3 +2418,96 @@ fn a_target_deserialises_in_the_shape_edges_are_read_in() {
     let object: TargetAt = serde_json::from_str(r#"{"target":"object","id":"42"}"#).expect("object");
     assert_eq!(object, TargetAt::Object { id: "42".into() });
 }
+
+// --- term.vocabularies and term.objects ------------------------------------
+
+/// An edge from an object to a term, by hand.
+fn points(library: &Library, object: i64, kind: &str, vocab: &str, term: &str) {
+    library
+        .with_connection(|connection| {
+            yukifile::store::edges::add(
+                connection,
+                object,
+                kind,
+                &yukifile::store::edges::Target::Term { vocab: vocab.into(), id: term.into() },
+            )
+            .expect("edge");
+            Ok(())
+        })
+        .expect("point");
+}
+
+#[test]
+fn vocabularies_come_from_what_the_library_holds() {
+    // The seed's avatars arrive by import, not by a plugin declaring them.
+    let (library, _dir) = library();
+    assert!(term_vocabularies_in(&library).expect("none").is_empty());
+
+    term(&library, "avatar", "manuka", "Manuka");
+    term(&library, "author", "surin", "Surin");
+    term(&library, "avatar", "lapwing", "Lapwing");
+
+    assert_eq!(term_vocabularies_in(&library).expect("vocabs"), ["author", "avatar"]);
+}
+
+#[test]
+fn what_points_at_a_term_comes_back_with_its_kind() {
+    // "What fits Manuka?", answered from what is owned. The kind is the
+    // difference between supports and owned, so it rides along.
+    let (library, _dir) = library();
+    term(&library, "avatar", "manuka", "Manuka");
+    let outfit = object_with(&library, &[("title", "Cross Maid")]);
+    let hair = object_with(&library, &[("title", "Low Ponytail")]);
+    let unrelated = object_with(&library, &[]);
+    points(&library, outfit, "supports", "avatar", "manuka");
+    points(&library, outfit, "owned", "avatar", "manuka");
+    points(&library, hair, "supports", "avatar", "manuka");
+
+    let found = term_objects_in(&library, "avatar".into(), "manuka".into()).expect("objects");
+
+    let mut pairs: Vec<(i64, &str)> = found.iter().map(|p| (p.object, p.kind.as_str())).collect();
+    pairs.sort();
+    let mut expected = vec![(outfit, "supports"), (outfit, "owned"), (hair, "supports")];
+    expected.sort();
+    assert_eq!(pairs, expected);
+    assert!(!found.iter().any(|p| p.object == unrelated));
+}
+
+#[test]
+fn a_term_nothing_points_at_lists_nothing_and_so_does_one_that_is_not_there() {
+    // A page for a term still draws either way, saying so. Refusing would
+    // make "no such term" and "nothing fits it" look like an error apiece.
+    let (library, _dir) = library();
+    term(&library, "avatar", "manuka", "Manuka");
+
+    assert!(term_objects_in(&library, "avatar".into(), "manuka".into()).expect("empty").is_empty());
+    assert!(term_objects_in(&library, "avatar".into(), "nobody".into()).expect("missing").is_empty());
+}
+
+#[test]
+fn a_pointer_crosses_with_its_object_id_as_a_string() {
+    let (library, _dir) = library();
+    term(&library, "avatar", "manuka", "Manuka");
+    let outfit = object_with(&library, &[]);
+    points(&library, outfit, "supports", "avatar", "manuka");
+
+    let json = serde_json::to_value(term_objects_in(&library, "avatar".into(), "manuka".into()).expect("objects"))
+        .expect("serialise");
+
+    assert_eq!(json[0]["object"], serde_json::Value::String(outfit.to_string()));
+    assert_eq!(json[0]["kind"], "supports");
+}
+
+#[test]
+fn forgetting_an_object_takes_its_pointers_with_it() {
+    // The schema cascades; the term page has to see it, or a forgotten
+    // outfit keeps "fitting" an avatar.
+    let (library, _dir) = library();
+    term(&library, "avatar", "manuka", "Manuka");
+    let outfit = object_with(&library, &[]);
+    points(&library, outfit, "supports", "avatar", "manuka");
+
+    object_forget_in(&library, outfit).expect("forget");
+
+    assert!(term_objects_in(&library, "avatar".into(), "manuka".into()).expect("objects").is_empty());
+}

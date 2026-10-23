@@ -103,6 +103,18 @@ pub const ALLOWED: &[Command] = &[
         reason: "a term page lists what a vocabulary holds",
     },
     Command {
+        name: "term.vocabularies",
+        effect: Effect::Read,
+        reason: "a term pane lists what the library holds, not what a manifest \
+                 declared -- the seed's avatars arrive by import, not by plugin",
+    },
+    Command {
+        name: "term.objects",
+        effect: Effect::Read,
+        reason: "the reverse lookup the model exists for: what fits Manuka, \
+                 answered from what is owned",
+    },
+    Command {
         name: "archive.list",
         effect: Effect::Read,
         reason: "listing an archive without unpacking it is the whole reason \

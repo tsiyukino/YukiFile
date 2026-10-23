@@ -76,6 +76,8 @@ Generated per module from the source.
   the library holds, and making an object by hand.
 - [review.md](reference/review.md) — the change set screen: deciding what a
   proposal may write, entry by entry.
+- [term-page.md](reference/term-page.md) — a vocabulary term and everything
+  that points at it: the reverse lookup, reaching a screen.
 - [paper-plugin.md](reference/paper-plugin.md) — the first semantic property, and the first form.
 - [pdf-plugin.md](reference/pdf-plugin.md) — the viewer slot's first consumer,
   and how a plugin renders a file it cannot read.

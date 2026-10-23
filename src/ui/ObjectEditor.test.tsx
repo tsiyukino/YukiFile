@@ -30,6 +30,7 @@ function world(edges: Edge[] = []) {
     ),
     pathList: vi.fn(async () => [{ path: "Clothing/outfit.zip", object: "7" }]),
     termList: vi.fn(async () => [{ vocab: "avatar", id: "manuka", label: "Manuka" }]),
+    termVocabularies: vi.fn(async () => ["avatar"]),
   };
   const app = {
     objectPropertyAdd: vi.fn(async () => undefined),

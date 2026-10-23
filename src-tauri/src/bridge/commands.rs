@@ -640,6 +640,48 @@ pub fn term_list_in(
     })
 }
 
+/// Every vocabulary the library holds a term in, sorted.
+///
+/// From the terms table, not the manifests: the seed library's 73 avatars
+/// arrive by import, and a pane that only listed what a plugin declared would
+/// show nothing until the plugin that draws them is written.
+pub fn term_vocabularies_in(library: &Library) -> Result<Vec<String>, BridgeError> {
+    library.with_connection(|connection| Ok(vocab::vocabularies(connection)?))
+}
+
+/// Every object pointing at one term, with the kind of each edge.
+///
+/// The reverse lookup `architecture.md` built the edge table for: "what fits
+/// Manuka?" is one indexed query. It answers from what the library holds,
+/// which is the question worth asking -- a shop page lists every avatar a
+/// product supports, and only some of those are owned.
+///
+/// An object pointing at the term twice, with two kinds, appears twice; the
+/// kind is the difference between "supports" and "owned", and collapsing them
+/// would lose it. A term that does not exist lists nothing rather than
+/// refusing: a page for it still draws, saying so.
+pub fn term_objects_in(
+    library: &Library,
+    vocab: String,
+    term: String,
+) -> Result<Vec<PointerView>, BridgeError> {
+    library.with_connection(|connection| {
+        let found = edges::to_term(connection, &vocab, &term, None)?;
+        Ok(found
+            .into_iter()
+            .map(|edge| PointerView { object: edge.src, kind: edge.kind })
+            .collect())
+    })
+}
+
+/// One object pointing at a term.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct PointerView {
+    #[serde(with = "crate::bridge::views::id_as_string")]
+    pub object: i64,
+    pub kind: String,
+}
+
 /// List an archive without unpacking it.
 pub fn archive_list_in(
     library: &Library,
@@ -1011,6 +1053,22 @@ pub fn term_list(
 }
 
 /// List an archive without unpacking it.
+/// Every vocabulary the library holds.
+#[tauri::command]
+pub fn term_vocabularies(library: State<'_, Library>) -> Result<Vec<String>, BridgeError> {
+    term_vocabularies_in(&library)
+}
+
+/// Every object pointing at a term.
+#[tauri::command]
+pub fn term_objects(
+    library: State<'_, Library>,
+    vocab: String,
+    term: String,
+) -> Result<Vec<PointerView>, BridgeError> {
+    term_objects_in(&library, vocab, term)
+}
+
 #[tauri::command]
 pub fn archive_list(
     library: State<'_, Library>,

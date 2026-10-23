@@ -571,7 +571,11 @@ describe("editing, when the page has something to write with", () => {
   function appWith() {
     return { objectValueSet: vi.fn(async () => "replaced" as const) };
   }
-  const readable = { objectEdges: async () => [], pathList: async () => [] } as unknown as Api;
+  const readable = {
+    objectEdges: async () => [],
+    pathList: async () => [],
+    termVocabularies: async () => [],
+  } as unknown as Api;
 
   test("a read-only page draws no pencils", () => {
     render(

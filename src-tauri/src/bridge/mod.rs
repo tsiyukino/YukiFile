@@ -64,6 +64,8 @@ macro_rules! register_commands {
             $crate::bridge::commands::object_edges,
             $crate::bridge::commands::term_resolve,
             $crate::bridge::commands::term_list,
+            $crate::bridge::commands::term_vocabularies,
+            $crate::bridge::commands::term_objects,
             $crate::bridge::commands::archive_list,
             $crate::bridge::commands::fs_walk,
             $crate::bridge::commands::path_list,
