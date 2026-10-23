@@ -83,6 +83,23 @@ another window, or never existed, gets a blank slate saying so; neither is
 drawn as an empty review, because "nothing proposed" and "no such set" are
 different facts.
 
+## Trying it by hand
+
+No built-in plugin proposes a conflicting value yet, so the screen cannot be
+reached from the application alone. `src-tauri/examples/import.rs` imports a
+contract document from the command line, the same way `import.propose` does:
+
+```bash
+cargo run --example import -- <library-root> first.json "first"
+cargo run --example import -- <library-root> second.json "shop fetch"
+```
+
+Two documents naming one path with different titles leave a set to review.
+Close the application first, or run it while the window is idle: both hold the
+same SQLite file, and a write under an open read fails with "database is
+locked" rather than corrupting anything. The same tool is how the seed
+library's sources will come in once they are written as a document.
+
 ## After applying
 
 The shell bumps its generation and re-reads the library. The pane shows what
