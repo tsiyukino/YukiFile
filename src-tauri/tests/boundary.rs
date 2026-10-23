@@ -29,6 +29,7 @@ const FORBIDDEN: &[&str] = &[
     "yukifile.file",
     "yukifile.archive",
     "yukifile.unitypackage",
+    "yukifile.vrchat",
     "plugins/pdf",
     "plugins/vrc",
     "plugins/folder",
@@ -36,6 +37,7 @@ const FORBIDDEN: &[&str] = &[
     "plugins/file",
     "plugins/archive",
     "plugins/unitypackage",
+    "plugins/vrchat",
 ];
 
 fn core_src() -> PathBuf {

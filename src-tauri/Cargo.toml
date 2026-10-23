@@ -28,3 +28,7 @@ tar = "0.4"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+
+[[example]]
+name = "seed"
+test = true

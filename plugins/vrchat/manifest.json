@@ -1,0 +1,12 @@
+{
+  "id": "yukifile.vrchat",
+  "contributes": {
+    "properties": ["vrchat", "booth"],
+    "shared": ["title", "price", "url", "vendor"],
+    "vocabularies": ["avatar"],
+    "forms": { "vrchat": "./form", "booth": "./booth-form" },
+    "panels": { "vrchat": "./panel", "booth": "./booth-panel" },
+    "library_actions": ["scan products"],
+    "library_action_module": "./action"
+  }
+}

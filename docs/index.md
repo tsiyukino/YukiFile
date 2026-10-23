@@ -85,6 +85,8 @@ Generated per module from the source.
   and how a plugin renders a file it cannot read.
 - [unitypackage-plugin.md](reference/unitypackage-plugin.md) — the package
   reader's first consumer, and the folders where a vendor's name sits.
+- [vrchat-plugin.md](reference/vrchat-plugin.md) — the plugin the design came
+  out of: products, categories, listings, avatars, and the seed import.
 
 ## Seed
 

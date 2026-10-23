@@ -126,9 +126,11 @@ and the forms `formsFor` returns are shown one at a time, in that order. See
 
 ### What it offers today
 
-One property: `paper`, from [the paper plugin](paper-plugin.md). The other three
-built-ins declare only factual properties — `archive` from `.zip`, `pdf` from
-`.pdf`, and the explorer declares none — so none of them appears.
+`paper`, from [the paper plugin](paper-plugin.md), and `vrchat` and `booth`
+from [the vrchat plugin](vrchat-plugin.md). The other built-ins declare only
+factual properties — `archive` from `.zip`, `pdf` from `.pdf`,
+`unitypackage` from `.unitypackage`, and the explorer declares none — so none
+of them appears.
 
 It was empty until `paper` shipped, and that was honest rather than broken: the
 software never guesses that something is a paper, and until then no built-in
