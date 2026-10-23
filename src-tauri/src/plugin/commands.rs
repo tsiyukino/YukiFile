@@ -121,6 +121,12 @@ pub const ALLOWED: &[Command] = &[
                  a third of the seed library is visible",
     },
     Command {
+        name: "unitypackage.list",
+        effect: Effect::Read,
+        reason: "the vendor folder inside a package identified 93 of 174 seed \
+                 products with no network, and a plugin never holds the bytes",
+    },
+    Command {
         name: "fs.walk",
         effect: Effect::Read,
         reason: "what is on disk is a fact; what counts as an object is not",

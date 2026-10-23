@@ -694,6 +694,48 @@ pub fn archive_list_in(
     Ok(listing.members.iter().map(ArchiveMemberView::from).collect())
 }
 
+/// List a Unity package, on disk or inside a zip.
+///
+/// `member` names an entry of the zip at `path`, as `archive.list` spelled
+/// it; without it, `path` is the package itself. Both are confined the same
+/// way every path is. The core matches no extension here: a caller hands it
+/// something and it reads what is there, which is what keeps the boundary
+/// test honest about the core knowing no file types.
+pub fn unitypackage_list_in(
+    library: &Library,
+    path: String,
+    member: Option<String>,
+) -> Result<Vec<UnityAssetView>, BridgeError> {
+    let resolved = library.resolve(&path)?;
+    let package = match member.as_deref().filter(|m| !m.is_empty()) {
+        Some(member) => crate::commands::unitypackage::list_within(&resolved, member),
+        None => crate::commands::unitypackage::list(&resolved),
+    }
+    .map_err(|error| BridgeError::from_unity(error, &path))?;
+
+    Ok(package
+        .assets
+        .into_iter()
+        .map(|asset| UnityAssetView {
+            guid: asset.guid,
+            path: asset.path,
+            size: asset.size,
+            has_preview: asset.has_preview,
+        })
+        .collect())
+}
+
+/// One asset inside a Unity package.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct UnityAssetView {
+    pub guid: String,
+    /// The path inside the Unity project, with `/` separators.
+    pub path: String,
+    /// Absent for a folder asset.
+    pub size: Option<u64>,
+    pub has_preview: bool,
+}
+
 /// One entry inside an archive, as a plugin reads it.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct ArchiveMemberView {
@@ -1067,6 +1109,16 @@ pub fn term_objects(
     term: String,
 ) -> Result<Vec<PointerView>, BridgeError> {
     term_objects_in(&library, vocab, term)
+}
+
+/// List a Unity package, on disk or inside a zip.
+#[tauri::command]
+pub fn unitypackage_list(
+    library: State<'_, Library>,
+    path: String,
+    member: Option<String>,
+) -> Result<Vec<UnityAssetView>, BridgeError> {
+    unitypackage_list_in(&library, path, member)
 }
 
 #[tauri::command]

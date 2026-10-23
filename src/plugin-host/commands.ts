@@ -41,6 +41,16 @@ export interface ArchiveMember {
   readonly escapes_root: boolean;
 }
 
+/** One asset inside a Unity package. */
+export interface UnityAsset {
+  readonly guid: string;
+  /** The path inside the Unity project, with `/` separators. */
+  readonly path: string;
+  /** Absent for a folder asset. */
+  readonly size: number | null;
+  readonly has_preview: boolean;
+}
+
 /** One stored value on an object. */
 export interface StoredValue {
   readonly path: string;
@@ -317,6 +327,14 @@ export interface Api {
   termObjects(vocab: string, term: string): Promise<Pointer[]>;
   archiveList(path: string): Promise<ArchiveMember[]>;
   /**
+   * What a Unity package holds, without unpacking it.
+   *
+   * `member` names an entry of the zip at `path`, as `archiveList` spelled
+   * it; without it `path` is the package. A plugin never holds the bytes, so
+   * reading inside one is the core's to do.
+   */
+  unitypackageList(path: string, member?: string | null): Promise<UnityAsset[]>;
+  /**
    * A URL a viewer can render, for one file.
    *
    * Not the bytes. The data goes from disk into a `<canvas>` or `<img>`
@@ -526,6 +544,7 @@ export function apiFor(invoke: Invoke): Api {
     termVocabularies: () => call("term.vocabularies", {}),
     termObjects: (vocab, term) => call("term.objects", { vocab, term }),
     archiveList: (path) => call("archive.list", { path }),
+    unitypackageList: (path, member = null) => call("unitypackage.list", { path, member }),
     fsWalk: (under, depth = null) => call("fs.walk", { under, depth }),
     pathList: () => call("path.list", {}),
     fileUrl: (path) => call("file.url", { path }),

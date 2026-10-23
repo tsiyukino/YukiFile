@@ -2511,3 +2511,92 @@ fn forgetting_an_object_takes_its_pointers_with_it() {
 
     assert!(term_objects_in(&library, "avatar".into(), "manuka".into()).expect("objects").is_empty());
 }
+
+// --- unitypackage.list ------------------------------------------------------
+
+/// A real package, written by the same crates the reader uses.
+fn unity_package(assets: &[(&str, &str, Option<&[u8]>, bool)]) -> Vec<u8> {
+    yukifile::commands::unitypackage::fixture::package(assets)
+}
+
+#[test]
+fn a_package_on_disk_lists_its_assets() {
+    let (library, dir) = library();
+    dir.file(
+        "mochi.unitypackage",
+        &unity_package(&[("g1", "Assets/[meron-farm]/mochi-bob/body.fbx", Some(b"fbx"), false)]),
+    );
+
+    let listed = unitypackage_list_in(&library, "mochi.unitypackage".into(), None).expect("list");
+
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0].path, "Assets/[meron-farm]/mochi-bob/body.fbx");
+    assert_eq!(listed[0].size, Some(3));
+}
+
+#[test]
+fn a_package_inside_a_zip_lists_through_the_zip() {
+    // zip, then gzip, then tar. 54 of the seed library's never-unpacked zips
+    // hold packages, and this is what makes them visible.
+    let (library, dir) = library();
+    let inner = unity_package(&[("g", "Assets/Hollow/outfit.prefab", Some(b"p"), true)]);
+    dir.zip("Hollow.zip", &[("Hollow/outfit.unitypackage", &inner)]);
+
+    let listed = unitypackage_list_in(
+        &library,
+        "Hollow.zip".into(),
+        Some("Hollow/outfit.unitypackage".into()),
+    )
+    .expect("list");
+
+    assert_eq!(listed[0].path, "Assets/Hollow/outfit.prefab");
+    assert!(listed[0].has_preview);
+}
+
+#[test]
+fn a_member_the_zip_does_not_hold_is_not_found_by_name() {
+    let (library, dir) = library();
+    dir.zip("a.zip", &[("readme.txt", b"hi")]);
+
+    let refused = unitypackage_list_in(&library, "a.zip".into(), Some("gone.unitypackage".into()));
+
+    match refused {
+        Err(BridgeError::NotFound(shown)) => assert!(shown.contains("gone"), "{shown}"),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn a_file_that_is_not_a_package_says_so() {
+    let (library, dir) = library();
+    dir.file("notes.txt", b"not gzipped");
+
+    assert!(matches!(
+        unitypackage_list_in(&library, "notes.txt".into(), None),
+        Err(BridgeError::NotAnArchive(_))
+    ));
+}
+
+#[test]
+fn a_package_outside_the_library_is_refused_by_the_command() {
+    // The target has to exist and be real, as the archive test says: a path
+    // that is merely missing is refused for the wrong reason.
+    let (library, dir) = library();
+    let outside = dir.path().parent().expect("parent").join("yukifile-outside.unitypackage");
+    fs::write(&outside, unity_package(&[("g", "Assets/secret.txt", Some(b"s"), false)])).expect("write");
+
+    let attempt = unitypackage_list_in(&library, "../yukifile-outside.unitypackage".into(), None);
+    let _ = fs::remove_file(&outside);
+
+    assert!(matches!(attempt, Err(BridgeError::OutsideLibrary(_))), "{attempt:?}");
+}
+
+#[test]
+fn a_missing_package_is_not_found() {
+    let (library, _dir) = library();
+
+    assert!(matches!(
+        unitypackage_list_in(&library, "nowhere.unitypackage".into(), None),
+        Err(BridgeError::NotFound(_))
+    ));
+}

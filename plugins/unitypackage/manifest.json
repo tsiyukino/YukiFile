@@ -1,0 +1,12 @@
+{
+  "id": "yukifile.unitypackage",
+  "contributes": {
+    "properties": ["unitypackage"],
+    "file_types": {
+      "unitypackage": ["unitypackage"]
+    },
+    "panels": {
+      "unitypackage": "./panel"
+    }
+  }
+}

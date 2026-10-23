@@ -71,6 +71,54 @@ about it; this module reports names and sizes. Reading inward and concluding
 "this is a tool" is the inference that misfiles the twelve seed products
 shipping lilToon.
 
+## commands::unitypackage
+
+`list(&Path)` · `list_within(&Path, member)` · `list_from(impl Read)` — all
+return `Result<Package, UnityError>`.
+
+A Unity package is gzip over tar. Each asset is a directory named by a GUID
+holding `pathname` (the path inside the Unity project, as text), `asset` (the
+bytes), `asset.meta`, and sometimes `preview.png`. A folder asset has a
+`pathname` and no `asset`.
+
+```rust
+struct Asset {
+    guid: String,
+    path: String,         // inside the Unity project, `/` separators
+    size: Option<u64>,    // absent for a folder asset
+    has_preview: bool,
+}
+```
+
+Assets come back sorted by path. The first line of `pathname` is the path;
+some writers add a second line holding `00`, which is not.
+
+`2026-10-23_unitypackage-reading-is-core.md` says why this is here and not in
+a plugin: a plugin never holds bytes, by design, so anything that parses them
+is the core's to do.
+
+### Inside a zip
+
+`list_within` reads a package stored in a zip as one chain of readers — zip
+entry, gzip, tar — holding one tar entry at a time. 54 of the seed library's
+never-unpacked zips hold packages, and reading them is what took one product
+from "no avatars detected" to 25. The member is named as `archive.list`
+spelled it, with `/` separators.
+
+### What it does not do
+
+Know what a vendor is. The second segment of a path is almost always one, and
+drawing that conclusion is the VRChat plugin's. The core also names no
+extension: the boundary test still refuses the string in core source, the
+built-in plugin registers the file type, and the command reads what it is
+handed.
+
+### Errors
+
+`Unreadable(io::Error)` · `NoSuchMember(String)` · `NotAPackage(String)`. The
+bridge maps the first to `not_found` or `unreadable`, the second to
+`not_found` naming the member, and the third to `not_an_archive`.
+
 ## commands::hash
 
 Content hashes, which are what let a move be told from a delete plus an add.

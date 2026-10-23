@@ -141,6 +141,19 @@ impl BridgeError {
         }
     }
 
+    /// A package failure, told without the absolute path.
+    pub fn from_unity(error: crate::commands::unitypackage::UnityError, shown: &str) -> Self {
+        use crate::commands::unitypackage::UnityError;
+        match error {
+            UnityError::Unreadable(io) if io.kind() == std::io::ErrorKind::NotFound => {
+                Self::NotFound(shown.to_string())
+            }
+            UnityError::Unreadable(_) => Self::Unreadable(shown.to_string()),
+            UnityError::NoSuchMember(member) => Self::NotFound(format!("{shown}: {member}")),
+            UnityError::NotAPackage(reason) => Self::NotAnArchive(reason),
+        }
+    }
+
     /// An I/O failure against a path the plugin named.
     pub fn from_io(error: std::io::Error, shown: &str) -> Self {
         match error.kind() {

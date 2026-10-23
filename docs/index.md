@@ -49,6 +49,8 @@
   — what is installed and what a library runs are two questions.
 - [2026-09-11 choosing a type is storable](decisions/2026-09-11_choosing-a-type-is-storable.md)
   — why a property chosen and left blank still has to be carried.
+- [2026-10-23 reading a Unity package is core work](decisions/2026-10-23_unitypackage-reading-is-core.md)
+  — the deferred question, settled on evidence: a plugin never holds bytes.
 
 ## Reference
 
@@ -81,6 +83,8 @@ Generated per module from the source.
 - [paper-plugin.md](reference/paper-plugin.md) — the first semantic property, and the first form.
 - [pdf-plugin.md](reference/pdf-plugin.md) — the viewer slot's first consumer,
   and how a plugin renders a file it cannot read.
+- [unitypackage-plugin.md](reference/unitypackage-plugin.md) — the package
+  reader's first consumer, and the folders where a vendor's name sits.
 
 ## Seed
 

@@ -67,6 +67,7 @@ macro_rules! register_commands {
             $crate::bridge::commands::term_vocabularies,
             $crate::bridge::commands::term_objects,
             $crate::bridge::commands::archive_list,
+            $crate::bridge::commands::unitypackage_list,
             $crate::bridge::commands::fs_walk,
             $crate::bridge::commands::path_list,
             $crate::bridge::commands::file_url,
