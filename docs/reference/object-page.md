@@ -83,6 +83,68 @@ Contributions whose module failed are kept in the list carrying `undefined`
 rather than filtered out, because a dropped contribution is a silent gap and a
 named one is a bug report.
 
+## Editing
+
+The page edits when it is handed an `app` and an `onChanged`; without them it
+is read-only, which is what a panel's tests and an embedded view want. The
+shell hands both.
+
+| part | file | writes |
+|------|------|--------|
+| a field | `FieldEditor.tsx` | `object.value.set` |
+| a new field | `FieldEditor.tsx` (`NewField`) | `object.value.set` |
+| what it is, points at, sits at | `ObjectEditor.tsx` | the rest of `object.*` |
+| the rules | `edit.ts` | nothing; pure |
+
+### Shared fields write bare
+
+A shared field may be showing a shop's title. Editing starts from that text,
+because it is what the person is looking at, and saving writes `title` — the
+bare field, which outranks every source. That is the model's own answer to
+"I want it to say this": a person's value is a source that wins. Clear is
+offered only when a bare value exists, because clearing a shop's value is not
+a thing a person can do from here, and a button that does nothing is worse
+than none.
+
+### Region fields write under their property
+
+`paper#1/doi`, spelled by `edit.fieldPath` and nowhere else in the UI. A
+region's field is the plugin's own, so what is shown is what is owned and
+Clear is always on offer.
+
+**Add field** is the generic escape hatch. A plugin's form is the right way to
+fill a region in; until the plugin has one, this is how a person records a
+category on the thing they are looking at. The name is checked against the
+store's own rule — no `/`, no `#`, no whitespace — before the round trip, so
+the message sits beside the box.
+
+### Is a, points at, sits at
+
+Three lists under the regions, each with a remove per row and one small form.
+
+**Is a** offers removal only for semantic properties — the ones a person could
+have chosen. `pdf` on a `.pdf` is attached by what the file is, and detaching
+it would do nothing the next read does not undo.
+
+**Points at** lists edges in words: a term by its label, an object by its
+name, and the raw id when neither is known, because a target nobody can name
+is still a target. A new edge goes to a term from one of the declared
+vocabularies, or to an object **by its path**: the person types where the
+thing sits, which they know, and the id, which they do not, comes from
+`path.list`. Kinds are suggested, not enforced; the schema leaves `kind` free
+so a plugin can add `cites` without a change here.
+
+**Sits at** lists locations. Another is added by typing a path relative to the
+root and saying whether it is a file or a folder; the core checks it is there
+and nobody else's. Typed rather than picked for now — the disk browser is the
+natural picker and will become one.
+
+### After any edit
+
+`onChanged` bumps the shell's generation, which re-reads the object on screen
+without changing which object it is. The framework's page shows the model;
+a plugin's panel shows the meaning, and both read the same object.
+
 ## The panel contract
 
 `plugin-host/panel.ts`

@@ -16,6 +16,8 @@ import { Heading, Stack, Text } from "@primer/react";
 
 import type { Api, ObjectId, Region } from "../plugin-host/commands.js";
 import type { Panel } from "../plugin-host/panel.js";
+import { isFieldName } from "./edit.js";
+import { FieldEditor, NewField } from "./FieldEditor.js";
 
 /** A panel that belongs in this region, once resolved. */
 export interface ResolvedPanel {
@@ -36,6 +38,11 @@ export interface PropertyRegionProps {
    * whole object, and a region cannot see its siblings.
    */
   readonly instancesOfProperty: number;
+  /**
+   * Write one of this region's fields, by bare name. Absent, the region is
+   * read-only. The page spells the stored path; the region knows only names.
+   */
+  readonly onSet?: ((name: string, value: string) => Promise<void>) | undefined;
 }
 
 export function PropertyRegion({
@@ -44,6 +51,7 @@ export function PropertyRegion({
   region,
   panels,
   instancesOfProperty,
+  onSet,
 }: PropertyRegionProps): React.JSX.Element {
   const fields = Object.entries(region.fields);
 
@@ -51,13 +59,24 @@ export function PropertyRegion({
     <Stack gap="condensed">
       <Heading as="h2">{regionTitle(region, instancesOfProperty)}</Heading>
 
-      {fields.length > 0 && (
+      {fields.length > 0 && !onSet && (
         <Stack gap="none">
           {fields.map(([name, value]) => (
             <Text key={name} size="small">
               {name}: {value}
             </Text>
           ))}
+        </Stack>
+      )}
+
+      {onSet && (
+        <Stack gap="condensed">
+          {fields.map(([name, value]) => (
+            // A region's field is the plugin's own, so the value shown is the
+            // value owned: Clear is always on offer.
+            <FieldEditor key={name} label={name} shown={value} own={value} onSave={(next) => onSet(name, next)} />
+          ))}
+          <NewField isName={isFieldName} onAdd={onSet} />
         </Stack>
       )}
 

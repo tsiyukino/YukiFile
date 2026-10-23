@@ -118,7 +118,9 @@ export function App(): React.JSX.Element {
     return () => {
       current = false;
     };
-  }, [chosen]);
+    // Generation too: an edit changes the object on screen without changing
+    // which object it is, and the page has to show the new value.
+  }, [chosen, generation]);
 
   useEffect(() => {
     let current = true;
@@ -162,6 +164,10 @@ export function App(): React.JSX.Element {
   };
 
   const current = shown ?? context.object;
+
+  // The object on screen changed but is still the one to look at. Re-read
+  // everything, including it, without going back to the first object.
+  const refresh = (): void => setGeneration((n) => n + 1);
 
   return (
     <PageLayout>
@@ -269,10 +275,12 @@ export function App(): React.JSX.Element {
             </Stack>
             <ObjectPage
               api={api}
+              app={app}
               object={current}
               plugins={context.plugins}
               loaded={context.loaded}
               mounts={context.mounts}
+              onChanged={refresh}
             />
           </Stack>
         ) : (

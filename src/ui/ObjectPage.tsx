@@ -21,6 +21,7 @@ import { Heading, Spinner, Stack, Text } from "@primer/react";
 
 import type {
   Api,
+  AppApi,
   FlatObject,
   Location,
   Region,
@@ -30,6 +31,9 @@ import { panelsFor } from "../plugin-host/slots.js";
 import { panelComponent, type Panel } from "../plugin-host/panel.js";
 import type { Loaded } from "../plugin-host/loader.js";
 import type { Manifest } from "../plugin-host/types.js";
+import { fieldPath, isFieldName } from "./edit.js";
+import { FieldEditor, NewField } from "./FieldEditor.js";
+import { ObjectEditor } from "./ObjectEditor.js";
 import { PropertyRegion, type ResolvedPanel } from "./PropertyRegion.js";
 import { SourceList } from "./SourceList.js";
 import { Viewer } from "./Viewer.js";
@@ -45,6 +49,13 @@ export interface ObjectPageProps {
   /** What each plugin's modules resolved to, by plugin id. */
   readonly loaded: readonly Loaded[];
   readonly mounts: readonly Mount[];
+  /**
+   * What the application writes with. Absent, the page is read-only, which
+   * is what a panel's tests and a future embedded view want.
+   */
+  readonly app?: AppApi;
+  /** The object changed; whoever owns it should re-read it. */
+  readonly onChanged?: () => void;
 }
 
 export function ObjectPage({
@@ -53,6 +64,8 @@ export function ObjectPage({
   plugins,
   loaded,
   mounts,
+  app,
+  onChanged,
 }: ObjectPageProps): React.JSX.Element {
   if (!object) {
     return <Spinner aria-label="Loading the object" />;
@@ -67,6 +80,27 @@ export function ObjectPage({
 
   const headline = object.shared[HEADLINE];
   const otherFields = Object.entries(object.shared).filter(([name]) => name !== HEADLINE);
+
+  // Writing a shared field writes the bare one, which outranks every source:
+  // that is what a person's own value means, and clearing it hands the field
+  // back to mount order. The editor starts from what is shown, because that
+  // is what they are looking at, and offers Clear only when a bare value is
+  // theirs to take back.
+  const editShared = (name: string): React.JSX.Element | null => {
+    if (!app || !onChanged) return null;
+    const sources = object.shared[name] ?? [];
+    return (
+      <FieldEditor
+        label={name}
+        shown={sources[0]?.value}
+        own={sources.find((source) => source.from === null)?.value}
+        onSave={async (value) => {
+          await app.objectValueSet(object.id, name, value);
+          onChanged();
+        }}
+      />
+    );
+  };
 
   return (
     <Stack gap="normal" padding="normal">
@@ -94,6 +128,24 @@ export function ObjectPage({
               {location.kind === "folder" ? "/" : sizeSuffix(location.size)}
             </Text>
           ))}
+        </Stack>
+      )}
+
+      {app && onChanged && (
+        <Stack gap="condensed">
+          {editShared(HEADLINE)}
+          {otherFields.map(([name]) => (
+            <Stack key={name} gap="none">
+              {editShared(name)}
+            </Stack>
+          ))}
+          <NewField
+            isName={isFieldName}
+            onAdd={async (name, value) => {
+              await app.objectValueSet(object.id, name, value);
+              onChanged();
+            }}
+          />
         </Stack>
       )}
 
@@ -126,8 +178,20 @@ export function ObjectPage({
           region={region}
           instancesOfProperty={counts.get(region.property) ?? 1}
           panels={panelsIn(region, contributions, loaded)}
+          onSet={
+            app && onChanged
+              ? async (name, value) => {
+                  await app.objectValueSet(object.id, fieldPath(region, name), value);
+                  onChanged();
+                }
+              : undefined
+          }
         />
       ))}
+
+      {app && onChanged && (
+        <ObjectEditor api={api} app={app} object={object} plugins={plugins} onChanged={onChanged} />
+      )}
 
       {shown.length === 0 &&
         object.locations.length === 0 &&

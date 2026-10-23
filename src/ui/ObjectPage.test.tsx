@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, test } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, test, vi } from "vitest";
 
-import type { Api, FlatObject } from "../plugin-host/commands.js";
+import type { Api, AppApi, FlatObject } from "../plugin-host/commands.js";
 import type { Loaded } from "../plugin-host/loader.js";
 import type { Mount } from "../plugin-host/slots.js";
 import type { Manifest } from "../plugin-host/types.js";
@@ -563,5 +563,79 @@ describe("a property with nothing written under it", () => {
 
     const headings = screen.getAllByRole("heading", { level: 2 });
     expect(headings.map((h) => h.textContent)).toEqual(["archive", "file"]);
+  });
+});
+
+describe("editing, when the page has something to write with", () => {
+  /** An app that accepts every write, and an api the editor can read from. */
+  function appWith() {
+    return { objectValueSet: vi.fn(async () => "replaced" as const) };
+  }
+  const readable = { objectEdges: async () => [], pathList: async () => [] } as unknown as Api;
+
+  test("a read-only page draws no pencils", () => {
+    render(
+      <ObjectPage
+        api={api}
+        object={flat({ shared: { title: [{ value: "Cross Maid", from: null }] } })}
+        plugins={[]}
+        loaded={[]}
+        mounts={[]}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Edit title" })).toBeNull();
+  });
+
+  test("a shared field is written bare, whichever source was showing", async () => {
+    // The person's own value outranks a shop's. Starting from the shop's
+    // text and writing `title`, not `booth#1/title`, is what makes it theirs.
+    const app = appWith();
+    const onChanged = vi.fn();
+    render(
+      <ObjectPage
+        api={readable}
+        app={app as unknown as AppApi}
+        object={flat({
+          id: "42",
+          shared: { title: [{ value: "shop name", from: "booth#1" }] },
+        })}
+        plugins={[]}
+        loaded={[]}
+        mounts={[]}
+        onChanged={onChanged}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit title" }));
+    fireEvent.change(screen.getByLabelText("title"), { target: { value: "my name" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(app.objectValueSet).toHaveBeenCalledWith("42", "title", "my name"));
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  test("a region's field is written under its property and instance", async () => {
+    const app = appWith();
+    render(
+      <ObjectPage
+        api={readable}
+        app={app as unknown as AppApi}
+        object={flat({
+          id: "42",
+          regions: [{ property: "booth", instance: 2, fields: { price: "2900" } }],
+        })}
+        plugins={[]}
+        loaded={[]}
+        mounts={[]}
+        onChanged={() => undefined}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit price" }));
+    fireEvent.change(screen.getByLabelText("price"), { target: { value: "3000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(app.objectValueSet).toHaveBeenCalledWith("42", "booth#2/price", "3000"));
   });
 });
