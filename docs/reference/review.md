@@ -23,7 +23,7 @@ goes.
 
 | file | does |
 |------|------|
-| `src/ui/review.ts` | grouping by object, an entry in words, the counts |
+| `src/ui/changeset.ts` | grouping by object, an entry in words, the counts |
 | `src/ui/Review.tsx` | `ReviewList`, the pane; `ReviewPage`, the set |
 | `src-tauri/src/bridge/changes.rs` | the six commands, see [changes.md](changes.md) |
 

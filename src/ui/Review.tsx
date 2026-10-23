@@ -25,7 +25,7 @@ import { useEffect, useState } from "react";
 
 import type { Api, AppApi, ChangeEntry, ChangeSetSummary } from "../plugin-host/commands.js";
 import { describe, staleDetail, type Stale } from "./problem.js";
-import { byObject, countsOf, decided, objectsOf, recount, wording, type ObjectChanges } from "./review.js";
+import { byObject, countsOf, decided, objectsOf, recount, wording, type ObjectChanges } from "./changeset.js";
 
 // --- the pane: every set waiting -----------------------------------------
 

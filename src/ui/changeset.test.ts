@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import type { ChangeEntry, ChangeSetSummary } from "../plugin-host/commands.js";
-import { byObject, countsOf, decided, objectsOf, recount, wording } from "./review.js";
+import { byObject, countsOf, decided, objectsOf, recount, wording } from "./changeset.js";
 
 function entry(over: Partial<ChangeEntry> = {}): ChangeEntry {
   return {
