@@ -30,9 +30,45 @@ export function describe(error: unknown): string {
         return `another object already sits at ${String(error.detail)}`;
       case "not_found":
         return `nothing is at ${String(error.detail)} any more`;
+      case "already_applied":
+        return "this set was already applied; its entries are the record of what was decided";
+      case "stale":
+        return staleInWords(error.detail);
       default:
         return `the core refused: ${error.kind}`;
     }
   }
   return error instanceof Error ? error.message : String(error);
+}
+
+/** What a stale refusal carries. */
+export interface Stale {
+  readonly object: string;
+  readonly field: string;
+  readonly expected: string | null;
+  readonly found: string | null;
+}
+
+/** The detail of a `stale` refusal, if it is one. */
+export function staleDetail(error: unknown): Stale | undefined {
+  if (!isRefusal(error) || error.kind !== "stale") return undefined;
+  const detail = error.detail;
+  if (typeof detail !== "object" || detail === null) return undefined;
+  if (!("field" in detail) || !("object" in detail)) return undefined;
+  return detail as Stale;
+}
+
+/**
+ * A field that moved, in words.
+ *
+ * Says what the proposal was built against and what is there now, because the
+ * person reading it has to decide which of the two to keep, and cannot from
+ * "something changed".
+ */
+function staleInWords(detail: unknown): string {
+  const stale = staleDetail({ kind: "stale", detail });
+  if (!stale) return "a field changed since this set was proposed";
+  const was = stale.expected === null ? "empty" : `"${stale.expected}"`;
+  const now = stale.found === null ? "empty" : `"${stale.found}"`;
+  return `${stale.field} changed since this was proposed: it was ${was} and is now ${now}`;
 }

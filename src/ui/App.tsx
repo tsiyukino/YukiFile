@@ -45,6 +45,7 @@ import { invoke } from "./invoke.js";
 import { describe } from "./problem.js";
 import { ObjectList } from "./ObjectList.js";
 import { fallbackTitle, ObjectPage } from "./ObjectPage.js";
+import { ReviewList, ReviewPage } from "./Review.js";
 
 /** The API every panel is handed, wired to the real Tauri bridge. */
 export const api: Api = apiFor(invoke);
@@ -57,8 +58,10 @@ export const api: Api = apiFor(invoke);
  */
 export const app: AppApi = appApiFor(invoke);
 
-/** Which side of the same files the left pane is showing. */
-type Pane = "library" | "disk";
+/** What the left pane is listing. */
+type Pane = "library" | "disk" | "review";
+
+const PANES: readonly Pane[] = ["library", "disk", "review"];
 
 /** What the shell gathers before a page can draw. */
 export interface Context {
@@ -68,6 +71,8 @@ export interface Context {
   /** The object on screen, or `undefined` when the library holds none. */
   readonly object: FlatObject | undefined;
   readonly total: number;
+  /** How many change sets are waiting for a person. */
+  readonly pending: number;
 }
 
 export function App(): React.JSX.Element {
@@ -90,6 +95,9 @@ export function App(): React.JSX.Element {
   // Something on disk a person is in the middle of making an object of. While
   // it is set the page shows the add flow instead of an object.
   const [adding, setAdding] = useState<PathAt | undefined>(undefined);
+
+  // The change set under review, when the page is showing one.
+  const [reviewing, setReviewing] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (!chosen) {
@@ -164,38 +172,71 @@ export function App(): React.JSX.Element {
           <SegmentedControl
             aria-label="What the pane lists"
             fullWidth
-            onChange={(index) => setPane(index === 0 ? "library" : "disk")}
+            onChange={(index) => setPane(PANES[index] ?? "library")}
           >
             <SegmentedControl.Button selected={pane === "library"}>Library</SegmentedControl.Button>
             <SegmentedControl.Button selected={pane === "disk"}>Disk</SegmentedControl.Button>
+            <SegmentedControl.Button selected={pane === "review"}>
+              {context.pending > 0 ? `Review (${context.pending})` : "Review"}
+            </SegmentedControl.Button>
           </SegmentedControl>
 
-          {pane === "library" ? (
+          {pane === "library" && (
             <ObjectList
               api={api}
               selected={chosen ?? context.object?.id}
               onSelect={(id) => {
                 setAdding(undefined);
+                setReviewing(undefined);
                 setChosen(id);
               }}
               generation={generation}
             />
-          ) : (
+          )}
+          {pane === "disk" && (
             <DiskBrowser
               api={api}
               generation={generation}
               onSelect={(id) => {
                 setAdding(undefined);
+                setReviewing(undefined);
                 setChosen(id);
               }}
-              onAdd={setAdding}
+              onAdd={(at) => {
+                setReviewing(undefined);
+                setAdding(at);
+              }}
+            />
+          )}
+          {pane === "review" && (
+            <ReviewList
+              api={api}
+              generation={generation}
+              selected={reviewing}
+              onSelect={(set) => {
+                setAdding(undefined);
+                setReviewing(set);
+              }}
             />
           )}
         </Stack>
       </PageLayout.Pane>
 
       <PageLayout.Content>
-        {adding ? (
+        {reviewing !== undefined ? (
+          <ReviewPage
+            key={reviewing}
+            api={api}
+            app={app}
+            set={reviewing}
+            onApplied={() => {
+              // What was accepted is in the library now. Re-read it, and let
+              // the pane show what is still waiting.
+              setReviewing(undefined);
+              setGeneration((n) => n + 1);
+            }}
+          />
+        ) : adding ? (
           <AddObject
             // Keyed on the path so picking a different row starts over rather
             // than carrying one file's half-filled forms to another.
@@ -395,6 +436,7 @@ export async function gather(api: Api): Promise<Context> {
   const mounts = await api.mountOrder();
   const page = await api.objectIds(null, 1);
   const first = page.ids[0];
+  const pending = await api.changesPending();
 
   return {
     plugins,
@@ -402,5 +444,6 @@ export async function gather(api: Api): Promise<Context> {
     mounts,
     object: first === undefined ? undefined : await api.objectFlat(first),
     total: page.total,
+    pending: pending.length,
   };
 }

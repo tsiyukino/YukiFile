@@ -74,6 +74,8 @@ Generated per module from the source.
   the panel contract, and how a failing plugin stays contained.
 - [disk-browser.md](reference/disk-browser.md) — what is on disk against what
   the library holds, and making an object by hand.
+- [review.md](reference/review.md) — the change set screen: deciding what a
+  proposal may write, entry by entry.
 - [paper-plugin.md](reference/paper-plugin.md) — the first semantic property, and the first form.
 - [pdf-plugin.md](reference/pdf-plugin.md) — the viewer slot's first consumer,
   and how a plugin renders a file it cannot read.

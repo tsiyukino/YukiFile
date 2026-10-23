@@ -10,6 +10,7 @@ function fakeApi(over: Partial<Api> = {}): Api {
     pluginList: async () => [],
     mountOrder: async () => [],
     objectIds: async () => ({ ids: [], total: 0 }),
+    changesPending: async () => [],
     objectFlat: async (id: string) => ({
       id,
       shared: {},
@@ -77,6 +78,21 @@ describe("gathering what the page needs", () => {
     expect(context.plugins).toHaveLength(2);
     expect(context.loaded).toHaveLength(2);
     expect(context.loaded[0]?.failures).toHaveLength(1);
+  });
+
+  test("how many sets are waiting rides along", async () => {
+    // The pane's label says "Review (2)" so a scan that left something to
+    // decide is noticed without opening the pane.
+    const context = await gather(
+      fakeApi({
+        changesPending: async () => [
+          { id: 1, label: "a", created: 0, additions: 0, modifications: 1, accepted: 0 },
+          { id: 2, label: "b", created: 0, additions: 1, modifications: 0, accepted: 1 },
+        ],
+      }),
+    );
+
+    expect(context.pending).toBe(2);
   });
 
   test("mount order is carried through unchanged", async () => {
