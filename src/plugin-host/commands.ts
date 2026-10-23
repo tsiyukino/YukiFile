@@ -221,6 +221,22 @@ export interface Applied {
   readonly declined: number;
 }
 
+/**
+ * What an edge points at.
+ *
+ * Tagged the way the bridge sends it, and the same shape `objectEdgeAdd`
+ * takes back, so a panel that read an edge can hand it over unchanged.
+ */
+export type EdgeTarget =
+  | { readonly target: "object"; readonly id: ObjectId }
+  | { readonly target: "term"; readonly vocab: string; readonly term: string };
+
+/** One edge leaving an object: `supports → avatar:manuka`. */
+export type Edge = { readonly kind: string } & EdgeTarget;
+
+/** What setting a value did. */
+export type Written = "added" | "replaced" | "cleared" | "unchanged";
+
 /** One vocabulary term. */
 export interface Term {
   readonly vocab: string;
@@ -280,7 +296,7 @@ export interface Api {
   objectSummaries(ids: readonly ObjectId[]): Promise<Summary[]>;
   pluginList(): Promise<Manifest[]>;
   mountOrder(): Promise<MountRow[]>;
-  objectEdges(id: ObjectId): Promise<unknown[]>;
+  objectEdges(id: ObjectId): Promise<Edge[]>;
   termResolve(vocab: string, surface: string): Promise<string | null>;
   termList(vocab: string): Promise<Term[]>;
   archiveList(path: string): Promise<ArchiveMember[]>;
@@ -402,6 +418,27 @@ export interface AppApi {
   /** Remove an object and everything hung on it. Files on disk are untouched. */
   objectForget(id: ObjectId): Promise<void>;
   /**
+   * Write one field on an existing object, whatever it held.
+   *
+   * The person is the review, so this overwrites where an import would have
+   * proposed, and records the change in history as theirs. An empty value
+   * clears. A bare path (`title`) outranks every source; a namespaced one
+   * (`paper#1/doi`) lands in that property's region.
+   */
+  objectValueSet(id: ObjectId, field: string, value: string): Promise<Written>;
+  /** Say an object is something, after it was made. */
+  objectPropertyAdd(id: ObjectId, property: string): Promise<void>;
+  /** Unsay it. Values under the property stay, and read back if it returns. */
+  objectPropertyRemove(id: ObjectId, property: string): Promise<void>;
+  /** Point an object at a term or another object. The target has to exist. */
+  objectEdgeAdd(id: ObjectId, kind: string, target: EdgeTarget): Promise<void>;
+  /** Stop pointing. Removing an edge that is not there is not an error. */
+  objectEdgeRemove(id: ObjectId, kind: string, target: EdgeTarget): Promise<void>;
+  /** Give an object another place it sits. The path has to be there and free. */
+  objectPathAdd(id: ObjectId, at: PathAt): Promise<void>;
+  /** Take a place away. Only from the object that holds it. */
+  objectPathRemove(id: ObjectId, path: string): Promise<void>;
+  /**
    * Accept or decline one proposed entry.
    *
    * The review itself. A plugin that could accept its own proposal would make
@@ -428,6 +465,20 @@ export function appApiFor(invoke: Invoke): AppApi {
       invoke(handlerName("object.create"), { object }) as Promise<ObjectId>,
     objectForget: (id) =>
       invoke(handlerName("object.forget"), { id }) as Promise<void>,
+    objectValueSet: (id, field, value) =>
+      invoke(handlerName("object.value.set"), { id, field, value }) as Promise<Written>,
+    objectPropertyAdd: (id, property) =>
+      invoke(handlerName("object.property.add"), { id, property }) as Promise<void>,
+    objectPropertyRemove: (id, property) =>
+      invoke(handlerName("object.property.remove"), { id, property }) as Promise<void>,
+    objectEdgeAdd: (id, kind, target) =>
+      invoke(handlerName("object.edge.add"), { id, kind, target }) as Promise<void>,
+    objectEdgeRemove: (id, kind, target) =>
+      invoke(handlerName("object.edge.remove"), { id, kind, target }) as Promise<void>,
+    objectPathAdd: (id, at) =>
+      invoke(handlerName("object.path.add"), { id, at }) as Promise<void>,
+    objectPathRemove: (id, path) =>
+      invoke(handlerName("object.path.remove"), { id, path }) as Promise<void>,
     changesAccept: (change, accepted) =>
       invoke(handlerName("changes.accept"), { change, accepted }) as Promise<void>,
     changesAcceptAdditions: (set) =>

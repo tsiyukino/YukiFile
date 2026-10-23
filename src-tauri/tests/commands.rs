@@ -2023,3 +2023,398 @@ fn a_stale_refusal_serialises_with_its_detail() {
     assert_eq!(json["detail"]["object"], "42");
     assert_eq!(json["detail"]["found"], serde_json::Value::Null);
 }
+
+// --- changing an object ---------------------------------------------------
+
+use yukifile::bridge::objects::{
+    object_edge_add_in, object_edge_remove_in, object_path_add_in, object_path_remove_in,
+    object_property_add_in, object_property_remove_in, object_value_set_in, TargetAt, WrittenView,
+};
+
+/// The bare `title` as a person reads it off the object.
+fn bare_title(library: &Library, id: i64) -> Option<String> {
+    object_get_in(library, id)
+        .expect("get")
+        .values
+        .into_iter()
+        .find(|v| v.path == "title")
+        .map(|v| v.value)
+}
+
+#[test]
+fn setting_an_empty_field_adds_and_records_nothing_to_undo() {
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+
+    let written = object_value_set_in(&library, id, "title", "Cross Maid").expect("set");
+
+    assert_eq!(written, WrittenView::Added);
+    assert_eq!(bare_title(&library, id).as_deref(), Some("Cross Maid"));
+    // History is written: a person made this, and the page shows it as such.
+    let history = history_of_in(&library, id).expect("history");
+    assert_eq!(history.len(), 1);
+    assert_eq!(history[0].old, None);
+    assert_eq!(history[0].new.as_deref(), Some("Cross Maid"));
+}
+
+#[test]
+fn setting_a_held_field_replaces_it_where_an_import_would_have_proposed() {
+    // The person is the review. An import over "mine" opens a set; a person
+    // typing over "mine" means it.
+    let (library, _dir) = library();
+    let id = object_with(&library, &[("title", "mine")]);
+
+    let written = object_value_set_in(&library, id, "title", "theirs").expect("set");
+
+    assert_eq!(written, WrittenView::Replaced);
+    assert_eq!(bare_title(&library, id).as_deref(), Some("theirs"));
+    assert!(changes_pending_in(&library).expect("pending").is_empty());
+
+    let history = history_of_in(&library, id).expect("history");
+    assert_eq!(history[0].old.as_deref(), Some("mine"));
+    assert_eq!(history[0].new.as_deref(), Some("theirs"));
+}
+
+#[test]
+fn an_empty_value_clears_the_field_and_says_so_in_history() {
+    let (library, _dir) = library();
+    let id = object_with(&library, &[("title", "mine")]);
+
+    let written = object_value_set_in(&library, id, "title", "").expect("clear");
+
+    assert_eq!(written, WrittenView::Cleared);
+    assert_eq!(bare_title(&library, id), None);
+    let history = history_of_in(&library, id).expect("history");
+    assert_eq!(history[0].new, None);
+}
+
+#[test]
+fn setting_what_is_already_there_changes_nothing_and_records_nothing() {
+    // Pressing save on an unchanged field must not leave a history row
+    // saying nothing happened.
+    let (library, _dir) = library();
+    let id = object_with(&library, &[("title", "mine")]);
+
+    let written = object_value_set_in(&library, id, "title", "mine").expect("set");
+
+    assert_eq!(written, WrittenView::Unchanged);
+    assert!(history_of_in(&library, id).expect("history").is_empty());
+}
+
+#[test]
+fn a_bare_value_outranks_every_source_and_clearing_it_hands_back() {
+    // What a person's own value means. A shop's title is a source; theirs is
+    // the answer. Clearing it is "never mind, use the shops'".
+    let (library, _dir) = library();
+    mount(&library, "booth", 1, 0);
+    let registry = registry_sharing("booth", &["title"]);
+    let id = object_with(&library, &[("booth#1/title", "shop name")]);
+
+    object_value_set_in(&library, id, "title", "my name").expect("set");
+    let view = object_flat_in(&library, Some(&registry), id).expect("flat");
+    assert_eq!(view.shared["title"][0].value, "my name");
+
+    object_value_set_in(&library, id, "title", "").expect("clear");
+    let view = object_flat_in(&library, Some(&registry), id).expect("flat");
+    assert_eq!(view.shared["title"][0].value, "shop name");
+}
+
+#[test]
+fn a_namespaced_value_mounts_its_property_so_it_can_be_seen() {
+    // A value under an unmounted property waits in storage, invisible.
+    // Nobody typing one wants that.
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+
+    object_value_set_in(&library, id, "vrchat#1/category", "clothing").expect("set");
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+    let region = view.regions.iter().find(|r| r.property == "vrchat").expect("region");
+    assert_eq!(region.fields["category"], "clothing");
+}
+
+#[test]
+fn the_import_key_cannot_be_edited() {
+    // The next import of the same document would create a duplicate.
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+
+    assert!(matches!(
+        object_value_set_in(&library, id, "@import/key", "x"),
+        Err(BridgeError::BadRequest(_))
+    ));
+}
+
+#[test]
+fn a_path_that_is_not_a_value_path_is_refused_in_words() {
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+
+    for bad in ["a/b/c", "title#1", "has space", ""] {
+        assert!(
+            matches!(object_value_set_in(&library, id, bad, "x"), Err(BridgeError::BadRequest(_))),
+            "{bad:?} was accepted"
+        );
+    }
+}
+
+#[test]
+fn setting_a_value_on_a_missing_object_says_so() {
+    let (library, _dir) = library();
+
+    assert!(matches!(
+        object_value_set_in(&library, 99_999, "title", "x"),
+        Err(BridgeError::NoSuchObject(_))
+    ));
+}
+
+#[test]
+fn a_property_can_be_added_after_the_fact_and_is_carried() {
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+
+    object_property_add_in(&library, id, "vrchat").expect("add");
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+    assert!(view.carries.contains(&"vrchat#1".to_string()), "{:?}", view.carries);
+    // And mounted, so its region draws.
+    assert!(mount_order_in(&library).expect("mounts").iter().any(|m| m.namespace == "vrchat"));
+}
+
+#[test]
+fn removing_a_property_keeps_what_was_typed_under_it() {
+    // Undoing a mis-click must not destroy what came before it. The values
+    // read back the moment the property returns.
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+    object_property_add_in(&library, id, "vrchat").expect("add");
+    object_value_set_in(&library, id, "vrchat#1/category", "clothing").expect("set");
+
+    object_property_remove_in(&library, id, "vrchat").expect("remove");
+    let gone = object_get_in(&library, id).expect("get");
+    assert!(gone.values.iter().any(|v| v.path == "vrchat#1/category"), "the value was destroyed");
+
+    object_property_add_in(&library, id, "vrchat").expect("add again");
+    let back = object_flat_in(&library, None, id).expect("flat");
+    assert_eq!(back.regions[0].fields["category"], "clothing");
+}
+
+#[test]
+fn a_property_name_that_is_not_one_is_refused_on_add_too() {
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+
+    assert!(matches!(
+        object_property_add_in(&library, id, "paper#1"),
+        Err(BridgeError::BadRequest(_))
+    ));
+    assert!(matches!(
+        object_property_add_in(&library, id, "@pin"),
+        Err(BridgeError::BadRequest(_))
+    ));
+}
+
+/// A vocabulary with one term in it.
+fn term(library: &Library, vocab: &str, id: &str, label: &str) {
+    library
+        .with_connection(|connection| {
+            yukifile::store::vocab::put_term(connection, vocab, id, label).expect("term");
+            Ok(())
+        })
+        .expect("put term");
+}
+
+#[test]
+fn an_edge_to_a_term_can_be_added_and_read_back() {
+    // "This outfit fits Manuka", said by the person looking at it.
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+    term(&library, "avatar", "manuka", "Manuka");
+
+    object_edge_add_in(
+        &library,
+        id,
+        "supports",
+        TargetAt::Term { vocab: "avatar".into(), term: "manuka".into() },
+    )
+    .expect("add");
+
+    let edges = object_edges_in(&library, id).expect("edges");
+    assert_eq!(edges.len(), 1);
+    assert_eq!(edges[0].kind, "supports");
+}
+
+#[test]
+fn an_edge_to_a_term_that_does_not_exist_names_it() {
+    // The foreign key would refuse it as "the database is broken". Naming the
+    // term is what lets the person add it.
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+
+    let refused = object_edge_add_in(
+        &library,
+        id,
+        "supports",
+        TargetAt::Term { vocab: "avatar".into(), term: "nobody".into() },
+    );
+
+    match refused {
+        Err(BridgeError::BadRequest(detail)) => assert!(detail.contains("nobody"), "{detail}"),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn an_edge_to_another_object_is_resolved_by_its_string_id() {
+    let (library, _dir) = library();
+    let folder = object_with(&library, &[]);
+    let file = object_with(&library, &[]);
+
+    object_edge_add_in(
+        &library,
+        folder,
+        "contains",
+        TargetAt::Object { id: file.to_string() },
+    )
+    .expect("add");
+
+    // The hierarchy the object list draws is these edges.
+    let inside = object_ids_scoped(&library, None, 10, Some(folder)).expect("ids");
+    assert_eq!(inside.ids, vec![file]);
+}
+
+#[test]
+fn an_edge_to_an_object_that_does_not_exist_is_refused() {
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+
+    assert!(matches!(
+        object_edge_add_in(&library, id, "contains", TargetAt::Object { id: "99999".into() }),
+        Err(BridgeError::NoSuchObject(_))
+    ));
+}
+
+#[test]
+fn adding_an_edge_twice_keeps_one_and_removing_it_leaves_none() {
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+    term(&library, "avatar", "manuka", "Manuka");
+    let target = TargetAt::Term { vocab: "avatar".into(), term: "manuka".into() };
+
+    object_edge_add_in(&library, id, "supports", target.clone()).expect("add");
+    object_edge_add_in(&library, id, "supports", target.clone()).expect("again");
+    assert_eq!(object_edges_in(&library, id).expect("edges").len(), 1);
+
+    object_edge_remove_in(&library, id, "supports", target.clone()).expect("remove");
+    assert!(object_edges_in(&library, id).expect("edges").is_empty());
+    // Removing what is gone is not an error: the end state is what was asked.
+    object_edge_remove_in(&library, id, "supports", target).expect("remove again");
+}
+
+#[test]
+fn an_edge_kind_with_whitespace_is_not_one() {
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+    term(&library, "avatar", "manuka", "Manuka");
+
+    for bad in ["", " ", "fits avatar"] {
+        assert!(
+            matches!(
+                object_edge_add_in(
+                    &library,
+                    id,
+                    bad,
+                    TargetAt::Term { vocab: "avatar".into(), term: "manuka".into() }
+                ),
+                Err(BridgeError::BadRequest(_))
+            ),
+            "{bad:?} was accepted"
+        );
+    }
+}
+
+#[test]
+fn a_second_location_joins_the_object() {
+    // The 43 products that exist as a folder and the zip it came from.
+    let (library, dir) = library();
+    fs::create_dir_all(dir.path().join("Outfit")).expect("mkdir");
+    fs::write(dir.path().join("Outfit.zip"), b"z").expect("write");
+    let id = created(&library, NewObject { paths: vec![at("Outfit", "folder")], ..Default::default() });
+
+    object_path_add_in(&library, id, at("Outfit.zip", "file")).expect("add");
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+    let mut paths: Vec<&str> = view.locations.iter().map(|l| l.path.as_str()).collect();
+    paths.sort();
+    assert_eq!(paths, ["Outfit", "Outfit.zip"]);
+}
+
+#[test]
+fn a_location_another_object_holds_is_refused_by_name() {
+    let (library, dir) = library();
+    fs::write(dir.path().join("a.zip"), b"z").expect("write");
+    let holder = created(&library, NewObject { paths: vec![at("a.zip", "file")], ..Default::default() });
+    let other = object_with(&library, &[]);
+
+    let refused = object_path_add_in(&library, other, at("a.zip", "file"));
+
+    assert!(matches!(refused, Err(BridgeError::PathTaken(ref p)) if p == "a.zip"), "{refused:?}");
+    // Still the holder's.
+    assert_eq!(object_flat_in(&library, None, holder).expect("flat").locations.len(), 1);
+}
+
+#[test]
+fn a_location_that_is_not_on_disk_is_refused() {
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+
+    assert!(matches!(
+        object_path_add_in(&library, id, at("nowhere.zip", "file")),
+        Err(BridgeError::NotFound(_))
+    ));
+}
+
+#[test]
+fn taking_a_location_away_leaves_the_object_and_frees_the_path() {
+    let (library, dir) = library();
+    fs::write(dir.path().join("a.zip"), b"z").expect("write");
+    let id = created(&library, NewObject { paths: vec![at("a.zip", "file")], ..Default::default() });
+
+    object_path_remove_in(&library, id, "a.zip").expect("remove");
+
+    let view = object_flat_in(&library, None, id).expect("flat");
+    assert!(view.locations.is_empty(), "the object became a grouping, and that is allowed");
+    assert!(path_list_in(&library).expect("list").is_empty());
+}
+
+#[test]
+fn a_location_can_only_be_taken_from_the_object_that_holds_it() {
+    // Otherwise this is a silent edit to an object nobody was looking at.
+    let (library, dir) = library();
+    fs::write(dir.path().join("a.zip"), b"z").expect("write");
+    let holder = created(&library, NewObject { paths: vec![at("a.zip", "file")], ..Default::default() });
+    let other = object_with(&library, &[]);
+
+    assert!(matches!(
+        object_path_remove_in(&library, other, "a.zip"),
+        Err(BridgeError::BadRequest(_))
+    ));
+    assert_eq!(object_flat_in(&library, None, holder).expect("flat").locations.len(), 1);
+
+    assert!(matches!(
+        object_path_remove_in(&library, holder, "never-recorded.zip"),
+        Err(BridgeError::NotFound(_))
+    ));
+}
+
+#[test]
+fn a_target_deserialises_in_the_shape_edges_are_read_in() {
+    // A panel that read `{ "target": "term", "vocab": ..., "term": ... }` can
+    // hand it straight back.
+    let term: TargetAt =
+        serde_json::from_str(r#"{"target":"term","vocab":"avatar","term":"manuka"}"#).expect("term");
+    assert_eq!(term, TargetAt::Term { vocab: "avatar".into(), term: "manuka".into() });
+
+    let object: TargetAt = serde_json::from_str(r#"{"target":"object","id":"42"}"#).expect("object");
+    assert_eq!(object, TargetAt::Object { id: "42".into() });
+}

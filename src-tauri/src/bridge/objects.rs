@@ -1,4 +1,4 @@
-//! Making and unmaking objects, as a person does it.
+//! Making, unmaking and changing objects, as a person does it.
 //!
 //! The read commands in `commands.rs` answer questions; these change the
 //! library on somebody's say-so. They are separate because the two have
@@ -26,7 +26,9 @@ use std::collections::BTreeMap;
 
 use crate::bridge::{BridgeError, Library};
 use crate::scan::walk::Kind;
-use crate::store::{carried, paths, schema, values};
+use crate::store::edges::{self, Target};
+use crate::store::path::{self, ValuePath};
+use crate::store::{carried, history, paths, schema, values, vocab};
 
 /// One place an object sits, as the caller names it.
 ///
@@ -155,6 +157,250 @@ pub fn object_forget_in(library: &Library, id: i64) -> Result<(), BridgeError> {
     })
 }
 
+// --- changing an object ------------------------------------------------
+//
+// Creating writes empty fields and records no history, because there is no
+// old value to record. Editing is the other case: a person replacing a value
+// is a decision, and `architecture.md` says history is written by whoever is
+// making one. So `object_value_set_in` is the first writer of history outside
+// `changes::apply`, and the only one that does it for a single field.
+//
+// Properties, edges and locations record no history. History is kept at field
+// level, and none of those is a field; the architecture gives a scan the same
+// reading for locations.
+
+/// What setting a value did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum WrittenView {
+    Added,
+    Replaced,
+    Cleared,
+    Unchanged,
+}
+
+/// Write one field on an existing object, whatever it held.
+///
+/// The person is the review here, so this overwrites where an import would
+/// have proposed. An empty value clears the field, which is what the store
+/// means by empty too.
+///
+/// A bare path (`title`) writes the bare field, which outranks every source:
+/// that is what a person's own value means, and clearing it hands the field
+/// back to mount order. A namespaced path (`paper#1/doi`) mounts its property
+/// if the library has not, for the reason `object_create_in` gives -- nothing
+/// draws a region for an unmounted property, and a value nobody can see is a
+/// value lost.
+///
+/// `@import` is refused: it is the core's bookkeeping, and a person editing an
+/// import key would make the next import of the same document create a
+/// duplicate. `@pin` is allowed -- a pin is a person's choice by definition.
+pub fn object_value_set_in(
+    library: &Library,
+    id: i64,
+    field: &str,
+    value: &str,
+) -> Result<WrittenView, BridgeError> {
+    let parsed = ValuePath::parse(field)
+        .map_err(|error| BridgeError::BadRequest(format!("{field:?}: {error}")))?;
+    if parsed.namespace == Some(path::IMPORT) {
+        return Err(BridgeError::BadRequest(format!(
+            "{field:?} is the core's own bookkeeping"
+        )));
+    }
+
+    library.with_connection_mut(|connection| {
+        schema::in_transaction(connection, |transaction| {
+            let store = values::Values::new();
+            let old = store
+                .get(transaction, id, field)
+                .map_err(|error| write_error(error, id))?;
+
+            let written = store
+                .overwrite(transaction, id, field, value)
+                .map_err(|error| write_error(error, id))?;
+
+            use values::Written;
+            let view = match written {
+                Written::Unchanged => return Ok(WrittenView::Unchanged),
+                Written::Added => WrittenView::Added,
+                Written::Replaced => WrittenView::Replaced,
+                Written::Cleared => WrittenView::Cleared,
+            };
+
+            let new = if value.is_empty() { None } else { Some(value) };
+            history::record(transaction, id, field, old.as_deref(), new, None)?;
+
+            if let (Some(namespace), Some(instance)) = (parsed.namespace, parsed.instance) {
+                values::mount(transaction, namespace, instance)?;
+            }
+
+            Ok(view)
+        })
+    })
+}
+
+/// Say an object is something, after it was made.
+///
+/// Instance 1, as the picker chooses. Mounted for the same reason creation
+/// mounts. Attaching what is already attached is not an error.
+pub fn object_property_add_in(library: &Library, id: i64, property: &str) -> Result<(), BridgeError> {
+    library.with_connection_mut(|connection| {
+        schema::in_transaction(connection, |transaction| {
+            require_object(transaction, id)?;
+            carried::attach(transaction, id, property, 1)
+                .map_err(|error| BridgeError::BadRequest(error.to_string()))?;
+            values::mount(transaction, property, 1)?;
+            Ok(())
+        })
+    })
+}
+
+/// Unsay it.
+///
+/// Values under the property stay, so undoing a mis-click does not destroy
+/// what was typed before it; they read back the moment the property returns.
+/// That is `store::carried`'s rule and `2026-09-11` says why.
+pub fn object_property_remove_in(library: &Library, id: i64, property: &str) -> Result<(), BridgeError> {
+    library.with_connection_mut(|connection| {
+        require_object(connection, id)?;
+        carried::detach(connection, id, property, 1)?;
+        Ok(())
+    })
+}
+
+/// An edge's target, as a person names it.
+///
+/// The same tagged shape `views::TargetView` sends out, so a panel that read
+/// an edge can hand it back unchanged.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+#[serde(tag = "target", rename_all = "snake_case")]
+pub enum TargetAt {
+    Object { id: String },
+    Term { vocab: String, term: String },
+}
+
+/// Say what an object fits, requires, contains.
+///
+/// A term target has to exist. The edge table's foreign key would refuse it
+/// anyway, as "the database is broken"; saying which term is missing is what
+/// lets the person add it instead. An object target has to exist for the
+/// same reason.
+pub fn object_edge_add_in(
+    library: &Library,
+    id: i64,
+    kind: &str,
+    target: TargetAt,
+) -> Result<(), BridgeError> {
+    if kind.trim().is_empty() || kind.chars().any(char::is_whitespace) {
+        return Err(BridgeError::BadRequest(format!("{kind:?} is not an edge kind")));
+    }
+
+    library.with_connection_mut(|connection| {
+        require_object(connection, id)?;
+        let target = resolve_target(connection, &target)?;
+        edges::add(connection, id, kind, &target)?;
+        Ok(())
+    })
+}
+
+/// Unsay it. Removing an edge that is not there is not an error.
+pub fn object_edge_remove_in(
+    library: &Library,
+    id: i64,
+    kind: &str,
+    target: TargetAt,
+) -> Result<(), BridgeError> {
+    library.with_connection_mut(|connection| {
+        require_object(connection, id)?;
+        let target = match target {
+            TargetAt::Object { id } => Target::Object(crate::bridge::commands::parse_id(&id)?),
+            TargetAt::Term { vocab, term } => Target::Term { vocab, id: term },
+        };
+        edges::remove(connection, id, kind, &target)?;
+        Ok(())
+    })
+}
+
+/// Give an object another place it sits.
+///
+/// The seed library has 43 products that exist as a folder and the zip it was
+/// unpacked from. One thing, two places. The path has to be there and has to
+/// be nobody else's, by the same rules creation applies.
+pub fn object_path_add_in(library: &Library, id: i64, at: PathAt) -> Result<(), BridgeError> {
+    let kind = kind_of(&at.kind)?;
+    library.resolve(&at.path)?;
+
+    library.with_connection_mut(|connection| {
+        require_object(connection, id)?;
+        paths::record(connection, id, &at.path, kind, None, None, None)
+            .map_err(|error| taken_or_storage(error, &at.path))?;
+        Ok(())
+    })
+}
+
+/// Take a place away.
+///
+/// Only from the object that holds it: a path is one object's, and taking it
+/// from another would be a silent edit to an object nobody was looking at.
+/// An object left with no location is a grouping, which is a normal thing to
+/// be.
+pub fn object_path_remove_in(library: &Library, id: i64, path: &str) -> Result<(), BridgeError> {
+    library.with_connection_mut(|connection| {
+        require_object(connection, id)?;
+        match paths::object_at(connection, path)? {
+            Some(holder) if holder == id => {
+                paths::forget(connection, path)?;
+                Ok(())
+            }
+            Some(holder) => Err(BridgeError::BadRequest(format!(
+                "{path:?} belongs to object {holder}, not {id}"
+            ))),
+            None => Err(BridgeError::NotFound(path.to_string())),
+        }
+    })
+}
+
+/// A target that exists, or a refusal naming what does not.
+fn resolve_target(connection: &rusqlite::Connection, target: &TargetAt) -> Result<Target, BridgeError> {
+    match target {
+        TargetAt::Object { id } => {
+            let dst = crate::bridge::commands::parse_id(id)?;
+            require_object(connection, dst)?;
+            Ok(Target::Object(dst))
+        }
+        TargetAt::Term { vocab, term } => {
+            if vocab::term(connection, vocab, term)?.is_none() {
+                return Err(BridgeError::BadRequest(format!(
+                    "no term {term:?} in the {vocab:?} vocabulary"
+                )));
+            }
+            Ok(Target::Term { vocab: vocab.clone(), id: term.clone() })
+        }
+    }
+}
+
+/// `NoSuchObject` for an id with no row, so every edit says the same thing
+/// about a missing object rather than each failing in its own way.
+fn require_object(connection: &rusqlite::Connection, id: i64) -> Result<(), BridgeError> {
+    let found: Option<i64> = connection
+        .query_row("SELECT id FROM objects WHERE id = ?1", [id], |row| row.get(0))
+        .ok();
+    found.map(|_| ()).ok_or_else(|| BridgeError::NoSuchObject(id.to_string()))
+}
+
+/// A write error in the bridge's terms.
+fn write_error(error: values::WriteError, id: i64) -> BridgeError {
+    match error {
+        values::WriteError::NoSuchObject(_) => BridgeError::NoSuchObject(id.to_string()),
+        values::WriteError::BadPath(error) => BridgeError::BadRequest(error.to_string()),
+        values::WriteError::Conflict { .. } => {
+            BridgeError::Storage("overwrite reported a conflict".to_string())
+        }
+        values::WriteError::Database(error) => BridgeError::Storage(error.to_string()),
+    }
+}
+
 /// The kind a caller named, or a refusal.
 fn kind_of(named: &str) -> Result<Kind, BridgeError> {
     match named {
@@ -208,4 +454,77 @@ pub fn object_forget(
     id: String,
 ) -> Result<(), BridgeError> {
     object_forget_in(&library, crate::bridge::commands::parse_id(&id)?)
+}
+
+/// Write one field, whatever it held.
+#[tauri::command]
+pub fn object_value_set(
+    library: tauri::State<'_, Library>,
+    id: String,
+    field: String,
+    value: String,
+) -> Result<WrittenView, BridgeError> {
+    object_value_set_in(&library, crate::bridge::commands::parse_id(&id)?, &field, &value)
+}
+
+/// Say an object is something.
+#[tauri::command]
+pub fn object_property_add(
+    library: tauri::State<'_, Library>,
+    id: String,
+    property: String,
+) -> Result<(), BridgeError> {
+    object_property_add_in(&library, crate::bridge::commands::parse_id(&id)?, &property)
+}
+
+/// Unsay it.
+#[tauri::command]
+pub fn object_property_remove(
+    library: tauri::State<'_, Library>,
+    id: String,
+    property: String,
+) -> Result<(), BridgeError> {
+    object_property_remove_in(&library, crate::bridge::commands::parse_id(&id)?, &property)
+}
+
+/// Point an object at something.
+#[tauri::command]
+pub fn object_edge_add(
+    library: tauri::State<'_, Library>,
+    id: String,
+    kind: String,
+    target: TargetAt,
+) -> Result<(), BridgeError> {
+    object_edge_add_in(&library, crate::bridge::commands::parse_id(&id)?, &kind, target)
+}
+
+/// Stop pointing.
+#[tauri::command]
+pub fn object_edge_remove(
+    library: tauri::State<'_, Library>,
+    id: String,
+    kind: String,
+    target: TargetAt,
+) -> Result<(), BridgeError> {
+    object_edge_remove_in(&library, crate::bridge::commands::parse_id(&id)?, &kind, target)
+}
+
+/// Give an object another place.
+#[tauri::command]
+pub fn object_path_add(
+    library: tauri::State<'_, Library>,
+    id: String,
+    at: PathAt,
+) -> Result<(), BridgeError> {
+    object_path_add_in(&library, crate::bridge::commands::parse_id(&id)?, at)
+}
+
+/// Take a place away.
+#[tauri::command]
+pub fn object_path_remove(
+    library: tauri::State<'_, Library>,
+    id: String,
+    path: String,
+) -> Result<(), BridgeError> {
+    object_path_remove_in(&library, crate::bridge::commands::parse_id(&id)?, &path)
 }

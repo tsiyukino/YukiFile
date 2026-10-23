@@ -183,6 +183,42 @@ pub const APP_ONLY: &[Command] = &[
         reason: "the counterpart to creating one — a library where every                  mistake is permanent is one nobody will risk organising",
     },
     Command {
+        name: "object.value.set",
+        effect: Effect::Write,
+        reason: "a person changing a field is the decision; the history \
+                 records it as theirs",
+    },
+    Command {
+        name: "object.property.add",
+        effect: Effect::Write,
+        reason: "saying what an object is, after it was made",
+    },
+    Command {
+        name: "object.property.remove",
+        effect: Effect::Write,
+        reason: "undoing that, without losing what was typed under it",
+    },
+    Command {
+        name: "object.edge.add",
+        effect: Effect::Write,
+        reason: "a person saying what an object fits, requires or contains",
+    },
+    Command {
+        name: "object.edge.remove",
+        effect: Effect::Write,
+        reason: "and unsaying it",
+    },
+    Command {
+        name: "object.path.add",
+        effect: Effect::Write,
+        reason: "a folder and the zip it came from are one thing in two places",
+    },
+    Command {
+        name: "object.path.remove",
+        effect: Effect::Write,
+        reason: "a location that was never this object's, or is no longer",
+    },
+    Command {
         name: "changes.accept",
         effect: Effect::Write,
         reason: "deciding one proposed entry is the review itself; a plugin \

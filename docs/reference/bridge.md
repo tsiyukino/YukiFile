@@ -175,6 +175,48 @@ Set and entry ids cross as numbers. They are row ids and small; object ids are
 fields so the frontend can point at the entry rather than say "something
 moved".
 
+### Changing an object
+
+`object_value_set_in` · `object_property_add_in` · `object_property_remove_in`
+· `object_edge_add_in` · `object_edge_remove_in` · `object_path_add_in` ·
+`object_path_remove_in`
+
+All `APP_ONLY`: a person changing an object is the review, and a plugin
+changing one goes through `import.propose`. Until these existed the only edit
+was creation, and `bridge.md` said so.
+
+**Setting a value overwrites, and records history.** An import over "mine"
+opens a change set; a person typing over "mine" means it. This is the first
+writer of history outside `changes::apply`, and the only one that does it for
+a single field. Setting what is already there records nothing: a history row
+saying nothing happened would sit in the log forever.
+
+A bare path (`title`) writes the bare field, which outranks every source —
+that is what a person's own value means — and clearing it hands the field back
+to mount order. A namespaced path (`vrchat#1/category`) mounts its property if
+the library has not, for the reason creation mounts: a value under an unmounted
+property waits in storage, invisible, and nobody typing one wants that.
+
+`@import` is refused. It is the core's bookkeeping, and an edited import key
+makes the next import of the same document create a duplicate. `@pin` is
+allowed; a pin is a person's choice by definition.
+
+**Properties, edges and locations record no history.** History is kept at
+field level and none of those is a field; the architecture gives a scan the
+same reading for locations. Removing a property keeps the values typed under
+it, which is `store::carried`'s rule.
+
+**An edge's target has to exist.** The table's foreign key would refuse a
+missing term as "the database is broken"; naming the term is what lets the
+person add it. The target crosses in the same tagged shape `object.edges`
+sends out — `{ target: "term", vocab, term }` or `{ target: "object", id }` —
+so a panel that read an edge can hand it back unchanged.
+
+**A location is added by creation's rules** — on disk, and nobody else's —
+and taken away only from the object that holds it. Taking it from another
+would be a silent edit to an object nobody was looking at. An object left with
+no location is a grouping, which is a normal thing to be.
+
 ## bridge::library
 
 `Library::new(root, connection)` · `resolve(path)` · `with_connection` ·
