@@ -167,6 +167,19 @@ export interface Entry {
   readonly mtime: number | null;
 }
 
+/**
+ * One path the library holds an object at.
+ *
+ * What a disk browser lines a listing up against: the path says a row is
+ * already recorded, and the object is what to open instead of offering to add
+ * it a second time.
+ */
+export interface KnownPath {
+  /** Relative to the library root, with `/` separators. */
+  readonly path: string;
+  readonly object: ObjectId;
+}
+
 /** One vocabulary term. */
 export interface Term {
   readonly vocab: string;
@@ -259,6 +272,15 @@ export interface Api {
    * plugin needs and a browser does not.
    */
   fsWalk(under: string | null, depth?: number | null): Promise<Entry[]>;
+  /**
+   * Every path the library holds an object at, sorted.
+   *
+   * The whole library rather than one directory: a browser steps through
+   * directories faster than it changes the library, so one read held for the
+   * session costs less than a query per step. Refetch when the library
+   * changes, not when the directory does.
+   */
+  pathList(): Promise<KnownPath[]>;
   fileUrl(path: string): Promise<string>;
   hashOf(path: string): Promise<string>;
   historyOf(id: ObjectId): Promise<HistoryEntry[]>;
@@ -360,6 +382,7 @@ export function apiFor(invoke: Invoke): Api {
     termList: (vocab) => call("term.list", { vocab }),
     archiveList: (path) => call("archive.list", { path }),
     fsWalk: (under, depth = null) => call("fs.walk", { under, depth }),
+    pathList: () => call("path.list", {}),
     fileUrl: (path) => call("file.url", { path }),
     hashOf: (path) => call("hash.of", { path }),
     historyOf: (id) => call("history.of", { id }),

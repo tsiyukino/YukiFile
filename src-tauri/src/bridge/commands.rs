@@ -542,6 +542,42 @@ pub struct EntryView {
     pub mtime: Option<i64>,
 }
 
+/// Every path the library holds an object at, with the object that holds it.
+///
+/// A disk browser lines a listing up against this to say which rows are
+/// already recorded, and to open the object behind one rather than offer to
+/// add it a second time. The comparison itself is string work and lives in the
+/// frontend; this only says what the library knows.
+///
+/// The whole library at once rather than one directory of it. A browser steps
+/// through directories faster than it changes the library, so one read held
+/// for the session costs less than a query per step -- and `object_paths` is
+/// indexed by path, which is the one column this reads. The library this was
+/// built on has 441 rows and the one it is for has 1518; at a hundred thousand
+/// this becomes a scoped query, and the shape of what crosses does not change.
+///
+/// Sorted by path, which is the order the table keeps anyway and the order a
+/// caller diffing two reads wants.
+pub fn path_list_in(library: &Library) -> Result<Vec<PathView>, BridgeError> {
+    library.with_connection(|connection| {
+        Ok(crate::store::paths::known(connection)?
+            .into_iter()
+            .map(|known| PathView { path: known.path, object: known.object })
+            .collect())
+    })
+}
+
+/// One recorded location.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct PathView {
+    /// Relative to the library root, with `/` separators.
+    pub path: String,
+    /// The object that holds it. A string for the same reason every other id
+    /// is: 62 bits does not survive a JavaScript number.
+    #[serde(with = "crate::bridge::views::id_as_string")]
+    pub object: i64,
+}
+
 
 /// Several objects at once, for a column rendering across a page.
 ///
@@ -927,6 +963,12 @@ pub fn fs_walk(
     depth: Option<u32>,
 ) -> Result<Vec<EntryView>, BridgeError> {
     fs_walk_in(&library, under, depth)
+}
+
+/// Every path the library holds an object at.
+#[tauri::command]
+pub fn path_list(library: State<'_, Library>) -> Result<Vec<PathView>, BridgeError> {
+    path_list_in(&library)
 }
 
 

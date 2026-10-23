@@ -114,6 +114,12 @@ pub const ALLOWED: &[Command] = &[
         reason: "what is on disk is a fact; what counts as an object is not",
     },
     Command {
+        name: "path.list",
+        effect: Effect::Read,
+        reason: "a browser marks what is already recorded before offering to \
+                 add it, and a scan can leave those alone",
+    },
+    Command {
         name: "file.url",
         effect: Effect::Read,
         reason: "a viewer renders a file it is never given the bytes of",

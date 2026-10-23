@@ -296,6 +296,29 @@ folder and can ask for its contents. Depth 0 reads nothing, which is the honest
 reading of "no levels" and lets a caller pass a computed number without
 special-casing zero.
 
+### path.list says what is already recorded
+
+`path_list_in(library)`. Every path the library holds an object at, with the
+object that holds it, sorted by path. The disk browser lines a one-level walk
+up against this to mark the rows that are recorded, and clicking a marked row
+opens the object instead of offering to add it a second time.
+
+The comparison itself is string work — a walk reports names relative to the
+directory walked and the library stores paths from its root — and it lives in
+`src/ui/disk.ts`, checked against the real library's shape. This command only
+says what the library knows.
+
+**The whole library at once, not one directory.** A browser steps through
+directories faster than it changes the library, so one read held for the
+session and refreshed when the library changes costs less than a query per
+step. At 441 rows and at 1518 that is not a cost worth measuring; at a hundred
+thousand this becomes a scoped query, and the shape of what crosses does not
+change.
+
+It is on the plugin list rather than `APP_ONLY` because it is a read, and a
+scanning plugin has as good a reason to want it: proposing what is already
+recorded is work the import then discards.
+
 ### Browsing is paged, and the cap is the bridge's
 
 `object.ids` takes the last id seen rather than a page number: a number drifts

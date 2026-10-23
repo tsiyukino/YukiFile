@@ -1648,3 +1648,87 @@ fn a_dotted_property_is_an_ordinary_name() {
     let view = object_flat_in(&library, None, id).expect("flat");
     assert!(view.carries.contains(&"vrchat.booth#1".to_string()), "{:?}", view.carries);
 }
+
+// --- path.list ----------------------------------------------------------
+
+#[test]
+fn every_recorded_path_is_listed_with_its_object() {
+    // What a disk browser lines a listing up against. Both the path and the
+    // object matter: the path says the row is recorded, the object is what to
+    // open instead of offering to add it again.
+    let (library, dir) = library();
+    fs::create_dir_all(dir.path().join("Clothing")).expect("mkdir");
+    fs::write(dir.path().join("Clothing").join("outfit.zip"), b"z").expect("write");
+
+    let folder = created(
+        &library,
+        NewObject { paths: vec![at("Clothing", "folder")], ..Default::default() },
+    );
+    let file = created(
+        &library,
+        NewObject { paths: vec![at("Clothing/outfit.zip", "file")], ..Default::default() },
+    );
+
+    let listed = path_list_in(&library).expect("list");
+    let pairs: Vec<(&str, i64)> = listed.iter().map(|p| (p.path.as_str(), p.object)).collect();
+
+    assert_eq!(pairs, [("Clothing", folder), ("Clothing/outfit.zip", file)]);
+}
+
+#[test]
+fn an_object_spanning_two_paths_is_listed_at_both() {
+    // The browser shows both rows as recorded, and both open the same object.
+    let (library, dir) = library();
+    fs::create_dir_all(dir.path().join("Outfit")).expect("mkdir");
+    fs::write(dir.path().join("Outfit.zip"), b"z").expect("write");
+
+    let id = created(
+        &library,
+        NewObject {
+            paths: vec![at("Outfit", "folder"), at("Outfit.zip", "file")],
+            ..Default::default()
+        },
+    );
+
+    let listed = path_list_in(&library).expect("list");
+
+    assert_eq!(listed.len(), 2);
+    assert!(listed.iter().all(|p| p.object == id));
+}
+
+#[test]
+fn a_grouping_has_no_path_to_list() {
+    // An object with no location is not on disk, so a listing of what is
+    // recorded on disk does not mention it.
+    let (library, _dir) = library();
+    created(&library, NewObject { properties: vec!["collection".into()], ..Default::default() });
+
+    assert!(path_list_in(&library).expect("list").is_empty());
+}
+
+#[test]
+fn a_forgotten_object_leaves_the_listing() {
+    // Forgetting frees the path, and the browser has to see that: a row still
+    // marked as recorded after its object is gone cannot be added again.
+    let (library, dir) = library();
+    fs::write(dir.path().join("a.txt"), b"a").expect("write");
+    let id = created(&library, NewObject { paths: vec![at("a.txt", "file")], ..Default::default() });
+
+    object_forget_in(&library, id).expect("forget");
+
+    assert!(path_list_in(&library).expect("list").is_empty());
+}
+
+#[test]
+fn a_listed_object_id_crosses_as_a_string() {
+    // Same rule as every other id: 62 bits does not survive a JavaScript
+    // number, and a rounded id opens the wrong object or none.
+    let (library, dir) = library();
+    fs::write(dir.path().join("a.txt"), b"a").expect("write");
+    let id = created(&library, NewObject { paths: vec![at("a.txt", "file")], ..Default::default() });
+
+    let json = serde_json::to_value(&path_list_in(&library).expect("list")).expect("serialise");
+
+    assert_eq!(json[0]["object"], serde_json::Value::String(id.to_string()));
+    assert_eq!(json[0]["path"], "a.txt");
+}
