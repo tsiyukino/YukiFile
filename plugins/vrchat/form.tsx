@@ -11,14 +11,14 @@ import { Button, FormControl, Stack, TextInput } from "@primer/react";
 import { useState } from "react";
 
 import type { FormProps } from "../../src/plugin-host/panel.js";
-import { CATEGORIES, vrchatFields } from "./vrchat.js";
+import { CATEGORIES, categorySuggestedBy, vrchatFields } from "./vrchat.js";
 
 export default function VrchatForm({ paths, initial, onDone }: FormProps): React.JSX.Element {
-  // The folder a thing sits in is the category the person already filed it
-  // under, so it is the honest default.
-  const folder = paths[0]?.path.includes("/") ? paths[0].path.split("/")[0] ?? "" : "";
+  // When the folder a thing sits in is spelled like a category, the person
+  // filed it there and that is the honest default. `.LAPWING/` is not one.
+  const suggested = paths[0] ? categorySuggestedBy(paths[0].path) ?? "" : "";
 
-  const [category, setCategory] = useState(initial["category"] ?? folder);
+  const [category, setCategory] = useState(initial["category"] ?? suggested);
   const [vendor, setVendor] = useState(initial["vendor"] ?? "");
 
   return (

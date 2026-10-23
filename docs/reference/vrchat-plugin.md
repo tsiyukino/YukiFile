@@ -47,18 +47,31 @@ is where the answer shows.
 ## The scan: what counts as a product
 
 `productsFrom` in `vrchat.ts`, pure and tested. A product is one folder or one
-file **directly under a category folder**; the category folders are the
-top-level ones, and they are objects too, holding their products through
-`contains`. Nothing below a product is an object — the forty textures inside
-an outfit are the outfit's, and listing them is what made the library
-impossible to organise. The walk reads two levels and not the tree.
+file, and which folders are products is decided **by content, never by name**:
 
-The scan writes `vrchat#1/category` from the folder name. That is a semantic
-property attached by a rule rather than a person, which the architecture says
-the software never does — and the rule holds because the library chose this
-plugin: a VRChat library's plugin saying everything in it is a VRChat asset is
-the library's own decision, made once in its plugin list. A category the scan
-proposes over one a person changed becomes a change set, not an overwrite.
+- a folder that directly holds any file is a product, and nothing below it is
+  an object — the forty textures inside an outfit are the outfit's;
+- a folder that holds only folders is a grouping, holding each thing directly
+  inside it through `contains`;
+- a file outside any product folder is a product by itself;
+- an empty folder is a thing somebody made, not a grouping.
+
+The rule reads an organised library (`Clothing/outfit/`) and an unorganised
+one (`.AASHAREE/CLOTHS/AW KLASSIK MAID/`) the same way, at any depth. It has
+to: before a library is organised nobody knows what any of it is, and the scan
+is what makes it possible to find out. `vrc-lessons.md` is where the rule comes
+from, and where its opposite — judging `Texture/` by its name — was made twice.
+
+**Known cost.** A grouping with one stray file in it (a `readme.txt` beside the
+product folders) reads as a product holding everything below it. The person
+fixes that by hand; the alternative, deciding by the file's name, is the
+mistake the lessons made.
+
+**The scan writes no values.** A folder's name is where a thing sits, not what
+it is, and one library has `Clothes`, `Cloths` and `CLOTHS`. The category
+comes by import or from a person. When the folder happens to be spelled like
+one of the known categories, the form starts from it, and from nothing
+otherwise.
 
 The scan does not read inside anything, judge a folder by its name, or guess
 an avatar from a filename. Each is a trap the lessons name; each is a later
@@ -66,8 +79,9 @@ rule with its own evidence.
 
 ## The forms
 
-**VRChat**: a category, defaulting to the folder the thing sits in, offered
-from the eleven the seed settled on and accepting any; and a vendor, free
+**VRChat**: a category, offered from the eleven the seed settled on and
+accepting any, starting from the parent folder only when it is spelled like
+one of them; and a vendor, free
 text. The package panel lists the folders under `Assets/`, where a vendor's
 name usually sits, and leaves the conclusion to the person.
 

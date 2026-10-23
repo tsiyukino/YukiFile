@@ -1,78 +1,108 @@
 import { describe, expect, test } from "vitest";
 
 import type { Entry } from "../../src/plugin-host/commands.js";
-import { boothFields, boothItem, boothUrl, documentFor, productsFrom, vrchatFields } from "./vrchat.js";
+import { boothFields, boothItem, boothUrl, categorySuggestedBy, documentFor, productsFrom, vrchatFields } from "./vrchat.js";
 
 function entry(path: string, kind: "file" | "folder" = "file"): Entry {
   return { path, kind, size: kind === "file" ? 100 : null, mtime: null };
 }
 
 describe("what counts as a product", () => {
-  test("an entry directly under a category folder, with the category", () => {
-    const proposed = productsFrom([
-      entry("Clothing", "folder"),
-      entry("Clothing/outfit.zip"),
-      entry("Clothing/AW KLASSIK MAID", "folder"),
-    ]);
-
-    const outfit = proposed.find((p) => p.path === "Clothing/outfit.zip");
-    expect(outfit?.values).toEqual({ "vrchat#1/category": "Clothing" });
-    expect(outfit?.isFolder).toBe(false);
-    expect(proposed.find((p) => p.path === "Clothing/AW KLASSIK MAID")?.isFolder).toBe(true);
-  });
-
-  test("the category folder holds its products and carries no category", () => {
-    const proposed = productsFrom([entry("Clothing", "folder"), entry("Clothing/outfit.zip")]);
-
-    const clothing = proposed.find((p) => p.path === "Clothing");
-    expect(clothing?.contains).toEqual(["Clothing/outfit.zip"]);
-    expect(clothing?.values).toEqual({});
-  });
-
-  test("nothing below a product is an object", () => {
+  test("a folder that holds a file is a product, and nothing below it is", () => {
     // The forty textures inside an outfit are the outfit's. Listing them is
     // what made the library impossible to organise.
     const proposed = productsFrom([
       entry("Clothing", "folder"),
       entry("Clothing/outfit", "folder"),
       entry("Clothing/outfit/skin.png"),
+      entry("Clothing/outfit/Texture", "folder"),
+      entry("Clothing/outfit/Texture/a.png"),
     ]);
 
     expect(proposed.map((p) => p.path)).toEqual(["Clothing", "Clothing/outfit"]);
+    expect(proposed[1]).toEqual({ path: "Clothing/outfit", isFolder: true, contains: [] });
   });
 
-  test("a file at the root is a product nobody has filed yet", () => {
-    const proposed = productsFrom([entry("T2 Collar.unitypackage")]);
+  test("a folder that holds only folders is a grouping, holding each of them", () => {
+    const proposed = productsFrom([
+      entry("Clothing", "folder"),
+      entry("Clothing/a", "folder"),
+      entry("Clothing/a/x.fbx"),
+      entry("Clothing/b", "folder"),
+      entry("Clothing/b/y.fbx"),
+    ]);
 
-    expect(proposed).toEqual([
-      { path: "T2 Collar.unitypackage", isFolder: false, values: {}, contains: [] },
+    expect(proposed[0]).toEqual({ path: "Clothing", isFolder: true, contains: ["Clothing/a", "Clothing/b"] });
+  });
+
+  test("the rule is the same at any depth, so an unorganised library reads too", () => {
+    // Before a library is organised nobody knows what any of it is. The old
+    // layout grouped by avatar, then by a word for the kind, then products.
+    const proposed = productsFrom([
+      entry(".AASHAREE", "folder"),
+      entry(".AASHAREE/CLOTHS", "folder"),
+      entry(".AASHAREE/CLOTHS/AW KLASSIK MAID", "folder"),
+      entry(".AASHAREE/CLOTHS/AW KLASSIK MAID/outfit.unitypackage"),
+      entry(".AASHAREE/CLOTHS/Cross_Maid.zip"),
+    ]);
+
+    expect(proposed.map((p) => p.path)).toEqual([
+      ".AASHAREE",
+      ".AASHAREE/CLOTHS",
+      ".AASHAREE/CLOTHS/AW KLASSIK MAID",
+      ".AASHAREE/CLOTHS/Cross_Maid.zip",
+    ]);
+    expect(proposed[1]?.contains).toEqual([".AASHAREE/CLOTHS/AW KLASSIK MAID", ".AASHAREE/CLOTHS/Cross_Maid.zip"]);
+  });
+
+  test("a file beside product folders is a product by itself", () => {
+    const proposed = productsFrom([
+      entry("Hair", "folder"),
+      entry("Hair/pony", "folder"),
+      entry("Hair/pony/a.fbx"),
+      entry("Hair/loose.unitypackage"),
+    ]);
+
+    // Hair holds a file, so by the rule it is a product. That is the rule's
+    // known cost, and the person fixes it by hand; the alternative, judging
+    // by the file's name, is the mistake the lessons made twice.
+    expect(proposed.map((p) => p.path)).toEqual(["Hair"]);
+  });
+
+  test("a file at the root is a product", () => {
+    expect(productsFrom([entry("T2 Collar.unitypackage")])).toEqual([
+      { path: "T2 Collar.unitypackage", isFolder: false, contains: [] },
     ]);
   });
 
-  test("a dot-prefixed category is a category", () => {
-    // The seed library groups with a leading dot because a dot sorts first.
-    const proposed = productsFrom([entry(".LAPWING", "folder"), entry(".LAPWING/hair.zip")]);
-
-    expect(proposed.find((p) => p.path === ".LAPWING/hair.zip")?.values).toEqual({
-      "vrchat#1/category": ".LAPWING",
-    });
+  test("an empty folder is a thing somebody made, not a grouping", () => {
+    expect(productsFrom([entry("New", "folder")])).toEqual([{ path: "New", isFolder: true, contains: [] }]);
   });
 
-  test("the document carries the category and the containment", () => {
+  test("the document carries containment and no values", () => {
+    // The scan knows where things are, not what they are. A category comes
+    // by import or from a person.
     const document = JSON.parse(
-      documentFor(productsFrom([entry("Hair", "folder"), entry("Hair/pony", "folder")])),
+      documentFor(productsFrom([entry("Hair", "folder"), entry("Hair/pony", "folder"), entry("Hair/pony/a.fbx")])),
     ) as { objects: Array<Record<string, unknown>> };
 
     expect(document.objects[0]).toMatchObject({
       paths: ["Hair"],
       folders: ["Hair"],
+      values: {},
       edges: [{ kind: "contains", object: "Hair/pony" }],
     });
-    expect(document.objects[1]).toMatchObject({
-      paths: ["Hair/pony"],
-      folders: ["Hair/pony"],
-      values: { "vrchat#1/category": "Hair" },
-    });
+    expect(document.objects[1]).toMatchObject({ paths: ["Hair/pony"], values: {} });
+  });
+});
+
+describe("the category a folder suggests", () => {
+  test("only when the folder is spelled like one", () => {
+    expect(categorySuggestedBy("Clothing/outfit.zip")).toBe("Clothing");
+    expect(categorySuggestedBy("clothing/outfit.zip")).toBe("Clothing");
+    expect(categorySuggestedBy("NSFW/BDSM/x.zip")).toBeUndefined();
+    expect(categorySuggestedBy(".LAPWING/outfit.zip")).toBeUndefined();
+    expect(categorySuggestedBy("outfit.zip")).toBeUndefined();
   });
 });
 

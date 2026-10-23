@@ -18,24 +18,28 @@
  *
  * # What counts as an object here
  *
- * A product is one folder or one file, directly under a category folder.
- * `vrc-lessons.md`: "A product maps to exactly one folder or file. Products do
- * not span folders." The category folders are the top-level ones, and they
- * are objects too, holding their products through `contains` -- that is what
- * the object list draws. Nothing below a product is an object: the forty
- * textures inside an outfit are the outfit's, and listing them is what made
- * the library impossible to organise.
+ * A product is one folder or one file. `vrc-lessons.md`: "A product maps to
+ * exactly one folder or file. Products do not span folders." Which folders
+ * are products is decided **by content, never by name** -- the lessons made
+ * that mistake twice with `Texture/`, which is sometimes loose PNGs belonging
+ * to a product and sometimes a category holding eighteen of them.
  *
- * A top-level file is a product with no category. Anything deeper than a
- * product is not looked at, which is why the scan walks two levels and not
- * the tree.
+ * So: a folder that directly holds any file is a product, and nothing below
+ * it is an object; the forty textures inside an outfit are the outfit's. A
+ * folder that holds only folders is a grouping, and each thing directly
+ * inside it is an object of its own. A file outside any product folder is a
+ * product by itself. That reads an organised library and an unorganised one
+ * the same way, which it has to: before a library is organised nobody knows
+ * what any of it is, and the scan is what makes it possible to find out.
  *
  * # What this does not decide
  *
- * It does not read inside anything, judge a folder by its name, or guess an
- * avatar from a filename. Each of those is a trap the lessons name, and each
- * is a later rule with its own evidence. The scan proposes objects and their
- * category; everything else arrives by import or by hand.
+ * The category. A folder's name is where a thing sits, not what it is, and
+ * the same library has `Clothes`, `Cloths` and `CLOTHS`. A category arrives
+ * by import or from a person. The scan also does not read inside anything,
+ * judge a folder by its name, or guess an avatar from a filename. Each of
+ * those is a trap the lessons name, and each is a later rule with its own
+ * evidence.
  */
 
 import type { Api, Entry } from "../../src/plugin-host/commands.js";
@@ -64,63 +68,77 @@ export const CATEGORIES: readonly string[] = [
 export interface Proposed {
   readonly path: string;
   readonly isFolder: boolean;
-  /** `vrchat#1/category` for a product; nothing for a category folder. */
-  readonly values: Readonly<Record<string, string>>;
-  /** Paths this holds. Only a category folder holds anything. */
+  /** Paths this holds. Only a grouping holds anything. */
   readonly contains: readonly string[];
 }
 
 /**
- * Which entries become objects, and what each is.
+ * Which entries become objects.
  *
- * Entries come from a two-level walk: `Clothing` and `Clothing/outfit.zip`,
- * never `Clothing/outfit/skin.png`. A deeper entry, if one arrives, is
- * ignored rather than guessed about.
+ * Decided from the whole walk, because whether a folder is a product depends
+ * on what is directly inside it, and that is not visible from its name or
+ * its depth.
  */
 export function productsFrom(entries: readonly Entry[]): Proposed[] {
-  const top = entries.filter((entry) => !entry.path.includes("/"));
-  const proposed: Proposed[] = [];
-
-  for (const entry of top) {
-    if (entry.kind === "folder") {
-      const inside = entries
-        .filter((candidate) => candidate.path.startsWith(`${entry.path}/`))
-        .filter((candidate) => !candidate.path.slice(entry.path.length + 1).includes("/"));
-
-      proposed.push({
-        path: entry.path,
-        isFolder: true,
-        values: {},
-        contains: inside.map((candidate) => candidate.path),
-      });
-
-      for (const product of inside) {
-        proposed.push({
-          path: product.path,
-          isFolder: product.kind === "folder",
-          values: { "vrchat#1/category": entry.path },
-          contains: [],
-        });
-      }
-    } else {
-      // A file at the root is a product nobody has filed yet.
-      proposed.push({ path: entry.path, isFolder: false, values: {}, contains: [] });
-    }
+  // Direct children of each folder, with "" for the root.
+  const children = new Map<string, Entry[]>();
+  for (const entry of entries) {
+    const slash = entry.path.lastIndexOf("/");
+    const parent = slash === -1 ? "" : entry.path.slice(0, slash);
+    const held = children.get(parent) ?? [];
+    held.push(entry);
+    children.set(parent, held);
   }
 
+  const proposed: Proposed[] = [];
+
+  // A grouping: every direct child becomes an object, and the folders among
+  // them are looked at in turn.
+  const group = (folder: string): void => {
+    for (const child of children.get(folder) ?? []) {
+      if (child.kind === "file") {
+        proposed.push({ path: child.path, isFolder: false, contains: [] });
+      } else if (isGrouping(child.path)) {
+        proposed.push({
+          path: child.path,
+          isFolder: true,
+          contains: (children.get(child.path) ?? []).map((inside) => inside.path),
+        });
+        group(child.path);
+      } else {
+        proposed.push({ path: child.path, isFolder: true, contains: [] });
+      }
+    }
+  };
+
+  // A folder holding only folders. An empty folder is not a grouping: it is
+  // a thing somebody made, with nothing in it yet.
+  const isGrouping = (folder: string): boolean => {
+    const inside = children.get(folder) ?? [];
+    return inside.length > 0 && inside.every((entry) => entry.kind === "folder");
+  };
+
+  group("");
   return proposed;
 }
 
-/** Read two levels of the disk and decide what to propose. */
+/**
+ * Read the whole disk and decide what to propose.
+ *
+ * The whole tree, not a level: whether a folder is a product is decided by
+ * what is directly inside it, and that is one level further down than the
+ * folder itself, all the way down.
+ */
 export async function planFrom(api: Api): Promise<Proposed[]> {
-  return productsFrom(await api.fsWalk(null, 2));
+  return productsFrom(await api.fsWalk(null));
 }
 
 /**
  * The import document a plan becomes.
  *
- * Through `import.propose` like any other source: a category the scan
- * proposes over one a person chose becomes a change set, not an overwrite.
+ * Objects and containment only; no values. Through `import.propose` like any
+ * other source, and idempotent for the same reason the explorer's is: the
+ * path is the stable key.
  */
 export function documentFor(proposed: readonly Proposed[]): string {
   return JSON.stringify({
@@ -130,10 +148,25 @@ export function documentFor(proposed: readonly Proposed[]): string {
       paths: [object.path],
       folders: object.isFolder ? [object.path] : [],
       id: object.path,
-      values: object.values,
+      values: {},
       edges: object.contains.map((path) => ({ kind: "contains", object: path })),
     })),
   });
+}
+
+/**
+ * The category a path's parent folder suggests, if it is one.
+ *
+ * Only when the folder is spelled like one of the known categories, case
+ * aside: `Clothing/outfit.zip` suggests `Clothing`, `.LAPWING/outfit.zip`
+ * suggests nothing. A folder's name is where a thing sits, and only when it
+ * happens to also say what it is does the form start from it.
+ */
+export function categorySuggestedBy(path: string): string | undefined {
+  const slash = path.lastIndexOf("/");
+  if (slash === -1) return undefined;
+  const parent = path.slice(0, slash).split("/").pop() ?? "";
+  return CATEGORIES.find((category) => category.toLowerCase() === parent.toLowerCase());
 }
 
 /**
