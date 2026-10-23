@@ -26,6 +26,7 @@
 //! the bridge's benefit, because the shape a plugin is told is not the shape
 //! the schema holds, and the two have separate reasons to change.
 
+pub mod changes;
 pub mod commands;
 pub mod objects;
 pub mod error;
@@ -72,6 +73,12 @@ macro_rules! register_commands {
             $crate::bridge::commands::hash_of,
             $crate::bridge::commands::history_of,
             $crate::bridge::commands::import_propose,
+            $crate::bridge::changes::changes_pending,
+            $crate::bridge::changes::changes_entries,
+            $crate::bridge::changes::changes_accept,
+            $crate::bridge::changes::changes_accept_additions,
+            $crate::bridge::changes::changes_accept_all,
+            $crate::bridge::changes::changes_apply,
         ])
     };
 }

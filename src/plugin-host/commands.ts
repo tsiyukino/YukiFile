@@ -180,6 +180,47 @@ export interface KnownPath {
   readonly object: ObjectId;
 }
 
+/**
+ * One set awaiting review, with enough to list it.
+ *
+ * Set and entry ids are row ids, small enough to cross as numbers. Object ids
+ * are not, which is why {@link ChangeEntry.object} is a string like every other
+ * object id.
+ */
+export interface ChangeSetSummary {
+  readonly id: number;
+  /** Where it came from, for the person reading the list. */
+  readonly label: string;
+  /** Milliseconds since the Unix epoch. */
+  readonly created: number;
+  readonly additions: number;
+  readonly modifications: number;
+  /** How many entries are currently accepted, of either kind. */
+  readonly accepted: number;
+}
+
+/** One proposed write. */
+export interface ChangeEntry {
+  readonly id: number;
+  readonly object: ObjectId;
+  /** The stored path: `title`, `booth#1/price`. */
+  readonly field: string;
+  /** What the field held when the set was built. `null` for an addition. */
+  readonly old: string | null;
+  /** What is proposed. `null` proposes clearing the field. */
+  readonly new: string | null;
+  readonly reason: string | null;
+  readonly accepted: boolean;
+  readonly kind: "addition" | "modification";
+}
+
+/** What applying a set did. */
+export interface Applied {
+  readonly changed: number;
+  readonly already_matched: number;
+  readonly declined: number;
+}
+
 /** One vocabulary term. */
 export interface Term {
   readonly vocab: string;
@@ -285,6 +326,15 @@ export interface Api {
   hashOf(path: string): Promise<string>;
   historyOf(id: ObjectId): Promise<HistoryEntry[]>;
   importPropose(label: string, document: string): Promise<Proposal>;
+  /**
+   * Every set awaiting review, oldest first.
+   *
+   * Readable by a plugin so a panel can say that a proposal is waiting on
+   * what it draws. Deciding one is the application's alone.
+   */
+  changesPending(): Promise<ChangeSetSummary[]>;
+  /** What one set proposes, in a stable order. */
+  changesEntries(set: number): Promise<ChangeEntry[]>;
 }
 
 /**
@@ -351,6 +401,24 @@ export interface AppApi {
   objectCreate(object: NewObject): Promise<ObjectId>;
   /** Remove an object and everything hung on it. Files on disk are untouched. */
   objectForget(id: ObjectId): Promise<void>;
+  /**
+   * Accept or decline one proposed entry.
+   *
+   * The review itself. A plugin that could accept its own proposal would make
+   * the review a formality, which is what change sets exist to prevent.
+   */
+  changesAccept(change: number, accepted: boolean): Promise<void>;
+  /** Accept every addition and leave every modification as it is. */
+  changesAcceptAdditions(set: number): Promise<number>;
+  /** Accept or decline everything in a set. */
+  changesAcceptAll(set: number, accepted: boolean): Promise<number>;
+  /**
+   * Write what was accepted, all of it or none.
+   *
+   * Refused with `kind: "stale"` when a field moved since the set was built;
+   * the detail names the object and field so a screen can point at it.
+   */
+  changesApply(set: number): Promise<Applied>;
 }
 
 /** Build the surface the application's own UI uses. */
@@ -360,6 +428,14 @@ export function appApiFor(invoke: Invoke): AppApi {
       invoke(handlerName("object.create"), { object }) as Promise<ObjectId>,
     objectForget: (id) =>
       invoke(handlerName("object.forget"), { id }) as Promise<void>,
+    changesAccept: (change, accepted) =>
+      invoke(handlerName("changes.accept"), { change, accepted }) as Promise<void>,
+    changesAcceptAdditions: (set) =>
+      invoke(handlerName("changes.accept.additions"), { set }) as Promise<number>,
+    changesAcceptAll: (set, accepted) =>
+      invoke(handlerName("changes.accept.all"), { set, accepted }) as Promise<number>,
+    changesApply: (set) =>
+      invoke(handlerName("changes.apply"), { set }) as Promise<Applied>,
   };
 }
 
@@ -387,5 +463,7 @@ export function apiFor(invoke: Invoke): Api {
     hashOf: (path) => call("hash.of", { path }),
     historyOf: (id) => call("history.of", { id }),
     importPropose: (label, document) => call("import.propose", { label, document }),
+    changesPending: () => call("changes.pending", {}),
+    changesEntries: (set) => call("changes.entries", { set }),
   };
 }

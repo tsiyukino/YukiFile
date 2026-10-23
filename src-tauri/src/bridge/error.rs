@@ -48,6 +48,23 @@ pub enum BridgeError {
     Storage(String),
     /// A value the plugin passed does not make sense.
     BadRequest(String),
+    /// No change set has that id.
+    NoSuchSet(i64),
+    /// No change set entry has that id.
+    NoSuchChange(i64),
+    /// The set was already applied. Its entries are the record of what was
+    /// decided, and a record does not change afterwards.
+    AlreadyApplied(i64),
+    /// A field moved since the set was built: what it holds now is not what
+    /// the proposal was made against. Applying anyway would overwrite that
+    /// without anyone seeing it. Carries enough for a review screen to point
+    /// at the entry, so the person can see what happened in between.
+    Stale {
+        object: String,
+        field: String,
+        expected: Option<String>,
+        found: Option<String>,
+    },
     /// Another object already sits at that path.
     ///
     /// Object-to-path is one-to-many; path-to-object stays one-to-one, so
@@ -70,6 +87,14 @@ impl fmt::Display for BridgeError {
             Self::Unreadable(path) => write!(f, "cannot read {path:?}"),
             Self::NotAnArchive(reason) => write!(f, "not a readable archive: {reason}"),
             Self::NoSuchObject(id) => write!(f, "no object {id:?} in this library"),
+            Self::NoSuchSet(id) => write!(f, "no change set {id}"),
+            Self::NoSuchChange(id) => write!(f, "no change {id}"),
+            Self::AlreadyApplied(id) => write!(f, "change set {id} was already applied"),
+            Self::Stale { object, field, expected, found } => write!(
+                f,
+                "{field} on object {object} is {found:?}, not the {expected:?} this \
+                 change was built against"
+            ),
             Self::Storage(detail) => write!(f, "the library could not be read: {detail}"),
             Self::BadRequest(detail) => write!(f, "{detail}"),
         }
@@ -77,6 +102,25 @@ impl fmt::Display for BridgeError {
 }
 
 impl std::error::Error for BridgeError {}
+
+impl From<crate::changes::ChangeError> for BridgeError {
+    fn from(error: crate::changes::ChangeError) -> Self {
+        use crate::changes::ChangeError;
+        match error {
+            ChangeError::NoSuchSet(id) => Self::NoSuchSet(id),
+            ChangeError::NoSuchChange(id) => Self::NoSuchChange(id),
+            ChangeError::AlreadyApplied(id) => Self::AlreadyApplied(id),
+            ChangeError::Stale { object, field_path, expected, found } => Self::Stale {
+                object: object.to_string(),
+                field: field_path,
+                expected,
+                found,
+            },
+            ChangeError::Write(error) => Self::BadRequest(error.to_string()),
+            ChangeError::Database(error) => Self::Storage(error.to_string()),
+        }
+    }
+}
 
 impl From<rusqlite::Error> for BridgeError {
     fn from(error: rusqlite::Error) -> Self {

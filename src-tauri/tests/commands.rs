@@ -1732,3 +1732,294 @@ fn a_listed_object_id_crosses_as_a_string() {
     assert_eq!(json[0]["object"], serde_json::Value::String(id.to_string()));
     assert_eq!(json[0]["path"], "a.txt");
 }
+
+// --- changes.* ------------------------------------------------------------
+
+use yukifile::bridge::changes::*;
+
+/// Two imports that disagree about a title, leaving one set to review.
+///
+/// The first import writes into a blank; the second proposes over it. That is
+/// the one way a set comes to exist, so every review test starts here. The
+/// second document also carries a `note`, which fills a blank and is written
+/// on the spot: a set holds what needs a person, not everything the import
+/// said.
+fn disputed(library: &Library) -> i64 {
+    let first = r#"{"version":1,"objects":[{"paths":["a.zip"],"values":{"title":"mine"}}]}"#;
+    let second = r#"{"version":1,"objects":[{"paths":["a.zip"],"values":{"title":"theirs","note":"new"}}]}"#;
+
+    import_propose_in(library, "first".into(), first.into()).expect("first");
+    import_propose_in(library, "shop fetch".into(), second.into())
+        .expect("second")
+        .pending
+        .expect("a set was opened")
+}
+
+/// The object `disputed` wrote.
+fn disputed_object(library: &Library) -> i64 {
+    library
+        .with_connection(|connection| {
+            Ok(Values::new().find_by_value(connection, "@import/key", "a.zip").expect("find"))
+        })
+        .expect("lookup")
+        .expect("object")
+}
+
+#[test]
+fn a_pending_set_is_listed_with_its_counts() {
+    // "shop fetch, 1 addition and 1 modification" is a decision; "shop fetch"
+    // is a click to find out.
+    let (library, _dir) = library();
+    let set = disputed(&library);
+
+    let pending = changes_pending_in(&library).expect("pending");
+
+    assert_eq!(pending.len(), 1);
+    assert_eq!(pending[0].id, set);
+    assert_eq!(pending[0].label, "shop fetch");
+    assert_eq!(pending[0].additions, 0, "the note filled a blank and never entered the set");
+    assert_eq!(pending[0].modifications, 1, "the title overwrites one");
+    // A modification starts unaccepted.
+    assert_eq!(pending[0].accepted, 0);
+}
+
+#[test]
+fn an_import_with_no_conflict_opens_nothing_to_review() {
+    let (library, _dir) = library();
+    let document = r#"{"version":1,"objects":[{"paths":["a.zip"],"values":{"title":"mine"}}]}"#;
+    import_propose_in(&library, "x".into(), document.into()).expect("import");
+
+    assert!(changes_pending_in(&library).expect("pending").is_empty());
+}
+
+#[test]
+fn entries_say_what_each_would_do() {
+    let (library, _dir) = library();
+    let set = disputed(&library);
+    let object = disputed_object(&library);
+
+    let entries = changes_entries_in(&library, set).expect("entries");
+
+    // The note was written directly and is not up for review.
+    assert_eq!(entries.len(), 1);
+
+    let title = &entries[0];
+    assert_eq!(title.field, "title");
+    assert_eq!(title.kind, "modification");
+    assert_eq!(title.old.as_deref(), Some("mine"));
+    assert_eq!(title.new.as_deref(), Some("theirs"));
+    assert!(!title.accepted);
+    assert_eq!(title.object, object);
+}
+
+#[test]
+fn an_entrys_object_id_crosses_as_a_string() {
+    let (library, _dir) = library();
+    let set = disputed(&library);
+    let object = disputed_object(&library);
+
+    let json = serde_json::to_value(changes_entries_in(&library, set).expect("entries"))
+        .expect("serialise");
+
+    assert_eq!(json[0]["object"], serde_json::Value::String(object.to_string()));
+}
+
+#[test]
+fn entries_of_a_set_that_does_not_exist_say_so() {
+    // An empty list would read as "nothing proposed", which is a different
+    // fact from "no such set".
+    let (library, _dir) = library();
+
+    assert!(matches!(
+        changes_entries_in(&library, 999),
+        Err(BridgeError::NoSuchSet(999))
+    ));
+}
+
+#[test]
+fn accepting_one_entry_and_applying_writes_it() {
+    let (library, _dir) = library();
+    let set = disputed(&library);
+    let object = disputed_object(&library);
+    let title = changes_entries_in(&library, set)
+        .expect("entries")
+        .into_iter()
+        .find(|e| e.field == "title")
+        .expect("title");
+
+    changes_accept_in(&library, title.id, true).expect("accept");
+    let applied = changes_apply_in(&library, set).expect("apply");
+
+    assert_eq!(applied.changed, 1);
+    assert_eq!(applied.declined, 0);
+
+    let view = object_get_in(&library, object).expect("get");
+    let value = view.values.iter().find(|v| v.path == "title").expect("title");
+    assert_eq!(value.value, "theirs");
+
+    // Applying records history for the overwrite, so the old value is
+    // recoverable from the page.
+    let history = history_of_in(&library, object).expect("history");
+    assert!(history.iter().any(|h| h.field == "title" && h.old.as_deref() == Some("mine")));
+}
+
+#[test]
+fn applying_with_the_defaults_fills_blanks_and_keeps_decisions() {
+    // The whole point of the default split: pressing apply without reading
+    // loses nothing a person chose.
+    let (library, _dir) = library();
+    let set = disputed(&library);
+    let object = disputed_object(&library);
+
+    let applied = changes_apply_in(&library, set).expect("apply");
+
+    assert_eq!(applied.changed, 0);
+    assert_eq!(applied.declined, 1);
+    let view = object_get_in(&library, object).expect("get");
+    let title = view.values.iter().find(|v| v.path == "title").expect("title");
+    assert_eq!(title.value, "mine");
+    // The blank was filled at import time, before any review.
+    assert!(view.values.iter().any(|v| v.path == "note"));
+}
+
+#[test]
+fn declining_everything_and_applying_closes_the_set_without_writing() {
+    let (library, _dir) = library();
+    let set = disputed(&library);
+
+    let declined = changes_accept_all_in(&library, set, false).expect("decline");
+    assert_eq!(declined, 1);
+    let applied = changes_apply_in(&library, set).expect("apply");
+
+    assert_eq!(applied.changed, 0);
+    assert_eq!(applied.declined, 1);
+    assert!(changes_pending_in(&library).expect("pending").is_empty());
+}
+
+#[test]
+fn accept_additions_never_touches_a_modification() {
+    // Even after a sweep that accepted everything, the bulk action's answer
+    // is about additions only. A set with none has nothing for it to do.
+    let (library, _dir) = library();
+    let set = disputed(&library);
+    changes_accept_all_in(&library, set, true).expect("accept all");
+    changes_accept_all_in(&library, set, false).expect("decline all");
+
+    let accepted = changes_accept_additions_in(&library, set).expect("additions");
+
+    assert_eq!(accepted, 0);
+    let entries = changes_entries_in(&library, set).expect("entries");
+    assert!(!entries[0].accepted, "a modification was swept up");
+}
+
+#[test]
+fn a_set_cannot_be_applied_twice() {
+    let (library, _dir) = library();
+    let set = disputed(&library);
+    changes_apply_in(&library, set).expect("first");
+
+    assert!(matches!(
+        changes_apply_in(&library, set),
+        Err(BridgeError::AlreadyApplied(_))
+    ));
+}
+
+#[test]
+fn a_decided_set_stays_decided() {
+    // Declined entries stay as the record of what was offered and refused.
+    // Letting that record change afterwards would make it say something other
+    // than what happened.
+    let (library, _dir) = library();
+    let set = disputed(&library);
+    let title = changes_entries_in(&library, set)
+        .expect("entries")
+        .into_iter()
+        .find(|e| e.field == "title")
+        .expect("title");
+    changes_apply_in(&library, set).expect("apply");
+
+    assert!(matches!(
+        changes_accept_in(&library, title.id, true),
+        Err(BridgeError::AlreadyApplied(_))
+    ));
+    assert!(matches!(
+        changes_accept_all_in(&library, set, true),
+        Err(BridgeError::AlreadyApplied(_))
+    ));
+    assert!(matches!(
+        changes_accept_additions_in(&library, set),
+        Err(BridgeError::AlreadyApplied(_))
+    ));
+}
+
+#[test]
+fn accepting_an_entry_that_does_not_exist_says_so() {
+    let (library, _dir) = library();
+
+    assert!(matches!(
+        changes_accept_in(&library, 999, true),
+        Err(BridgeError::NoSuchChange(999))
+    ));
+}
+
+#[test]
+fn a_field_that_moved_refuses_to_be_overwritten_and_names_itself() {
+    // Between the proposal and the review, something else changed the title.
+    // Applying would overwrite that without anyone seeing it, so the apply is
+    // refused -- and the refusal has to say which field, or the screen can
+    // only say "something moved".
+    let (library, _dir) = library();
+    let set = disputed(&library);
+    let object = disputed_object(&library);
+    let title = changes_entries_in(&library, set)
+        .expect("entries")
+        .into_iter()
+        .find(|e| e.field == "title")
+        .expect("title");
+    changes_accept_in(&library, title.id, true).expect("accept");
+
+    library
+        .with_connection_mut(|connection| {
+            Values::new().overwrite(connection, object, "title", "changed meanwhile").expect("overwrite");
+            Ok(())
+        })
+        .expect("write");
+
+    let refused = changes_apply_in(&library, set);
+
+    match refused {
+        Err(BridgeError::Stale { object: who, field, expected, found }) => {
+            assert_eq!(who, object.to_string());
+            assert_eq!(field, "title");
+            assert_eq!(expected.as_deref(), Some("mine"));
+            assert_eq!(found.as_deref(), Some("changed meanwhile"));
+        }
+        other => panic!("expected a stale refusal, got {other:?}"),
+    }
+
+    // The meanwhile value survived, and the set is still open for whoever
+    // holds the screen to decide what to do about it.
+    let view = object_get_in(&library, object).expect("get");
+    let title = view.values.iter().find(|v| v.path == "title").expect("title");
+    assert_eq!(title.value, "changed meanwhile");
+    assert_eq!(changes_pending_in(&library).expect("pending").len(), 1);
+}
+
+#[test]
+fn a_stale_refusal_serialises_with_its_detail() {
+    // The frontend switches on `kind` and reads `detail`; a struct variant has
+    // to land as an object there, not as a string somebody would parse.
+    let error = BridgeError::Stale {
+        object: "42".into(),
+        field: "title".into(),
+        expected: Some("mine".into()),
+        found: None,
+    };
+
+    let json = serde_json::to_value(&error).expect("serialise");
+
+    assert_eq!(json["kind"], "stale");
+    assert_eq!(json["detail"]["field"], "title");
+    assert_eq!(json["detail"]["object"], "42");
+    assert_eq!(json["detail"]["found"], serde_json::Value::Null);
+}

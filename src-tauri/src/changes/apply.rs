@@ -65,12 +65,40 @@ pub fn entries(connection: &Connection, set: i64) -> Result<Vec<Change>, ChangeE
     Ok(changes)
 }
 
+/// The set an entry belongs to, if the entry exists.
+pub fn set_of(connection: &Connection, change: i64) -> Result<Option<i64>, ChangeError> {
+    let found = connection
+        .query_row("SELECT changeset FROM changes WHERE id = ?1", params![change], |row| {
+            row.get(0)
+        })
+        .optional()?;
+    Ok(found)
+}
+
+/// A set that may still be decided on, or why not.
+///
+/// Declined entries stay in an applied set as the record of what was offered
+/// and refused. Letting that record change afterwards would make it say
+/// something other than what happened, so every accept goes through here.
+fn still_open(connection: &Connection, set_id: i64) -> Result<(), ChangeError> {
+    match set(connection, set_id)? {
+        None => Err(ChangeError::NoSuchSet(set_id)),
+        Some(existing) if !existing.is_pending() => Err(ChangeError::AlreadyApplied(set_id)),
+        Some(_) => Ok(()),
+    }
+}
+
 /// Accept or decline one entry.
 pub fn set_accepted(
     connection: &Connection,
     change: i64,
     accepted: bool,
 ) -> Result<(), ChangeError> {
+    let Some(owner) = set_of(connection, change)? else {
+        return Err(ChangeError::NoSuchChange(change));
+    };
+    still_open(connection, owner)?;
+
     connection.execute(
         "UPDATE changes SET accepted = ?2 WHERE id = ?1",
         params![change, i64::from(accepted)],
@@ -84,6 +112,7 @@ pub fn set_accepted(
 /// touching a single decision a person already made. Additions are accepted by
 /// default, so this mostly undoes a sweep that declined everything.
 pub fn accept_additions(connection: &Connection, set: i64) -> Result<usize, ChangeError> {
+    still_open(connection, set)?;
     let changed = connection.execute(
         "UPDATE changes SET accepted = 1 WHERE changeset = ?1 AND old_value IS NULL",
         params![set],
@@ -97,6 +126,7 @@ pub fn accept_all(
     set: i64,
     accepted: bool,
 ) -> Result<usize, ChangeError> {
+    still_open(connection, set)?;
     let changed = connection.execute(
         "UPDATE changes SET accepted = ?2 WHERE changeset = ?1",
         params![set, i64::from(accepted)],

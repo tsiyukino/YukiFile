@@ -77,6 +77,8 @@ impl ChangeSet {
 pub enum ChangeError {
     /// The set does not exist.
     NoSuchSet(i64),
+    /// The entry does not exist.
+    NoSuchChange(i64),
     /// The set has already been applied. Applying twice would write values
     /// against an `old` that is two versions stale.
     AlreadyApplied(i64),
@@ -92,6 +94,7 @@ impl std::fmt::Display for ChangeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NoSuchSet(id) => write!(f, "no change set {id}"),
+            Self::NoSuchChange(id) => write!(f, "no change {id}"),
             Self::AlreadyApplied(id) => write!(f, "change set {id} was already applied"),
             Self::Stale { object, field_path, expected, found } => write!(
                 f,

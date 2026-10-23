@@ -105,3 +105,35 @@ Rebuilding the set against current values is the way forward, and that is a
 decision for whoever is holding the review screen.
 
 Declined entries stay in the set as a record of what was offered and refused.
+
+### A decided set stays decided
+
+`set_accepted`, `accept_additions` and `accept_all` refuse a set that was
+applied, with `AlreadyApplied`. Declined entries stay in an applied set as the
+record of what was offered and refused, and a record that can change afterwards
+says something other than what happened. The check is in the core rather than
+in the bridge so that there is one rule, whoever calls.
+
+## Reaching a review
+
+`bridge::changes`, and `docs/reference/review.md` for the screen.
+
+Until the bridge exposed these, a set waited where nothing could see it: every
+`import.propose` that disagreed with a value somebody chose opened one, and the
+disagreement went nowhere.
+
+| command                    | list       | does                                   |
+|----------------------------|------------|----------------------------------------|
+| `changes.pending`          | plugin     | every open set, with its counts        |
+| `changes.entries`          | plugin     | what one set proposes, object by field |
+| `changes.accept`           | app only   | decide one entry                       |
+| `changes.accept.additions` | app only   | the always-safe bulk action            |
+| `changes.accept.all`       | app only   | take or leave the whole set            |
+| `changes.apply`            | app only   | write what was accepted, or nothing    |
+
+Reading is a plugin's business — a panel saying "a shop fetch proposes a new
+title for this" is a reasonable thing to draw. Deciding is not: a plugin that
+could accept its own proposal would make the review a formality.
+
+A stale refusal crosses as `{ kind: "stale", detail: { object, field, expected,
+found } }`, so the screen can put the message beside the entry it is about.

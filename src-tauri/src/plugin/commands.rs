@@ -140,6 +140,16 @@ pub const ALLOWED: &[Command] = &[
         reason: "the only way a plugin changes anything: it proposes a \
                  document and a person reviews it",
     },
+    Command {
+        name: "changes.pending",
+        effect: Effect::Read,
+        reason: "a panel can say that a proposal is waiting on what it draws",
+    },
+    Command {
+        name: "changes.entries",
+        effect: Effect::Read,
+        reason: "and say which fields the proposal would touch",
+    },
 ];
 
 /// What only the application itself may ask for.
@@ -171,6 +181,28 @@ pub const APP_ONLY: &[Command] = &[
         name: "object.forget",
         effect: Effect::Write,
         reason: "the counterpart to creating one — a library where every                  mistake is permanent is one nobody will risk organising",
+    },
+    Command {
+        name: "changes.accept",
+        effect: Effect::Write,
+        reason: "deciding one proposed entry is the review itself; a plugin \
+                 accepting its own proposal would make the review a formality",
+    },
+    Command {
+        name: "changes.accept.additions",
+        effect: Effect::Write,
+        reason: "fill in what is missing without touching a single decision \
+                 already made",
+    },
+    Command {
+        name: "changes.accept.all",
+        effect: Effect::Write,
+        reason: "take or leave a whole set, when it was read as a whole",
+    },
+    Command {
+        name: "changes.apply",
+        effect: Effect::Write,
+        reason: "write what was accepted, all of it or none of it",
     },
 ];
 

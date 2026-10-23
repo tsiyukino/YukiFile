@@ -156,6 +156,25 @@ It exists because a library where every mistake is permanent is one nobody will
 risk organising. Forgetting frees the path it held, so a mis-click can be redone
 properly.
 
+## bridge::changes
+
+`changes_pending_in` · `changes_entries_in` · `changes_accept_in` ·
+`changes_accept_additions_in` · `changes_accept_all_in` · `changes_apply_in`
+
+Holding a review. Every rule — additions start accepted, a decided set stays
+decided, a field that moved refuses to be overwritten — lives in
+`changes::apply`; this module converts shapes and errors and holds the
+transaction around `apply`. See [changes.md](changes.md) for the rules and
+[review.md](review.md) for the screen.
+
+Set and entry ids cross as numbers. They are row ids and small; object ids are
+62-bit and cross as strings for the reason `views.rs` gives.
+
+`ChangeError` converts into `BridgeError` in `error.rs`: `NoSuchSet`,
+`NoSuchChange` and `AlreadyApplied` keep their id, and `Stale` keeps its four
+fields so the frontend can point at the entry rather than say "something
+moved".
+
 ## bridge::library
 
 `Library::new(root, connection)` · `resolve(path)` · `with_connection` ·
