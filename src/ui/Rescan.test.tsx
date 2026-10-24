@@ -51,7 +51,7 @@ describe("rescanning", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Rescan" }));
 
-    expect(await screen.findByText(/not objects until a plugin/)).toBeDefined();
+    expect(await screen.findByText(/not objects, and a moved one is not re-grouped/)).toBeDefined();
   });
 
   test("a candidate is a question with a button, and confirming moves the path", async () => {

@@ -82,9 +82,12 @@ export function Rescan({ app, onChanged }: RescanProps): React.JSX.Element {
 
       {problem && <InlineMessage variant="critical">{problem}</InlineMessage>}
 
-      {result && result.added.length > 0 && (
+      {result && (result.added.length > 0 || result.moved > 0 || result.candidates.length > 0) && (
+        // Where a thing is, the rescan records; what holds it is a plugin's
+        // edge. A product moved into another category still sits under the
+        // old one in the Library pane until the plugin's scan says otherwise.
         <Text size="small" weight="light">
-          New paths are not objects until a plugin&apos;s scan says so.
+          New paths are not objects, and a moved one is not re-grouped, until a plugin&apos;s scan says so.
         </Text>
       )}
 

@@ -306,7 +306,10 @@ questions.
 Confirming a candidate is `object.path.add` on the same object, which keeps
 everything hung on it; the removal was applied when the candidate was
 reported. A path inside a location the library already claims is part of that
-thing and is not reported as new.
+thing and is not reported as new. Where a thing is, the rescan records; what
+holds it is a plugin's `contains` edge, so a product moved into another
+category stays under the old one in the Library pane until the plugin's scan
+runs again, and the shell says so.
 
 ## bridge::library
 
