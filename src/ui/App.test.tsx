@@ -28,34 +28,27 @@ describe("gathering what the page needs", () => {
     // A fresh library before its first scan. Treating that as a failure would
     // put an error on the screen somebody sees the moment they install.
     return expect(gather(fakeApi())).resolves.toMatchObject({
-      object: undefined,
       total: 0,
     });
   });
 
-  test("the first object is fetched and resolved", async () => {
-    const objectFlat = vi.fn(async (id: string) => ({
-      id,
-      shared: { title: [{ value: "BE NATURAL", from: null }] },
-      regions: [],
-      skipped: [],
-      carries: [],
-      locations: [],
-    }));
+  test("no object is fetched; the grid draws its own", async () => {
+    // The grid pages through summaries itself. Fetching the first object here
+    // too would read it twice on every change of generation.
+    const objectFlat = vi.fn();
 
     const context = await gather(
       fakeApi({ objectIds: async () => ({ ids: ["42"], total: 7 }), objectFlat }),
     );
 
-    expect(objectFlat).toHaveBeenCalledWith("42");
-    expect(context.object?.id).toBe("42");
-    // The page needs the total, not just the one object it drew.
+    expect(objectFlat).not.toHaveBeenCalled();
     expect(context.total).toBe(7);
   });
 
   test("only one object is asked for", async () => {
-    // There is no grid yet. Fetching the whole library to show one object is
-    // the shape that stops working on somebody else's 1518 objects.
+    // The shell wants the total, which comes with any page. Fetching the
+    // whole library for it is the shape that stops working on somebody
+    // else's 1518 objects.
     const objectIds = vi.fn(async () => ({ ids: ["1"], total: 1500 }));
 
     await gather(fakeApi({ objectIds }));
@@ -157,8 +150,8 @@ describe("reloading after a scan", () => {
       objectIds: async () => (scanned ? { ids: ["1"], total: 441 } : { ids: [], total: 0 }),
     });
 
-    expect((await gather(api)).object).toBeUndefined();
+    expect((await gather(api)).total).toBe(0);
     scanned = true;
-    expect((await gather(api)).object?.id).toBe("1");
+    expect((await gather(api)).total).toBe(441);
   });
 });

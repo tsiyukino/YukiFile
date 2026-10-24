@@ -8,22 +8,22 @@
  * All of it is fetched once. The page is a function of those four things, and
  * re-fetching per render would make it a function of the network instead.
  *
- * # Two panes on the left, one page on the right
+ * # A grid in the middle, a pane on the left
  *
- * The left pane lists either what the library holds or what the disk has;
- * the two are the same files seen from two sides, and switching between them
- * is how a person finds the thing they are thinking of. The right side shows
- * one object, or the flow that makes one.
+ * The content area is the thumbnail grid: what the library holds, as covers.
+ * `2026-09-01_ui-primer-not-github-clone.md` says thumbnails are the main
+ * view, and now that covers exist to draw they are. Choosing a card replaces
+ * the grid with the object's page, and **Back** brings the grid back.
  *
- * There is no thumbnail grid yet. `2026-09-01_ui-primer-not-github-clone.md`
- * says thumbnails get designed around rather than bolted on, and nothing
- * generates one; the lists are what the review screens use and stay when the
- * grid arrives.
+ * The pane on the left lists the other ways in — what the disk has, the
+ * vocabularies, what is waiting for review — and holds the library-wide
+ * actions. With the Library segment selected it lists nothing: the grid is
+ * the listing, and the segment is the way back to it from any page.
  */
 
 import { Button, Heading, IconButton, PageLayout, SegmentedControl, Spinner, Stack, Text } from "@primer/react";
 import { GearIcon } from "@primer/octicons-react";
-import { Blankslate, InlineMessage } from "@primer/react/experimental";
+import { InlineMessage } from "@primer/react/experimental";
 import { useEffect, useState } from "react";
 
 import {
@@ -45,7 +45,7 @@ import { DiskBrowser } from "./DiskBrowser.js";
 import { ForgetButton } from "./Forget.js";
 import { dialogs, invoke } from "./invoke.js";
 import { describe } from "./problem.js";
-import { ObjectList } from "./ObjectList.js";
+import { ObjectGrid } from "./ObjectGrid.js";
 import { fallbackTitle, ObjectPage } from "./ObjectPage.js";
 import { Rescan } from "./Rescan.js";
 import { ReviewList, ReviewPage } from "./Review.js";
@@ -75,8 +75,7 @@ export interface Context {
   readonly plugins: readonly Manifest[];
   readonly loaded: readonly Loaded[];
   readonly mounts: readonly Mount[];
-  /** The object on screen, or `undefined` when the library holds none. */
-  readonly object: FlatObject | undefined;
+  /** How many objects the library holds. */
   readonly total: number;
   /** How many change sets are waiting for a person. */
   readonly pending: number;
@@ -97,8 +96,7 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
   // state forever".
   const [generation, setGeneration] = useState(0);
 
-  // Which object the page is showing. Undefined means "whichever the library
-  // hands back first", which is what a freshly opened library shows.
+  // Which object the page is showing. Undefined means the grid is up.
   const [chosen, setChosen] = useState<ObjectId | undefined>(undefined);
   const [shown, setShown] = useState<FlatObject | undefined>(undefined);
 
@@ -173,19 +171,31 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
     return <Spinner aria-label="Opening the library" />;
   }
 
+  // Back to the grid, whatever the page was showing.
+  const home = (): void => {
+    setAdding(undefined);
+    setReviewing(undefined);
+    setTerm(undefined);
+    setSettings(false);
+    setChosen(undefined);
+  };
+
   // The library changed under the page: an object was added, forgotten, or a
-  // scan ran. Re-read everything and let the first object be whichever the
-  // library hands back now.
+  // scan ran. Re-read everything and show the grid as it is now.
   const changed = (): void => {
     setChosen(undefined);
     setGeneration((n) => n + 1);
   };
 
-  const current = shown ?? context.object;
-
   // The object on screen changed but is still the one to look at. Re-read
-  // everything, including it, without going back to the first object.
+  // everything, including it, without leaving it.
   const refresh = (): void => setGeneration((n) => n + 1);
+
+  // Opening an object from any pane: the page shows it, nothing else.
+  const open = (id: ObjectId): void => {
+    home();
+    setChosen(id);
+  };
 
   return (
     <PageLayout>
@@ -208,7 +218,12 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
           <SegmentedControl
             aria-label="What the pane lists"
             fullWidth
-            onChange={(index) => setPane(PANES[index] ?? "library")}
+            onChange={(index) => {
+              const next = PANES[index] ?? "library";
+              setPane(next);
+              // The Library segment is the way home: the grid is its listing.
+              if (next === "library") home();
+            }}
           >
             <SegmentedControl.Button selected={pane === "library"}>Library</SegmentedControl.Button>
             <SegmentedControl.Button selected={pane === "disk"}>Disk</SegmentedControl.Button>
@@ -219,34 +234,17 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
           </SegmentedControl>
 
           {pane === "library" && (
-            <ObjectList
-              api={api}
-              selected={chosen ?? context.object?.id}
-              onSelect={(id) => {
-                setAdding(undefined);
-                setReviewing(undefined);
-                setTerm(undefined);
-                setSettings(false);
-                setChosen(id);
-              }}
-              generation={generation}
-            />
+            <Text size="small">
+              {context.total} {context.total === 1 ? "object" : "objects"} in the library.
+            </Text>
           )}
           {pane === "disk" && (
             <DiskBrowser
               api={api}
               generation={generation}
-              onSelect={(id) => {
-                setAdding(undefined);
-                setReviewing(undefined);
-                setTerm(undefined);
-                setSettings(false);
-                setChosen(id);
-              }}
+              onSelect={open}
               onAdd={(at) => {
-                setReviewing(undefined);
-                setTerm(undefined);
-                setSettings(false);
+                home();
                 setAdding(at);
               }}
             />
@@ -257,9 +255,7 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
               generation={generation}
               selected={term}
               onSelect={(chosenTerm) => {
-                setAdding(undefined);
-                setReviewing(undefined);
-                setSettings(false);
+                home();
                 setTerm(chosenTerm);
               }}
             />
@@ -270,9 +266,7 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
               generation={generation}
               selected={reviewing}
               onSelect={(set) => {
-                setAdding(undefined);
-                setTerm(undefined);
-                setSettings(false);
+                home();
                 setReviewing(set);
               }}
             />
@@ -329,41 +323,39 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
             onAdded={(id) => {
               setAdding(undefined);
               // Show what was just made, and re-read the library so the
-              // browser marks it and the list holds it.
+              // browser marks it and the grid holds it.
               setGeneration((n) => n + 1);
               setChosen(id);
             }}
             onCancel={() => setAdding(undefined)}
           />
-        ) : current ? (
+        ) : shown ? (
           <Stack gap="none">
-            <Stack direction="horizontal" justify="end" padding="condensed">
+            <Stack direction="horizontal" justify="space-between" padding="condensed">
+              <Button onClick={() => setChosen(undefined)}>Back</Button>
               <ForgetButton
-                key={current.id}
+                key={shown.id}
                 app={app}
-                object={current.id}
-                name={current.shared["title"]?.[0]?.value ?? fallbackTitle(current) ?? "this object"}
+                object={shown.id}
+                name={shown.shared["title"]?.[0]?.value ?? fallbackTitle(shown) ?? "this object"}
                 onForgotten={changed}
               />
             </Stack>
             <ObjectPage
               api={api}
               app={app}
-              object={current}
+              object={shown}
               plugins={context.plugins}
               loaded={context.loaded}
               mounts={context.mounts}
               onChanged={refresh}
             />
           </Stack>
+        ) : chosen ? (
+          // The page is on its way; the grid would flash underneath it.
+          <Spinner aria-label="Opening the object" />
         ) : (
-          <Blankslate>
-            <Blankslate.Heading>This library holds no objects yet</Blankslate.Heading>
-            <Blankslate.Description>
-              Scan it, if an installed plugin offers to, or open the Disk pane
-              and add something by hand.
-            </Blankslate.Description>
-          </Blankslate>
+          <ObjectGrid api={api} selected={undefined} onSelect={open} generation={generation} />
         )}
       </PageLayout.Content>
     </PageLayout>
@@ -523,15 +515,14 @@ export async function gather(api: Api): Promise<Context> {
   );
 
   const mounts = await api.mountOrder();
+  // One id, for the total that comes with it. The grid fetches its own pages.
   const page = await api.objectIds(null, 1);
-  const first = page.ids[0];
   const pending = await api.changesPending();
 
   return {
     plugins,
     loaded,
     mounts,
-    object: first === undefined ? undefined : await api.objectFlat(first),
     total: page.total,
     pending: pending.length,
   };

@@ -29,3 +29,17 @@ test("the shell renders a library with one object", { timeout: 30_000 }, async (
   expect(await screen.findByText("Cross Maid", {}, { timeout: 20_000 })).toBeDefined();
   console.log(errors.mock.calls.map((c) => String(c[0]).slice(0, 300)).join("\n---\n"));
 });
+
+test("a card opens its page, and Back returns to the grid", { timeout: 30_000 }, async () => {
+  const { App } = await import("./App.js");
+  const { fireEvent } = await import("@testing-library/react");
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+  render(<App />);
+  const card = await screen.findByRole("button", { name: /Cross Maid/ }, { timeout: 20_000 });
+  fireEvent.click(card);
+  const back = await screen.findByRole("button", { name: "Back" }, { timeout: 20_000 });
+  expect(document.querySelector(".yk-grid")).toBeNull();
+  fireEvent.click(back);
+  expect(await screen.findByRole("button", { name: /Cross Maid/ }, { timeout: 20_000 })).toBeDefined();
+  expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
+});

@@ -166,6 +166,8 @@ export interface Summary {
   /** Its first location. Absent for a grouping. */
   readonly path: string | null;
   readonly kind: "file" | "folder" | null;
+  /** A stored cover's path, when one is recorded. What a card draws. */
+  readonly cover?: string | null;
 }
 
 /** One entry on disk. */

@@ -435,32 +435,60 @@ pub fn object_summaries_in(
     library.with_connection(|connection| {
         let store = values::Values::new();
         let located = crate::store::paths::first_of_each(connection, &ids)?;
+        let order: Vec<String> = values::mount_order(connection)?
+            .into_iter()
+            .map(|m| format!("{}#{}", m.namespace, m.instance))
+            .collect();
 
         let mut summaries = Vec::with_capacity(ids.len());
         for id in ids {
-            // The bare `title` only. A shop's title is a source for it, and
-            // ranking sources means resolving the object, which is what this
-            // command exists not to do.
-            let title = store
-                .get(connection, id, "title")
+            // Not a full resolution -- that is `object.flat`, with pins and
+            // the manifests' shared lists -- but enough for a card: the bare
+            // field when a person wrote one, else the first plugin's in mount
+            // order. A grid of 174 products showing filenames because their
+            // titles came from a shop is a grid nobody can use.
+            let rows = store
+                .rows(connection, id)
                 .map_err(|error| BridgeError::Storage(error.to_string()))?;
+            let title = field_for_card(&rows, "title", &order);
+            let cover = field_for_card(&rows, "cover", &order);
 
             let (path, kind) = match located.get(&id) {
                 Some((path, kind)) => (Some(path.clone()), Some(kind.clone())),
                 None => (None, None),
             };
 
-            let name = title.clone().or_else(|| {
+            let name = title.or_else(|| {
                 path.as_deref()
                     .and_then(|p| p.rsplit('/').next())
                     .map(str::to_string)
             });
 
-            summaries.push(SummaryView { id, name, path, kind });
+            summaries.push(SummaryView { id, name, path, kind, cover });
         }
 
         Ok(summaries)
     })
+}
+
+/// A field as a card shows it: the bare value, else the first mounted
+/// plugin's, in mount order; a plugin's value under a mount the library does
+/// not list comes last.
+fn field_for_card(rows: &[crate::store::flatten::StoredValue], field: &str, order: &[String]) -> Option<String> {
+    if let Some(bare) = rows.iter().find(|r| r.path == field) {
+        return Some(bare.value.clone());
+    }
+    let suffix = format!("/{field}");
+    let mut candidates: Vec<(usize, &str)> = rows
+        .iter()
+        .filter(|r| r.path.ends_with(&suffix) && !r.path.starts_with('@'))
+        .map(|r| {
+            let namespace = &r.path[..r.path.len() - suffix.len()];
+            (order.iter().position(|m| m == namespace).unwrap_or(usize::MAX), r.value.as_str())
+        })
+        .collect();
+    candidates.sort_by_key(|(rank, _)| *rank);
+    candidates.first().map(|(_, value)| value.to_string())
 }
 
 /// One row in a list.
@@ -474,6 +502,9 @@ pub struct SummaryView {
     pub path: Option<String>,
     /// `file` or `folder`, when it has a location.
     pub kind: Option<String>,
+    /// A stored cover's path, the person's own or the first plugin's in
+    /// mount order. What a card draws.
+    pub cover: Option<String>,
 }
 
 

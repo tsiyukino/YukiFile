@@ -3097,3 +3097,22 @@ fn what_sits_inside_a_claimed_folder_is_not_new() {
 
     assert_eq!(view.added, vec!["loose.zip".to_string()]);
 }
+
+#[test]
+fn a_summary_names_an_object_by_a_shops_title_when_nobody_typed_one() {
+    // 97 of the seed's products have their title under booth#1/title and no
+    // bare one. A card showing their filenames is a card nobody can use.
+    let (library, _dir) = library();
+    mount(&library, "gumroad", 1, 0);
+    mount(&library, "booth", 1, 1);
+    let shop_only = object_with(&library, &[("booth#1/title", "shop says"), ("booth#1/cover", ".yukifile/covers/a.png")]);
+    let both = object_with(&library, &[("booth#1/title", "shop says"), ("gumroad#1/title", "other shop"), ("title", "mine")]);
+    let ranked = object_with(&library, &[("booth#1/title", "later mount"), ("gumroad#1/title", "earlier mount")]);
+
+    let rows = object_summaries_in(&library, vec![shop_only, both, ranked]).expect("summaries");
+
+    assert_eq!(rows[0].name.as_deref(), Some("shop says"));
+    assert_eq!(rows[0].cover.as_deref(), Some(".yukifile/covers/a.png"));
+    assert_eq!(rows[1].name.as_deref(), Some("mine"), "a person's own value wins");
+    assert_eq!(rows[2].name.as_deref(), Some("earlier mount"), "mount order ranks the plugins");
+}

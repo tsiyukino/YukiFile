@@ -77,6 +77,8 @@ Generated per module from the source.
   point, and the one door to the Tauri runtime.
 - [object-page.md](reference/object-page.md) — the framework's object page,
   editing it, the panel contract, and how a failing plugin stays contained.
+- [grid.md](reference/grid.md) — the main view: what the library holds as a
+  grid of covers, where a card's picture and name come from.
 - [disk-browser.md](reference/disk-browser.md) — what is on disk against what
   the library holds, and making an object by hand.
 - [review.md](reference/review.md) — the change set screen: deciding what a
