@@ -227,6 +227,17 @@ and taken away only from the object that holds it. Taking it from another
 would be a silent edit to an object nobody was looking at. An object left with
 no location is a grouping, which is a normal thing to be.
 
+## bridge::network
+
+`http_get_in(url)` · `cover_fetch_in(library, url)`, `APP_ONLY` as `http.get`
+and `cover.fetch`.
+
+The application's one reach outside. One GET over HTTPS with a fifteen-second
+timeout and an 8 MB cap, returning status and body as text; or a picture
+fetched and stored as a cover, returning the path and writing no field. Never
+a plugin's directly: `2026-10-24_the-network-is-lent-to-a-press.md` says how
+the host lends both for the duration of a press.
+
 ## bridge::transfer
 
 `library_export_file_in` · `library_import_file_in`

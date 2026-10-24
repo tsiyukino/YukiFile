@@ -123,6 +123,24 @@ vocabulary. **Booth**: the listing as a link, titled the way the shop titles
 it, and the price. Nothing is fetched; `docs.yml` says the network happens
 when a person presses a button.
 
+## Fetch listing
+
+The first thing in the application that reaches the network, and the first
+object action. On a `booth` region, **fetch listing** asks Booth for the item
+the region names — `item_id`, or the number out of `url` — at
+`booth.pm/en/items/<id>.json`, reads the title, the price in whole yen, the
+shop's name and the first image out of what comes back (`booth.ts`, tolerant
+by design: a field the shop moves costs the field, not the fetch), has the
+core store the picture as a cover, and proposes the lot under `booth#1`
+through `import.propose`. A title a person typed is not overwritten; it waits
+in a change set.
+
+The press is what lends the plugin the network, for `booth.pm` and
+`*.booth.pm` as the manifest names them. Nothing on the page reaches outside
+until the button is pressed. The matching VRCAL does — scoring a filename
+against candidates — is a later rule; this one only has to be right about a
+listing whose number is already known.
+
 ## The seed
 
 `src-tauri/examples/seed.rs` turns `seed/` into a contract document:

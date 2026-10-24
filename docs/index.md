@@ -51,6 +51,9 @@
   — why a property chosen and left blank still has to be carried.
 - [2026-10-23 reading a Unity package is core work](decisions/2026-10-23_unitypackage-reading-is-core.md)
   — the deferred question, settled on evidence: a plugin never holds bytes.
+- [2026-10-24 the network is lent to a press](decisions/2026-10-24_the-network-is-lent-to-a-press.md)
+  — how "only when the user presses a button" became a shape: an api a plugin
+  holds only while its action runs, for the hosts it named.
 
 ## Reference
 

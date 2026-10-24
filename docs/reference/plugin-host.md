@@ -216,3 +216,20 @@ at the wrong place. A thrown non-`Error` is stringified rather than read for a
 
 `loadAll` preserves the order it was given, which is the registry's load order.
 Recomputing it here would be a second answer to a settled question.
+
+## Object actions, and the api a press lends
+
+`contributes.actions` keys a property to the action ids a plugin offers on
+objects carrying it; `contributes.action_module` names the module whose
+`runObjectAction({ api, action, objectId, property, instance })` runs one.
+The region draws them as buttons, and `objectAction()` in `panel.ts` checks
+the module the way `libraryAction()` does.
+
+The `api` an action receives is a `PressedApi`: the ordinary api plus
+`httpGet` and `coverFetch`, which exist only while the action runs and only
+for the hosts the manifest names under `contributes.hosts`. `pressedApiFor`
+builds it and `hostAllowed` is the check: a host matches itself, `*.booth.pm`
+matches labels before it and not `booth.pm`, only https, and nothing when no
+host is named. A library action receives the same. A panel does not; a draw is
+not a press. The decision record is
+`2026-10-24_the-network-is-lent-to-a-press.md`.
