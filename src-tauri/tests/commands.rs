@@ -3035,3 +3035,17 @@ fn a_manifest_may_name_hosts_and_an_action_module() {
     }
     assert!(Manifest::parse(r#"{"id":"x","contributes":{"action_module":"./actions.ts"}}"#).is_err());
 }
+
+#[test]
+fn what_sits_inside_a_claimed_folder_is_not_new() {
+    // The forty textures inside an outfit are the outfit's.
+    let (library, dir) = library();
+    fs::create_dir_all(dir.path().join("outfit").join("Textures")).expect("mkdir");
+    fs::write(dir.path().join("outfit").join("Textures").join("skin.png"), b"p").expect("write");
+    fs::write(dir.path().join("loose.zip"), b"z").expect("write");
+    created(&library, NewObject { paths: vec![at("outfit", "folder")], ..Default::default() });
+
+    let view = library_reconcile_in(&library).expect("rescan");
+
+    assert_eq!(view.added, vec!["loose.zip".to_string()]);
+}

@@ -303,8 +303,10 @@ side is hashed and the pair is tried again; most rows hold no hash, since
 nothing computes them for a 35 GB library on its own, so most pairs stay
 questions.
 
-Confirming a candidate is `object.path.remove` and `object.path.add` on the
-same object, which keeps everything hung on it.
+Confirming a candidate is `object.path.add` on the same object, which keeps
+everything hung on it; the removal was applied when the candidate was
+reported. A path inside a location the library already claims is part of that
+thing and is not reported as new.
 
 ## bridge::library
 

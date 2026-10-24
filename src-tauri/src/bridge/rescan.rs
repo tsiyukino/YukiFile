@@ -114,6 +114,13 @@ pub fn library_reconcile_in(library: &Library) -> Result<RescanView, BridgeError
                 }
             }
 
+            // A path inside a location the library already claims is part
+            // of that thing, not a new one: the forty textures inside an
+            // outfit are the outfit's, and a rescan that counted them would
+            // say "2581 new on disk" about a library with nothing new in it.
+            let claimed: Vec<String> = known.iter().map(|k| format!("{}/", k.path)).collect();
+            view.added.retain(|path| !claimed.iter().any(|folder| path.starts_with(folder)));
+
             let kinds: std::collections::HashMap<&str, walk::Kind> =
                 found.iter().map(|f| (f.entry.path.as_str(), f.entry.kind)).collect();
             view.candidates = changes

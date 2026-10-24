@@ -52,14 +52,15 @@ export function Rescan({ app, onChanged }: RescanProps): React.JSX.Element {
       .finally(() => setRunning(false));
   };
 
-  // Confirming a move is a remove and an add on the same object, which keeps
-  // everything hung on it. The kind comes from the rescan, which looked.
+  // Confirming a move is an add on the same object, which keeps everything
+  // hung on it. The old path is already gone: the rescan applied the removal
+  // when it reported the candidate, so removing it again would find nothing.
+  // The kind comes from the rescan, which looked.
   const confirm = (candidate: Candidate): void => {
     setRunning(true);
     setProblem(undefined);
     app
-      .objectPathRemove(candidate.object, candidate.from)
-      .then(() => app.objectPathAdd(candidate.object, { path: candidate.to, kind: candidate.kind }))
+      .objectPathAdd(candidate.object, { path: candidate.to, kind: candidate.kind })
       .then(() => {
         setResult((held) =>
           held ? { ...held, candidates: held.candidates.filter((c) => c !== candidate) } : held,

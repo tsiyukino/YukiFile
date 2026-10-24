@@ -67,7 +67,9 @@ describe("rescanning", () => {
     fireEvent.click(screen.getByRole("button", { name: "Moved" }));
 
     await waitFor(() => expect(app.objectPathAdd).toHaveBeenCalledWith("7", { path: "Clothing/outfit.zip", kind: "file" }));
-    expect(app.objectPathRemove).toHaveBeenCalledWith("7", "outfit.zip");
+    // The rescan already removed the old path when it reported the
+    // candidate; removing it again found nothing, on the real library.
+    expect(app.objectPathRemove).not.toHaveBeenCalled();
     expect(onChanged).toHaveBeenCalled();
     expect(screen.queryByText("outfit.zip → Clothing/outfit.zip")).toBeNull();
   });
