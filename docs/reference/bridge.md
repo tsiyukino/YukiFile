@@ -227,6 +227,32 @@ and taken away only from the object that holds it. Taking it from another
 would be a silent edit to an object nobody was looking at. An object left with
 no location is a grouping, which is a normal thing to be.
 
+## bridge::rescan
+
+`library_reconcile_in(library)`, `APP_ONLY` as `library.reconcile`.
+
+A plugin's scan only ever adds. Between scans a person moves a product into
+another category, renames a folder, deletes a zip they unpacked, and the
+library goes on saying the thing is where it was. `scan::reconcile` has told a
+move from a delete plus an add since layer 2; this is the first thing a person
+can press that reaches it.
+
+**Applied:** moves proven by a hash on both sides, touches, removals. These are
+facts about locations the library already claims. An object left with no
+location is a grouping; forgetting it is the person's call.
+
+**Reported, not applied:** paths nothing claims. What counts as an object is a
+plugin's judgement, and the shell says so beside the count. A removal and an
+addition sharing a basename are a *candidate*, drawn with a button: the person
+knows whether they moved it, and 33 of the seed library's products are a
+folder and a zip sharing a stem. When the gone side carries a hash the found
+side is hashed and the pair is tried again; most rows hold no hash, since
+nothing computes them for a 35 GB library on its own, so most pairs stay
+questions.
+
+Confirming a candidate is `object.path.remove` and `object.path.add` on the
+same object, which keeps everything hung on it.
+
 ## bridge::library
 
 `Library::new(root, connection)` · `resolve(path)` · `with_connection` ·

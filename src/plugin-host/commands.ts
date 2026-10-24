@@ -224,6 +224,25 @@ export interface ChangeEntry {
   readonly kind: "addition" | "modification";
 }
 
+/** One possible move a rescan could not prove. */
+export interface Candidate {
+  readonly object: ObjectId;
+  readonly from: string;
+  readonly to: string;
+  readonly kind: "file" | "folder";
+}
+
+/** What a rescan found and did. */
+export interface Rescanned {
+  readonly moved: number;
+  readonly touched: number;
+  readonly removed: number;
+  /** Paths on disk nothing claims. A plugin's scan decides about them. */
+  readonly added: readonly string[];
+  readonly candidates: readonly Candidate[];
+  readonly unreadable: readonly string[];
+}
+
 /** What applying a set did. */
 export interface Applied {
   readonly changed: number;
@@ -473,6 +492,14 @@ export interface AppApi {
   /** Take a place away. Only from the object that holds it. */
   objectPathRemove(id: ObjectId, path: string): Promise<void>;
   /**
+   * Bring the library's locations back in line with the disk.
+   *
+   * Moves proven by hash, touches and removals are applied. Paths nothing
+   * claims are reported for a plugin's scan to decide about; a removal and an
+   * addition sharing a basename are a candidate for the person to confirm.
+   */
+  libraryReconcile(): Promise<Rescanned>;
+  /**
    * Accept or decline one proposed entry.
    *
    * The review itself. A plugin that could accept its own proposal would make
@@ -513,6 +540,8 @@ export function appApiFor(invoke: Invoke): AppApi {
       invoke(handlerName("object.path.add"), { id, at }) as Promise<void>,
     objectPathRemove: (id, path) =>
       invoke(handlerName("object.path.remove"), { id, path }) as Promise<void>,
+    libraryReconcile: () =>
+      invoke(handlerName("library.reconcile"), {}) as Promise<Rescanned>,
     changesAccept: (change, accepted) =>
       invoke(handlerName("changes.accept"), { change, accepted }) as Promise<void>,
     changesAcceptAdditions: (set) =>

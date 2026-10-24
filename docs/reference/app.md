@@ -79,6 +79,10 @@ one is being reviewed; or a term, with everything that points at it
 names both ways of filling it: a scan, if an installed plugin offers one, or
 the Disk pane.
 
+Under the plugins' library actions sits the shell's own **Rescan**, which
+brings locations back in line with the disk and asks about what it could not
+prove (`bridge.md`, *bridge::rescan*).
+
 The shell holds two API objects. `api` is built from the allowlist and is what
 every panel, viewer and form is handed. `app` is built from `APP_ONLY` and
 reaches only the shell's own screens: a form returns values, and `app` is what

@@ -2600,3 +2600,118 @@ fn a_missing_package_is_not_found() {
         Err(BridgeError::NotFound(_))
     ));
 }
+
+// --- library.reconcile ------------------------------------------------------
+
+use yukifile::bridge::rescan::library_reconcile_in;
+
+#[test]
+fn a_rescan_on_a_library_that_matches_the_disk_does_nothing_the_second_time() {
+    // A location added by hand carries no size or mtime, so the first look
+    // fills them in and counts it as changed. The second look has nothing to
+    // say, which is the property worth having.
+    let (library, dir) = library();
+    fs::write(dir.path().join("a.zip"), b"z").expect("write");
+    created(&library, NewObject { paths: vec![at("a.zip", "file")], ..Default::default() });
+
+    let first = library_reconcile_in(&library).expect("first");
+    assert_eq!((first.moved, first.touched, first.removed), (0, 1, 0));
+
+    let second = library_reconcile_in(&library).expect("second");
+    assert_eq!((second.moved, second.touched, second.removed), (0, 0, 0));
+    assert!(second.added.is_empty());
+    assert!(second.candidates.is_empty());
+}
+
+#[test]
+fn a_deleted_file_loses_its_location_and_the_object_stays() {
+    // The object becomes a grouping. Whether to forget it is the person's
+    // call, and the page has the button.
+    let (library, dir) = library();
+    fs::write(dir.path().join("a.zip"), b"z").expect("write");
+    let id = created(&library, NewObject { paths: vec![at("a.zip", "file")], ..Default::default() });
+    fs::remove_file(dir.path().join("a.zip")).expect("delete");
+
+    let view = library_reconcile_in(&library).expect("rescan");
+
+    assert_eq!(view.removed, 1);
+    let flat = object_flat_in(&library, None, id).expect("flat");
+    assert!(flat.locations.is_empty());
+}
+
+#[test]
+fn a_new_path_is_reported_and_not_recorded() {
+    // What counts as an object is a plugin's judgement.
+    let (library, dir) = library();
+    fs::write(dir.path().join("new.zip"), b"z").expect("write");
+
+    let view = library_reconcile_in(&library).expect("rescan");
+
+    assert_eq!(view.added, vec!["new.zip".to_string()]);
+    assert!(path_list_in(&library).expect("paths").is_empty());
+}
+
+#[test]
+fn a_rename_without_a_hash_is_a_question_not_an_answer() {
+    // 33 of the seed library's products are a folder and a zip sharing a
+    // stem. A basename match proves nothing on its own.
+    let (library, dir) = library();
+    fs::create_dir_all(dir.path().join("Clothing")).expect("mkdir");
+    fs::write(dir.path().join("outfit.zip"), b"z").expect("write");
+    let id = created(&library, NewObject { paths: vec![at("outfit.zip", "file")], ..Default::default() });
+    fs::rename(dir.path().join("outfit.zip"), dir.path().join("Clothing").join("outfit.zip")).expect("move");
+
+    let view = library_reconcile_in(&library).expect("rescan");
+
+    assert_eq!(view.moved, 0);
+    assert_eq!(view.candidates.len(), 1);
+    assert_eq!(view.candidates[0].object, id);
+    assert_eq!(view.candidates[0].from, "outfit.zip");
+    assert_eq!(view.candidates[0].to, "Clothing/outfit.zip");
+    assert_eq!(view.candidates[0].kind, "file");
+    // Reported both ways, so a caller that ignores the question still has
+    // a correct if pessimistic answer. The new folder is new too.
+    assert_eq!(view.removed, 1);
+    assert_eq!(view.added, vec!["Clothing".to_string(), "Clothing/outfit.zip".to_string()]);
+}
+
+#[test]
+fn a_rename_with_a_stored_hash_is_proven_and_applied() {
+    let (library, dir) = library();
+    fs::write(dir.path().join("outfit.zip"), b"same bytes").expect("write");
+    let id = created(&library, NewObject { paths: vec![at("outfit.zip", "file")], ..Default::default() });
+    let hash = hash_of_in(&library, "outfit.zip".into()).expect("hash");
+    library
+        .with_connection(|connection| {
+            yukifile::store::paths::record(
+                connection,
+                id,
+                "outfit.zip",
+                yukifile::scan::walk::Kind::File,
+                Some(10),
+                None,
+                Some(&hash),
+            )
+            .expect("record hash");
+            Ok(())
+        })
+        .expect("store hash");
+    fs::create_dir_all(dir.path().join("Clothing")).expect("mkdir");
+    fs::rename(dir.path().join("outfit.zip"), dir.path().join("Clothing").join("outfit.zip")).expect("move");
+
+    let view = library_reconcile_in(&library).expect("rescan");
+
+    assert_eq!(view.moved, 1, "{view:?}");
+    assert!(view.candidates.is_empty());
+    let flat = object_flat_in(&library, None, id).expect("flat");
+    assert_eq!(flat.locations[0].path, "Clothing/outfit.zip");
+}
+
+#[test]
+fn the_librarys_own_folder_is_never_a_new_path() {
+    let (library, _dir) = library();
+
+    let view = library_reconcile_in(&library).expect("rescan");
+
+    assert!(view.added.iter().all(|p| !p.contains(".yukifile")), "{:?}", view.added);
+}

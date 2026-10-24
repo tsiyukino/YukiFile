@@ -45,6 +45,7 @@ import { invoke } from "./invoke.js";
 import { describe } from "./problem.js";
 import { ObjectList } from "./ObjectList.js";
 import { fallbackTitle, ObjectPage } from "./ObjectPage.js";
+import { Rescan } from "./Rescan.js";
 import { ReviewList, ReviewPage } from "./Review.js";
 import { TermList, TermPage, type TermRef } from "./Terms.js";
 
@@ -178,6 +179,7 @@ export function App(): React.JSX.Element {
       <PageLayout.Pane position="start" width="medium">
         <Stack gap="condensed">
           <LibraryActions plugins={context.plugins} loaded={context.loaded} onChanged={changed} />
+          <Rescan app={app} onChanged={refresh} />
 
           <SegmentedControl
             aria-label="What the pane lists"

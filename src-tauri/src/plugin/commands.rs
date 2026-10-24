@@ -237,6 +237,12 @@ pub const APP_ONLY: &[Command] = &[
         reason: "a location that was never this object's, or is no longer",
     },
     Command {
+        name: "library.reconcile",
+        effect: Effect::Write,
+        reason: "a person moved, renamed or deleted things since the last look, \
+                 and the library should say where they are now",
+    },
+    Command {
         name: "changes.accept",
         effect: Effect::Write,
         reason: "deciding one proposed entry is the review itself; a plugin \

@@ -29,6 +29,7 @@
 pub mod changes;
 pub mod commands;
 pub mod objects;
+pub mod rescan;
 pub mod error;
 pub mod library;
 pub mod views;
@@ -80,6 +81,7 @@ macro_rules! register_commands {
             $crate::bridge::objects::object_edge_remove,
             $crate::bridge::objects::object_path_add,
             $crate::bridge::objects::object_path_remove,
+            $crate::bridge::rescan::library_reconcile,
             $crate::bridge::commands::hash_of,
             $crate::bridge::commands::history_of,
             $crate::bridge::commands::import_propose,
