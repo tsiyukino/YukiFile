@@ -10,8 +10,9 @@ function world(over: { target?: string | null; document?: string | null } = {}) 
     libraryImportFile: vi.fn(async () => ({ written: 10, unchanged: 3, objects_created: 2, terms: 0, edges: 0, pending: 7 })),
   };
   const dialogs = {
-    pickTarget: vi.fn(async () => over.target ?? "C:\\out.json"),
-    pickDocument: vi.fn(async () => over.document ?? "C:\\seed.json"),
+    // `??` would read a null answer -- the dialog closed -- as no answer.
+    pickTarget: vi.fn(async () => (over.target === undefined ? "C:\\out.json" : over.target)),
+    pickDocument: vi.fn(async () => (over.document === undefined ? "C:\\seed.json" : over.document)),
   };
   const onChanged = vi.fn();
   render(<Transfer app={app as unknown as AppApi} dialogs={dialogs} onChanged={onChanged} />);
