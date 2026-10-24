@@ -550,6 +550,8 @@ export interface AppApi {
   objectEdgeRemove(id: ObjectId, kind: string, target: EdgeTarget): Promise<void>;
   /** Give an object another place it sits. The path has to be there and free. */
   objectPathAdd(id: ObjectId, at: PathAt): Promise<void>;
+  /** Move a place: the same location under a new path, with what was known about it kept. */
+  objectPathMove(id: ObjectId, from: string, to: string): Promise<void>;
   /** Take a place away. Only from the object that holds it. */
   objectPathRemove(id: ObjectId, path: string): Promise<void>;
   /** GET one https URL. The application's; lent to a plugin inside a press. */
@@ -624,6 +626,8 @@ export function appApiFor(invoke: Invoke): AppApi {
       invoke(handlerName("object.edge.remove"), { id, kind, target }) as Promise<void>,
     objectPathAdd: (id, at) =>
       invoke(handlerName("object.path.add"), { id, at }) as Promise<void>,
+    objectPathMove: (id, from, to) =>
+      invoke(handlerName("object.path.move"), { id, from, to }) as Promise<void>,
     objectPathRemove: (id, path) =>
       invoke(handlerName("object.path.remove"), { id, path }) as Promise<void>,
     httpGet: (url) => invoke(handlerName("http.get"), { url }) as Promise<Fetched>,

@@ -23,9 +23,11 @@
 //! tried again; most known rows hold no hash, since nothing computes them
 //! for a 35 GB library on its own, and those pairs stay questions.
 //!
-//! An object left with no location is a grouping, which is a normal thing to
-//! be. Whether to forget it is the person's call, and the object page has
-//! the button.
+//! A candidate's removal is not applied: the location stays until the person
+//! answers, so an object is never without it in between. An object left with
+//! no location by a removal is a grouping, which is a normal thing to be;
+//! whether to forget it is the person's call, and the object page has the
+//! button.
 
 use crate::bridge::{BridgeError, Library};
 use crate::scan::reconcile::{self, Found, Step};
@@ -95,6 +97,15 @@ pub fn library_reconcile_in(library: &Library) -> Result<RescanView, BridgeError
                 changes = reconcile::reconcile(&known, &found);
             }
 
+            // A candidate's removal is a question, not an answer, and so is
+            // not applied: the location stays until the person says it moved
+            // (object.path.move keeps it whole) or says it is gone. Applying
+            // the removal first left the object without a location in
+            // between, and a move confirmed afterwards was a fresh row that
+            // knew nothing of the old one.
+            let asked: std::collections::HashSet<&str> =
+                changes.candidates.iter().map(|c| c.from.as_str()).collect();
+
             let mut view = RescanView::default();
             for step in changes.steps() {
                 match step {
@@ -106,6 +117,7 @@ pub fn library_reconcile_in(library: &Library) -> Result<RescanView, BridgeError
                         paths::touch(transaction, &touched.path, touched.size, touched.mtime)?;
                         view.touched += 1;
                     }
+                    Step::Remove(removed) if asked.contains(removed.path.as_str()) => {}
                     Step::Remove(removed) => {
                         paths::forget(transaction, &removed.path)?;
                         view.removed += 1;

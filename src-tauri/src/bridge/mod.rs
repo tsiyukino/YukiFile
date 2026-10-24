@@ -85,6 +85,7 @@ macro_rules! register_commands {
             $crate::bridge::objects::object_edge_remove,
             $crate::bridge::objects::object_path_add,
             $crate::bridge::objects::object_path_remove,
+            $crate::bridge::objects::object_path_move,
             $crate::bridge::rescan::library_reconcile,
             $crate::bridge::covers::cover_set,
             $crate::bridge::network::http_get,

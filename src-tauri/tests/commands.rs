@@ -2027,7 +2027,7 @@ fn a_stale_refusal_serialises_with_its_detail() {
 // --- changing an object ---------------------------------------------------
 
 use yukifile::bridge::objects::{
-    object_edge_add_in, object_edge_remove_in, object_path_add_in, object_path_remove_in,
+    object_edge_add_in, object_edge_remove_in, object_path_add_in, object_path_move_in, object_path_remove_in,
     object_property_add_in, object_property_remove_in, object_value_set_in, TargetAt, WrittenView,
 };
 
@@ -2669,10 +2669,58 @@ fn a_rename_without_a_hash_is_a_question_not_an_answer() {
     assert_eq!(view.candidates[0].from, "outfit.zip");
     assert_eq!(view.candidates[0].to, "Clothing/outfit.zip");
     assert_eq!(view.candidates[0].kind, "file");
-    // Reported both ways, so a caller that ignores the question still has
-    // a correct if pessimistic answer. The new folder is new too.
-    assert_eq!(view.removed, 1);
+    // The question is not applied: the old location stays until the person
+    // answers, so the object is never without it in between. The new folder
+    // is new; the candidate's new side is not counted among the new.
+    assert_eq!(view.removed, 0);
+    assert_eq!(object_flat_in(&library, None, id).expect("flat").locations[0].path, "outfit.zip");
     assert_eq!(view.added, vec!["Clothing".to_string(), "Clothing/outfit.zip".to_string()]);
+}
+
+#[test]
+fn a_confirmed_candidate_moves_the_location_whole() {
+    // The same row under a new path: identity, and what was known about it.
+    let (library, dir) = library();
+    fs::write(dir.path().join("outfit.zip"), b"same bytes").expect("write");
+    let id = created(&library, NewObject { paths: vec![at("outfit.zip", "file")], ..Default::default() });
+    let hash = hash_of_in(&library, "outfit.zip".into()).expect("hash");
+    library
+        .with_connection(|connection| {
+            yukifile::store::paths::record(connection, id, "outfit.zip", yukifile::scan::walk::Kind::File, Some(10), Some(5), Some(&hash)).expect("record");
+            Ok(())
+        })
+        .expect("store");
+    fs::create_dir_all(dir.path().join("Clothing")).expect("mkdir");
+    fs::rename(dir.path().join("outfit.zip"), dir.path().join("Clothing").join("outfit.zip")).expect("move");
+
+    object_path_move_in(&library, id, "outfit.zip", "Clothing/outfit.zip").expect("move");
+
+    let known = library.with_connection(|c| Ok(yukifile::store::paths::known(c).expect("known"))).expect("known");
+    assert_eq!(known.len(), 1);
+    assert_eq!(known[0].path, "Clothing/outfit.zip");
+    assert_eq!(known[0].hash.as_deref(), Some(hash.as_str()), "the hash survived the move");
+    assert_eq!(known[0].object, id);
+
+    // And the next rescan has nothing to ask.
+    let view = library_reconcile_in(&library).expect("rescan");
+    assert!(view.candidates.is_empty());
+    assert_eq!(view.removed, 0);
+}
+
+#[test]
+fn a_move_is_refused_from_the_wrong_object_to_a_taken_path_or_off_the_disk() {
+    let (library, dir) = library();
+    fs::write(dir.path().join("a.zip"), b"a").expect("write");
+    fs::write(dir.path().join("b.zip"), b"b").expect("write");
+    fs::write(dir.path().join("c.zip"), b"c").expect("write");
+    let a = created(&library, NewObject { paths: vec![at("a.zip", "file")], ..Default::default() });
+    let b = created(&library, NewObject { paths: vec![at("b.zip", "file")], ..Default::default() });
+
+    // The target is on disk, so what refuses this is that a.zip is not b's.
+    assert!(matches!(object_path_move_in(&library, b, "a.zip", "c.zip"), Err(BridgeError::BadRequest(_))));
+    assert!(matches!(object_path_move_in(&library, a, "a.zip", "b.zip"), Err(BridgeError::PathTaken(_))));
+    assert!(matches!(object_path_move_in(&library, a, "a.zip", "nowhere.zip"), Err(BridgeError::NotFound(_))));
+    assert!(matches!(object_path_move_in(&library, a, "gone.zip", "b.zip"), Err(BridgeError::NotFound(_) | BridgeError::PathTaken(_))));
 }
 
 #[test]

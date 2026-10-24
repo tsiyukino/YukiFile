@@ -52,15 +52,17 @@ export function Rescan({ app, onChanged }: RescanProps): React.JSX.Element {
       .finally(() => setRunning(false));
   };
 
-  // Confirming a move is an add on the same object, which keeps everything
-  // hung on it. The old path is already gone: the rescan applied the removal
-  // when it reported the candidate, so removing it again would find nothing.
-  // The kind comes from the rescan, which looked.
-  const confirm = (candidate: Candidate): void => {
+  // The rescan left the old location in place and asked. "Moved" moves it
+  // whole -- the same row, the size and hash it had -- and "Not moved" is
+  // the removal the rescan held back. Either way the question is answered
+  // and the next rescan does not ask it again.
+  const answer = (candidate: Candidate, moved: boolean): void => {
     setRunning(true);
     setProblem(undefined);
-    app
-      .objectPathAdd(candidate.object, { path: candidate.to, kind: candidate.kind })
+    (moved
+      ? app.objectPathMove(candidate.object, candidate.from, candidate.to)
+      : app.objectPathRemove(candidate.object, candidate.from)
+    )
       .then(() => {
         setResult((held) =>
           held ? { ...held, candidates: held.candidates.filter((c) => c !== candidate) } : held,
@@ -101,8 +103,11 @@ export function Rescan({ app, onChanged }: RescanProps): React.JSX.Element {
               <Text size="small">
                 {candidate.from} → {candidate.to}
               </Text>
-              <Button size="small" disabled={running} onClick={() => confirm(candidate)}>
+              <Button size="small" disabled={running} onClick={() => answer(candidate, true)}>
                 Moved
+              </Button>
+              <Button size="small" disabled={running} onClick={() => answer(candidate, false)}>
+                Not moved
               </Button>
             </Stack>
           ))}

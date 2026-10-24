@@ -238,6 +238,12 @@ pub const APP_ONLY: &[Command] = &[
         reason: "a folder and the zip it came from are one thing in two places",
     },
     Command {
+        name: "object.path.move",
+        effect: Effect::Write,
+        reason: "a rescan's candidate, once the person says it moved: the same \
+                 location under a new path, with what was known about it kept",
+    },
+    Command {
         name: "object.path.remove",
         effect: Effect::Write,
         reason: "a location that was never this object's, or is no longer",

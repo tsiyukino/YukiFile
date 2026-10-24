@@ -10,7 +10,7 @@ function world(result: Rescanned) {
   const app = {
     libraryReconcile: vi.fn(async () => result),
     objectPathRemove: vi.fn(async () => undefined),
-    objectPathAdd: vi.fn(async () => undefined),
+    objectPathMove: vi.fn(async () => undefined),
   };
   const onChanged = vi.fn();
   render(<Rescan app={app as unknown as AppApi} onChanged={onChanged} />);
@@ -54,7 +54,7 @@ describe("rescanning", () => {
     expect(await screen.findByText(/not objects, and a moved one is not re-grouped/)).toBeDefined();
   });
 
-  test("a candidate is a question with a button, and confirming moves the path", async () => {
+  test("a candidate is a question with two answers; moved moves the location whole", async () => {
     const { app, onChanged } = world({
       ...quiet,
       removed: 1,
@@ -66,12 +66,25 @@ describe("rescanning", () => {
     await screen.findByText("outfit.zip → Clothing/outfit.zip");
     fireEvent.click(screen.getByRole("button", { name: "Moved" }));
 
-    await waitFor(() => expect(app.objectPathAdd).toHaveBeenCalledWith("7", { path: "Clothing/outfit.zip", kind: "file" }));
-    // The rescan already removed the old path when it reported the
-    // candidate; removing it again found nothing, on the real library.
+    await waitFor(() => expect(app.objectPathMove).toHaveBeenCalledWith("7", "outfit.zip", "Clothing/outfit.zip"));
     expect(app.objectPathRemove).not.toHaveBeenCalled();
     expect(onChanged).toHaveBeenCalled();
     expect(screen.queryByText("outfit.zip → Clothing/outfit.zip")).toBeNull();
+  });
+
+  test("not moved is the removal the rescan held back", async () => {
+    const { app } = world({
+      ...quiet,
+      added: ["Clothing/outfit.zip"],
+      candidates: [{ object: "7", from: "outfit.zip", to: "Clothing/outfit.zip", kind: "file" }],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Rescan" }));
+    await screen.findByText("outfit.zip → Clothing/outfit.zip");
+    fireEvent.click(screen.getByRole("button", { name: "Not moved" }));
+
+    await waitFor(() => expect(app.objectPathRemove).toHaveBeenCalledWith("7", "outfit.zip"));
+    expect(app.objectPathMove).not.toHaveBeenCalled();
   });
 
   test("a refusal is shown", async () => {

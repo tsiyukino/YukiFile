@@ -223,7 +223,8 @@ sends out — `{ target: "term", vocab, term }` or `{ target: "object", id }` �
 so a panel that read an edge can hand it back unchanged.
 
 **A location is added by creation's rules** — on disk, and nobody else's —
-and taken away only from the object that holds it. Taking it from another
+moved whole with `object.path.move` (the same row under a new path, its size
+and hash kept), and taken away only from the object that holds it. Taking it from another
 would be a silent edit to an object nobody was looking at. An object left with
 no location is a grouping, which is a normal thing to be.
 

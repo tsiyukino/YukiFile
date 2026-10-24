@@ -339,6 +339,35 @@ pub fn object_path_add_in(library: &Library, id: i64, at: PathAt) -> Result<(), 
     })
 }
 
+/// Move a place: the same location under a new path.
+///
+/// What a rescan's candidate becomes when the person says it moved. In place
+/// rather than a remove and an add, so the object is never without the
+/// location in between and keeps what was known about it -- the size, the
+/// time, the hash that will prove the next move. The new path has to be on
+/// disk and nobody else's; the old one has to be this object's.
+pub fn object_path_move_in(library: &Library, id: i64, from: &str, to: &str) -> Result<(), BridgeError> {
+    library.resolve(to)?;
+    library.with_connection_mut(|connection| {
+        require_object(connection, id)?;
+        match paths::object_at(connection, from)? {
+            Some(holder) if holder == id => {}
+            Some(holder) => {
+                return Err(BridgeError::BadRequest(format!("{from:?} belongs to object {holder}, not {id}")))
+            }
+            None => return Err(BridgeError::NotFound(from.to_string())),
+        }
+        if let Some(holder) = paths::object_at(connection, to)? {
+            if holder != id {
+                return Err(BridgeError::PathTaken(to.to_string()));
+            }
+            return Ok(());
+        }
+        paths::move_path(connection, from, to)?;
+        Ok(())
+    })
+}
+
 /// Take a place away.
 ///
 /// Only from the object that holds it: a path is one object's, and taking it
@@ -527,4 +556,15 @@ pub fn object_path_remove(
     path: String,
 ) -> Result<(), BridgeError> {
     object_path_remove_in(&library, crate::bridge::commands::parse_id(&id)?, &path)
+}
+
+/// Move a place.
+#[tauri::command]
+pub fn object_path_move(
+    library: tauri::State<'_, Library>,
+    id: String,
+    from: String,
+    to: String,
+) -> Result<(), BridgeError> {
+    object_path_move_in(&library, crate::bridge::commands::parse_id(&id)?, &from, &to)
 }
