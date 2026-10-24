@@ -11,12 +11,22 @@
  * is the moment the answer has to be reachable.
  */
 
-import { Details, Text, useDetails } from "@primer/react";
+import { Button, Details, Label, Text, useDetails } from "@primer/react";
 
 import type { Source } from "../plugin-host/commands.js";
 
 export interface SourceListProps {
   readonly sources: readonly Source[];
+  /**
+   * The source this field is pinned to, if any: `gumroad#1`.
+   *
+   * A pin is the per-object override of mount order (`architecture.md`),
+   * kept next to the value it changes with an obvious way to undo it. That
+   * is this list.
+   */
+  readonly pinned?: string | undefined;
+  /** Pin the field to a source, or `null` to take the pin off. */
+  readonly onPin?: ((from: string | null) => void) | undefined;
 }
 
 /** Where a source came from, in words. */
@@ -26,15 +36,35 @@ export function attribution(source: Source): string {
   return source.from ?? "entered here";
 }
 
-export function SourceList({ sources }: SourceListProps): React.JSX.Element | null {
+export function SourceList({ sources, pinned, onPin }: SourceListProps): React.JSX.Element | null {
   const { getDetailsProps } = useDetails({});
 
   const [first, ...rest] = sources;
   if (!first) return null;
 
+  // One source has no order to override, so nothing to pin.
   if (rest.length === 0) {
     return <Text>{first.value}</Text>;
   }
+
+  const pinControl = (source: Source): React.JSX.Element | null => {
+    if (!onPin || source.from === null) return null;
+    if (source.from === pinned) {
+      return (
+        <>
+          <Label size="small">pinned</Label>{" "}
+          <Button size="small" variant="invisible" onClick={() => onPin(null)}>
+            Unpin
+          </Button>
+        </>
+      );
+    }
+    return (
+      <Button size="small" variant="invisible" onClick={() => onPin(source.from)}>
+        Prefer
+      </Button>
+    );
+  };
 
   return (
     <Details {...getDetailsProps()}>
@@ -53,7 +83,8 @@ export function SourceList({ sources }: SourceListProps): React.JSX.Element | nu
             <Text>{source.value}</Text>{" "}
             <Text size="small" weight="light">
               {attribution(source)}
-            </Text>
+            </Text>{" "}
+            {pinControl(source)}
           </li>
         ))}
       </ul>

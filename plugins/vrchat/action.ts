@@ -7,14 +7,16 @@
  */
 
 import type { ActionResult, LibraryActionProps } from "../../src/plugin-host/panel.js";
-import { ACTIONS, documentFor, planFrom } from "./vrchat.js";
+import { DEPTH_SETTING, depthFrom, documentFor, planFrom } from "./vrchat.js";
 
 export async function runLibraryAction({ api, action }: LibraryActionProps): Promise<ActionResult> {
-  const depth = ACTIONS[action];
-  if (depth === undefined) {
+  if (action !== "scan products") {
     return { summary: `${action} is not something this plugin does`, changed: false };
   }
 
+  // How deep the groupings go is the library's to say, once, in its
+  // settings; the plugin reads its own key.
+  const depth = depthFrom(await api.settingGet(DEPTH_SETTING));
   const proposed = await planFrom(api, depth);
   if (proposed.length === 0) {
     return { summary: "nothing on disk", changed: false };

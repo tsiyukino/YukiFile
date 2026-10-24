@@ -112,6 +112,8 @@ export interface FlatObject {
    * something.
    */
   readonly carries: readonly string[];
+  /** Field name to the source it is pinned to: `cover` → `gumroad#1`. */
+  readonly pins?: Readonly<Record<string, string>>;
   /** Where it sits on disk. Empty for a grouping. */
   readonly locations: readonly Location[];
 }
@@ -236,6 +238,31 @@ export type CoverSource =
   | { readonly from: "member"; readonly path: string; readonly member: string }
   | { readonly from: "preview"; readonly path: string; readonly member?: string; readonly guid: string };
 
+/** One setting the library holds. */
+export interface SettingRow {
+  readonly key: string;
+  readonly value: string;
+}
+
+/** One installed plugin, and whether this library runs it. */
+export interface PluginRow {
+  readonly id: string;
+  readonly directory: string;
+  /** Named in the library's list, or the list is absent and everything runs. */
+  readonly enabled: boolean;
+  /** Loaded in this session. Differs from `enabled` until the next open. */
+  readonly running: boolean;
+}
+
+/** The library, as a settings page describes it. */
+export interface LibraryInfo {
+  readonly root: string;
+  readonly plugins: readonly PluginRow[];
+  /** Whether the library has chosen; `false` means everything installed runs. */
+  readonly chosen: boolean;
+  readonly skipped: readonly (readonly [string, string])[];
+}
+
 /** One possible move a rescan could not prove. */
 export interface Candidate {
   readonly object: ObjectId;
@@ -347,6 +374,13 @@ export interface Api {
   objectEdges(id: ObjectId): Promise<Edge[]>;
   termResolve(vocab: string, surface: string): Promise<string | null>;
   termList(vocab: string): Promise<Term[]>;
+  /**
+   * One of the library's settings, or `null`.
+   *
+   * A plugin reads its own keys: `vrchat.grouping_depth`. The core keeps the
+   * string and reads none of them.
+   */
+  settingGet(key: string): Promise<string | null>;
   /** Every vocabulary the library holds a term in. From the terms, not the manifests. */
   termVocabularies(): Promise<string[]>;
   /**
@@ -503,6 +537,16 @@ export interface AppApi {
   objectPathAdd(id: ObjectId, at: PathAt): Promise<void>;
   /** Take a place away. Only from the object that holds it. */
   objectPathRemove(id: ObjectId, path: string): Promise<void>;
+  /** Every setting the library holds. */
+  settingAll(): Promise<SettingRow[]>;
+  /** Set a setting. Empty clears. */
+  settingSet(key: string, value: string): Promise<void>;
+  /** What is installed, what this library runs, and where it is. */
+  libraryInfo(): Promise<LibraryInfo>;
+  /** Which plugins the library runs; `null` means everything installed. Takes effect at the next open. */
+  pluginsEnable(ids: readonly string[] | null): Promise<void>;
+  /** Put the mounts in a new order. Every mount has to be named. */
+  mountOrderSet(order: readonly { readonly namespace: string; readonly instance: number }[]): Promise<void>;
   /**
    * Store an image, scaled to fit 512 pixels, and make it the object's cover.
    *
@@ -559,6 +603,11 @@ export function appApiFor(invoke: Invoke): AppApi {
       invoke(handlerName("object.path.add"), { id, at }) as Promise<void>,
     objectPathRemove: (id, path) =>
       invoke(handlerName("object.path.remove"), { id, path }) as Promise<void>,
+    settingAll: () => invoke(handlerName("setting.all"), {}) as Promise<SettingRow[]>,
+    settingSet: (key, value) => invoke(handlerName("setting.set"), { key, value }) as Promise<void>,
+    libraryInfo: () => invoke(handlerName("library.info"), {}) as Promise<LibraryInfo>,
+    pluginsEnable: (ids) => invoke(handlerName("plugins.enable"), { ids }) as Promise<void>,
+    mountOrderSet: (order) => invoke(handlerName("mount.order.set"), { order }) as Promise<void>,
     coverSet: (id, source) =>
       invoke(handlerName("cover.set"), { id, source }) as Promise<string>,
     libraryReconcile: () =>
@@ -591,6 +640,7 @@ export function apiFor(invoke: Invoke): Api {
     objectEdges: (id) => call("object.edges", { id }),
     termResolve: (vocab, surface) => call("term.resolve", { vocab, surface }),
     termList: (vocab) => call("term.list", { vocab }),
+    settingGet: (key) => call("setting.get", { key }),
     termVocabularies: () => call("term.vocabularies", {}),
     termObjects: (vocab, term) => call("term.objects", { vocab, term }),
     archiveList: (path) => call("archive.list", { path }),

@@ -7,20 +7,30 @@
  */
 
 import { BaseStyles, ThemeProvider } from "@primer/react";
-import { StrictMode } from "react";
+import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
-import { App } from "./ui/App.js";
-import { useColorMode } from "./ui/theme.js";
+import { api, App } from "./ui/App.js";
+import { modeFor, parsePreference, useColorMode, type ThemePreference } from "./ui/theme.js";
 
 function Root(): React.JSX.Element {
-  const colorMode = useColorMode();
+  const system = useColorMode();
+  const [preference, setPreference] = useState<ThemePreference>("system");
+
+  // The stored choice, read once. Until it arrives the window follows the
+  // OS, which is the default anyway; the settings page changes it live.
+  useEffect(() => {
+    api
+      .settingGet("theme")
+      .then((stored) => setPreference(parsePreference(stored)))
+      .catch(() => undefined);
+  }, []);
 
   return (
     <StrictMode>
-      <ThemeProvider colorMode={colorMode}>
+      <ThemeProvider colorMode={modeFor(preference, system)}>
         <BaseStyles>
-          <App />
+          <App onTheme={setPreference} />
         </BaseStyles>
       </ThemeProvider>
     </StrictMode>

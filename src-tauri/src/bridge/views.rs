@@ -125,6 +125,14 @@ pub struct FlatObjectView {
     /// much: the page needs it, and going back for a second command to get it
     /// would make every object page two round trips.
     pub locations: Vec<LocationView>,
+
+    /// Field name to the source it is pinned to: `cover` → `gumroad#1`.
+    ///
+    /// A pin is stored under the reserved `@pin` namespace, which resolution
+    /// reads and never reports as a value. The page needs to know which
+    /// source is pinned to draw it as such, and to offer to take the pin off.
+    #[serde(default)]
+    pub pins: BTreeMap<String, String>,
 }
 
 /// One place an object sits.

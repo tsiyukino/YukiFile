@@ -603,3 +603,17 @@ inner whether it held anything before that change.
 
 Nothing here updates or deletes an entry. The only way one leaves is with the
 object it belongs to.
+
+## store::settings
+
+`get(&conn, key)` · `set(&conn, key, value)` · `all(&conn)`
+
+One table of strings, migration V5. What a library has decided about itself:
+the theme, how deep a plugin's groupings go. Keys are namespaced by
+convention and the core reads none of them. See
+[settings.md](settings.md).
+
+`values::reorder_mounts(&conn, order)` puts the mounts in a new order, every
+mount named; a mount left out would keep its old position and sit somewhere
+nobody chose, and a mount named that is not mounted is refused since mounting
+is what choosing a property does.

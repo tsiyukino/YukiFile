@@ -2,11 +2,11 @@ import { describe, expect, test } from "vitest";
 
 import type { Entry } from "../../src/plugin-host/commands.js";
 import {
-  ACTIONS,
   boothFields,
   boothItem,
   boothUrl,
   categorySuggestedBy,
+  depthFrom,
   documentFor,
   isEngineLayout,
   productsFrom,
@@ -176,9 +176,11 @@ describe("what counts as a product", () => {
     expect(document.objects[1]).toMatchObject({ paths: ["Hair/pony"], folders: ["Hair/pony"], values: {} });
   });
 
-  test("each action names its depth", () => {
-    expect(ACTIONS["scan products"]).toBe(1);
-    expect(ACTIONS["scan products, groupings two deep"]).toBe(2);
+  test("the depth comes from a setting, and a bad one reads as one", () => {
+    expect(depthFrom(null)).toBe(1);
+    expect(depthFrom("2")).toBe(2);
+    expect(depthFrom("0")).toBe(0);
+    for (const bad of ["", "two", "-1", "99", "1.5"]) expect(depthFrom(bad), bad).toBe(1);
   });
 });
 

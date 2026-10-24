@@ -96,6 +96,21 @@ export function ObjectPage({
   // back to mount order. The editor starts from what is shown, because that
   // is what they are looking at, and offers Clear only when a bare value is
   // theirs to take back.
+  // A pin is a value under the reserved `@pin` namespace, written like any
+  // other edit; the page only has to say which source it names.
+  const pinProps = (name: string): { pinned?: string | undefined; onPin?: ((from: string | null) => void) | undefined } =>
+    app && onChanged
+      ? {
+          pinned: object.pins?.[name],
+          onPin: (from) => {
+            app
+              .objectValueSet(object.id, `@pin/${name}`, from ?? "")
+              .then(onChanged)
+              .catch(() => undefined);
+          },
+        }
+      : {};
+
   const editShared = (name: string): React.JSX.Element | null => {
     if (!app || !onChanged) return null;
     const sources = object.shared[name] ?? [];
@@ -117,7 +132,7 @@ export function ObjectPage({
       <Stack gap="none">
         {headline ? (
           <Heading as="h1">
-            <SourceList sources={headline} />
+            <SourceList sources={headline} {...pinProps(HEADLINE)} />
           </Heading>
         ) : (
           // A scan finds files before anybody names them, so most objects
@@ -168,7 +183,7 @@ export function ObjectPage({
               <Text size="small" weight="semibold">
                 {name}
               </Text>
-              <SourceList sources={sources} />
+              <SourceList sources={sources} {...pinProps(name)} />
             </Stack>
           ))}
         </Stack>

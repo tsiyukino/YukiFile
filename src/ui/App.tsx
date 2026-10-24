@@ -21,7 +21,8 @@
  * grid arrives.
  */
 
-import { Button, Heading, PageLayout, SegmentedControl, Spinner, Stack, Text } from "@primer/react";
+import { Button, Heading, IconButton, PageLayout, SegmentedControl, Spinner, Stack, Text } from "@primer/react";
+import { GearIcon } from "@primer/octicons-react";
 import { Blankslate, InlineMessage } from "@primer/react/experimental";
 import { useEffect, useState } from "react";
 
@@ -47,6 +48,8 @@ import { ObjectList } from "./ObjectList.js";
 import { fallbackTitle, ObjectPage } from "./ObjectPage.js";
 import { Rescan } from "./Rescan.js";
 import { ReviewList, ReviewPage } from "./Review.js";
+import { Settings } from "./Settings.js";
+import type { ThemePreference } from "./theme.js";
 import { TermList, TermPage, type TermRef } from "./Terms.js";
 
 /** The API every panel is handed, wired to the real Tauri bridge. */
@@ -77,7 +80,12 @@ export interface Context {
   readonly pending: number;
 }
 
-export function App(): React.JSX.Element {
+export interface AppProps {
+  /** The theme setting changed; the window should follow at once. */
+  readonly onTheme?: ((preference: ThemePreference) => void) | undefined;
+}
+
+export function App({ onTheme }: AppProps = {}): React.JSX.Element {
   const [context, setContext] = useState<Context | undefined>(undefined);
   const [problem, setProblem] = useState<string | undefined>(undefined);
 
@@ -103,6 +111,9 @@ export function App(): React.JSX.Element {
 
   // The term on the page, when it is showing one.
   const [term, setTerm] = useState<TermRef | undefined>(undefined);
+
+  // The settings page, when it is showing.
+  const [settings, setSettings] = useState(false);
 
   useEffect(() => {
     if (!chosen) {
@@ -181,6 +192,16 @@ export function App(): React.JSX.Element {
           <LibraryActions plugins={context.plugins} loaded={context.loaded} onChanged={changed} />
           <Rescan app={app} onChanged={refresh} />
 
+          <Stack direction="horizontal" gap="condensed" align="center">
+            <IconButton
+              icon={GearIcon}
+              aria-label="Settings"
+              size="small"
+              variant={settings ? "primary" : "default"}
+              onClick={() => setSettings((on) => !on)}
+            />
+          </Stack>
+
           <SegmentedControl
             aria-label="What the pane lists"
             fullWidth
@@ -202,6 +223,7 @@ export function App(): React.JSX.Element {
                 setAdding(undefined);
                 setReviewing(undefined);
                 setTerm(undefined);
+                setSettings(false);
                 setChosen(id);
               }}
               generation={generation}
@@ -215,11 +237,13 @@ export function App(): React.JSX.Element {
                 setAdding(undefined);
                 setReviewing(undefined);
                 setTerm(undefined);
+                setSettings(false);
                 setChosen(id);
               }}
               onAdd={(at) => {
                 setReviewing(undefined);
                 setTerm(undefined);
+                setSettings(false);
                 setAdding(at);
               }}
             />
@@ -232,6 +256,7 @@ export function App(): React.JSX.Element {
               onSelect={(chosenTerm) => {
                 setAdding(undefined);
                 setReviewing(undefined);
+                setSettings(false);
                 setTerm(chosenTerm);
               }}
             />
@@ -244,6 +269,7 @@ export function App(): React.JSX.Element {
               onSelect={(set) => {
                 setAdding(undefined);
                 setTerm(undefined);
+                setSettings(false);
                 setReviewing(set);
               }}
             />
@@ -252,7 +278,15 @@ export function App(): React.JSX.Element {
       </PageLayout.Pane>
 
       <PageLayout.Content>
-        {term ? (
+        {settings ? (
+          <Settings
+            api={api}
+            app={app}
+            generation={generation}
+            onTheme={(preference) => onTheme?.(preference)}
+            onChanged={refresh}
+          />
+        ) : term ? (
           <TermPage
             key={`${term.vocab}:${term.id}`}
             api={api}

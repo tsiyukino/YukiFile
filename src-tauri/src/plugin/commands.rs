@@ -159,6 +159,12 @@ pub const ALLOWED: &[Command] = &[
                  document and a person reviews it",
     },
     Command {
+        name: "setting.get",
+        effect: Effect::Read,
+        reason: "a plugin reads its own settings -- how deep its groupings go -- \
+                 from the library they shape",
+    },
+    Command {
         name: "changes.pending",
         effect: Effect::Read,
         reason: "a panel can say that a proposal is waiting on what it draws",
@@ -235,6 +241,33 @@ pub const APP_ONLY: &[Command] = &[
         name: "object.path.remove",
         effect: Effect::Write,
         reason: "a location that was never this object's, or is no longer",
+    },
+    Command {
+        name: "setting.all",
+        effect: Effect::Write,
+        reason: "the settings page lists what the library decided",
+    },
+    Command {
+        name: "setting.set",
+        effect: Effect::Write,
+        reason: "a plugin that could write settings could change what another \
+                 plugin's scan does",
+    },
+    Command {
+        name: "library.info",
+        effect: Effect::Write,
+        reason: "what is installed, what this library runs, and where it is",
+    },
+    Command {
+        name: "plugins.enable",
+        effect: Effect::Write,
+        reason: "a library says which plugins it uses; a plugin may not say it \
+                 for another",
+    },
+    Command {
+        name: "mount.order.set",
+        effect: Effect::Write,
+        reason: "the one library-wide rule, changed by the person it belongs to",
     },
     Command {
         name: "cover.set",

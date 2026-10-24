@@ -9,5 +9,6 @@ pub mod id;
 pub mod path;
 pub mod paths;
 pub mod schema;
+pub mod settings;
 pub mod values;
 pub mod vocab;

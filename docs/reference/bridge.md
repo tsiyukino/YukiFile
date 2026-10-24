@@ -227,6 +227,18 @@ and taken away only from the object that holds it. Taking it from another
 would be a silent edit to an object nobody was looking at. An object left with
 no location is a grouping, which is a normal thing to be.
 
+## bridge::settings
+
+`setting_get_in` · `setting_all_in` · `setting_set_in` · `library_info_in` ·
+`plugins_enable_in` · `mount_order_set_in`
+
+What a library has decided about itself; [settings.md](settings.md) has the
+table and the page. `library_info_in` re-reads the plugins directory, which
+only the binary knows the location of, so the binary manages a `PluginsDir`
+beside the library and the registry. `object.flat` now also reports `pins`,
+read from the `@pin` namespace, so a page can draw which source a field is
+pinned to.
+
 ## bridge::covers
 
 `cover_set_in(library, id, source)`, `APP_ONLY` as `cover.set`.

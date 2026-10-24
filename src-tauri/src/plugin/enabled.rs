@@ -28,7 +28,7 @@ use std::path::Path;
 use super::manifest::Manifest;
 
 /// The file a library declares its plugins in, inside `.yukifile/`.
-const LIST: &str = "plugins.json";
+pub const LIST: &str = "plugins.json";
 
 /// What a library said about plugins, and anything wrong with how it said it.
 #[derive(Debug, Default, PartialEq, Eq)]

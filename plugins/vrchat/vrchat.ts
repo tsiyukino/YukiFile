@@ -32,7 +32,8 @@
  * categories (`Clothing/outfit/`), two for one sorted by avatar and then by
  * kind (`.LAPWING/Clothes/outfit/`). A file at a grouping level is a product
  * too, since a file is never a grouping. That is a fact about how the person
- * arranged their library, told once, rather than a guess made per folder.
+ * arranged their library, told once in the library's settings as
+ * `vrchat.grouping_depth`, rather than a guess made per folder.
  *
  * Before either of those, the product's own evidence. A folder that directly
  * holds `Assets/`, `Packages/` or `ProjectSettings/`, or a model, a prefab or
@@ -119,11 +120,22 @@ export interface Proposed {
   readonly contains: readonly string[];
 }
 
-/** How deep the groupings go, by what the library action was called. */
-export const ACTIONS: Readonly<Record<string, number>> = {
-  "scan products": 1,
-  "scan products, groupings two deep": 2,
-};
+/** The setting that says how deep the groupings go. */
+export const DEPTH_SETTING = "vrchat.grouping_depth";
+
+/**
+ * The grouping depth a stored setting names.
+ *
+ * One when nothing is stored: a library sorted into categories is the
+ * layout the move manifest arrived at. Anything that is not a small whole
+ * number is read as one rather than refused, since a scan that will not run
+ * over a typo helps nobody; the settings page shows what is stored.
+ */
+export function depthFrom(stored: string | null | undefined): number {
+  if (stored === null || stored === undefined || stored.trim() === "") return 1;
+  const parsed = Number(stored);
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= 8 ? parsed : 1;
+}
 
 /**
  * Which entries become objects.

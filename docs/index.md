@@ -80,6 +80,8 @@ Generated per module from the source.
   proposal may write, entry by entry.
 - [term-page.md](reference/term-page.md) — a vocabulary term and everything
   that points at it: the reverse lookup, reaching a screen.
+- [settings.md](reference/settings.md) — what a library has decided about
+  itself: theme, plugins, mount order, and what plugins asked it to remember.
 - [paper-plugin.md](reference/paper-plugin.md) — the first semantic property, and the first form.
 - [pdf-plugin.md](reference/pdf-plugin.md) — the viewer slot's first consumer,
   and how a plugin renders a file it cannot read.

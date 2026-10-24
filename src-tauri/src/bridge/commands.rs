@@ -157,9 +157,19 @@ pub fn object_flat_in(
             carries.insert(format!("{namespace}#{instance}"));
         }
 
+        let pins = rows
+            .iter()
+            .filter_map(|row| {
+                let path = crate::store::path::ValuePath::parse(&row.path).ok()?;
+                (path.namespace == Some(crate::store::path::PIN))
+                    .then(|| (path.field.to_string(), row.value.clone()))
+            })
+            .collect();
+
         Ok(FlatObjectView {
             locations,
             carries: carries.into_iter().collect(),
+            pins,
             ..as_flat_view(id, &view)
         })
     })
@@ -230,6 +240,7 @@ fn as_flat_view(id: i64, view: &flatten::FlatView<'_>) -> FlatObjectView {
         skipped,
         carries: Vec::new(),
         locations: Vec::new(),
+        pins: BTreeMap::new(),
     }
 }
 

@@ -79,6 +79,9 @@ one is being reviewed; or a term, with everything that points at it
 names both ways of filling it: a scan, if an installed plugin offers one, or
 the Disk pane.
 
+A gear beside the segmented control opens the settings page in place of
+whatever the page was showing ([settings.md](settings.md)).
+
 Under the plugins' library actions sits the shell's own **Rescan**, which
 brings locations back in line with the disk and asks about what it could not
 prove (`bridge.md`, *bridge::rescan*).
@@ -107,9 +110,11 @@ first-class. `useColorMode` subscribes to `prefers-color-scheme` rather than
 reading it once, because a system that switches at sunset would otherwise
 leave the window in yesterday's theme.
 
-There is deliberately no in-app toggle. A toggle is a stored preference, and
-storing one before there is anywhere to put it means `localStorage` in a
-desktop app whose data lives in `.yukifile/`. It belongs with library settings.
+The toggle is a library setting, `theme`, on the settings page
+([settings.md](settings.md)). `main.tsx` reads it once at startup and the
+page changes it live; `system`, the default, is what following the OS always
+meant. Stored in the library's own table rather than `localStorage`, so
+copying the library copies the choice.
 
 ### Primer v38 removed `sx` and `Box`
 

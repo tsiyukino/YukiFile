@@ -31,6 +31,7 @@ pub mod covers;
 pub mod commands;
 pub mod objects;
 pub mod rescan;
+pub mod settings;
 pub mod error;
 pub mod library;
 pub mod views;
@@ -84,6 +85,12 @@ macro_rules! register_commands {
             $crate::bridge::objects::object_path_remove,
             $crate::bridge::rescan::library_reconcile,
             $crate::bridge::covers::cover_set,
+            $crate::bridge::settings::setting_get,
+            $crate::bridge::settings::setting_all,
+            $crate::bridge::settings::setting_set,
+            $crate::bridge::settings::library_info,
+            $crate::bridge::settings::plugins_enable,
+            $crate::bridge::settings::mount_order_set,
             $crate::bridge::commands::hash_of,
             $crate::bridge::commands::history_of,
             $crate::bridge::commands::import_propose,

@@ -62,12 +62,14 @@ model sources prove a product boundary"), and it is what lets
 `Bases/Airi_Ver1.00/` be a product without anyone saying so. `Textures/` is
 deliberately not evidence: a category can be called that.
 
-Then the library says, through which action is pressed:
+Then the library says, through its setting `vrchat.grouping_depth`, which the
+plugin reads with `setting.get` and the settings page shows:
 
-| action | groupings | a product is |
-|--------|-----------|--------------|
-| `scan products` | the top-level folders | anything directly inside one: `Clothing/outfit/` |
-| `scan products, groupings two deep` | two levels | anything at the third: `.LAPWING/Clothes/outfit/` |
+| depth | groupings | a product is |
+|-------|-----------|--------------|
+| `1` (the default) | the top-level folders | anything directly inside one: `Clothing/outfit/` |
+| `2` | two levels | anything at the third: `.LAPWING/Clothes/outfit/` |
+| `0` | none | everything at the root |
 
 Every folder down to the grouping depth is a grouping, holding each thing
 directly inside it through `contains`. Everything directly below the last
@@ -77,8 +79,8 @@ is a product too, since a file is never a grouping — which is what makes
 groupings go and never a product's own parts.
 
 That is a fact about how the person arranged their library, told once, rather
-than a guess made per folder. The proper home for it is a library setting; a
-pair of actions is where it lives until there is a settings page.
+than a guess made per folder. A value that is not a small whole number reads
+as one rather than refusing to scan; the settings page shows what is stored.
 
 **Categories nest.** The seed library has `NSFW/BDSM/Accessory/`, and a depth
 of one read `NSFW/BDSM` as a product holding 21 real ones. So a folder inside

@@ -6,10 +6,10 @@
  * Following the operating system is what makes that true without anybody
  * choosing a default that is wrong half the time.
  *
- * There is deliberately no in-app toggle yet. A toggle is a stored preference,
- * and a preference stored before there is anywhere to store it would be
- * localStorage in a desktop app whose data lives in `.yukifile/`. It belongs
- * with library settings, not here.
+ * The toggle is a library setting, `theme`: `system`, `light` or `dark`. It
+ * lives in the library's own table rather than in localStorage, so copying
+ * the library copies the choice, and so it sits with the other settings.
+ * `system` is the default and means what this file always did.
  */
 
 import { useEffect, useState } from "react";
@@ -49,4 +49,19 @@ export function useColorMode(): ColorMode {
   }, []);
 
   return mode;
+}
+
+/** What a person may choose. */
+export type ThemePreference = "system" | "light" | "dark";
+
+/** The preference a stored setting names, with anything else read as `system`. */
+export function parsePreference(stored: string | null | undefined): ThemePreference {
+  return stored === "light" || stored === "dark" ? stored : "system";
+}
+
+/** The mode to draw, given the preference and what the OS asks for. */
+export function modeFor(preference: ThemePreference, system: ColorMode): ColorMode {
+  if (preference === "light") return "day";
+  if (preference === "dark") return "night";
+  return system;
 }

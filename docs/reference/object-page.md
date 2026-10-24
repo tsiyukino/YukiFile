@@ -30,6 +30,15 @@ Hiding the others would make the model invisible exactly where somebody needs
 it: the moment they wonder why the title is not what they typed is the moment
 the answer has to be reachable.
 
+### Pins
+
+A pin is the per-object override of mount order, kept next to the value it
+changes with an obvious way to undo it. With something to write with, each
+source of a shared field gets **Prefer**, and the pinned one **pinned ·
+Unpin**. The pin is `@pin/<field>` holding `gumroad#1`, written through the
+same path as every other edit; `object.flat` reports it as `pins`. A field
+with one source has no order to override and draws nothing.
+
 ## Regions
 
 `PropertyRegion` draws one property instance: the fields that plugin keeps to

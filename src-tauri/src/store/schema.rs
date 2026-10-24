@@ -24,6 +24,7 @@ const MIGRATIONS: &[Migration] = &[
     Migration { version: 2, sql: V2 },
     Migration { version: 3, sql: V3 },
     Migration { version: 4, sql: V4 },
+    Migration { version: 5, sql: V5 },
 ];
 
 /// The version this build expects.
@@ -345,6 +346,7 @@ mod tests {
                 "object_paths",
                 "object_properties",
                 "objects",
+                "settings",
                 "terms",
                 "values_",
             ]
@@ -1193,4 +1195,12 @@ CREATE TABLE object_properties (
     instance   INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (object_id, namespace, instance)
 );
+"#;
+
+/// Settings: what a library has decided about itself. See `store::settings`.
+const V5: &str = r#"
+CREATE TABLE settings (
+    key   TEXT NOT NULL PRIMARY KEY,
+    value TEXT NOT NULL
+) STRICT;
 "#;

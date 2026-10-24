@@ -58,7 +58,8 @@ fn start() -> Result<(), String> {
             Ok(())
         })
         .manage(library)
-        .manage(registry);
+        .manage(registry)
+        .manage(yukifile::bridge::settings::PluginsDir(plugins_dir()));
 
     register_commands!(builder)
         .run(tauri::generate_context!())

@@ -2839,3 +2839,132 @@ fn a_cover_source_deserialises_tagged() {
     let file: CoverSource = serde_json::from_str(r#"{"from":"file","path":"p.png"}"#).expect("parse");
     assert_eq!(file, CoverSource::File { path: "p.png".into() });
 }
+
+// --- settings, plugins, mount order ----------------------------------------
+
+use yukifile::bridge::settings::*;
+
+#[test]
+fn a_setting_is_set_read_and_cleared() {
+    let (library, _dir) = library();
+
+    assert_eq!(setting_get_in(&library, "theme").expect("get"), None);
+    setting_set_in(&library, "theme", "dark").expect("set");
+    assert_eq!(setting_get_in(&library, "theme").expect("get").as_deref(), Some("dark"));
+    assert_eq!(setting_all_in(&library).expect("all"), vec![SettingView { key: "theme".into(), value: "dark".into() }]);
+    setting_set_in(&library, "theme", "").expect("clear");
+    assert!(setting_all_in(&library).expect("all").is_empty());
+}
+
+#[test]
+fn a_key_with_whitespace_or_nothing_is_not_a_key() {
+    let (library, _dir) = library();
+    for bad in ["", "has space", "tab\there"] {
+        assert!(matches!(setting_set_in(&library, bad, "x"), Err(BridgeError::BadRequest(_))), "{bad:?}");
+    }
+}
+
+#[test]
+fn library_info_says_what_is_installed_enabled_and_running() {
+    // Installed is the plugins directory; enabled is the library's list;
+    // running is the registry this session loaded. They differ until the
+    // next open, and the page says so.
+    let (library, dir) = library();
+    let plugins = dir.path().join("plugins-installed");
+    for id in ["a", "b"] {
+        let folder = plugins.join(id);
+        fs::create_dir_all(&folder).expect("mkdir");
+        fs::write(folder.join("manifest.json"), format!(r#"{{"id":"test.{id}"}}"#)).expect("manifest");
+    }
+    fs::create_dir_all(plugins.join("broken")).expect("mkdir");
+    fs::write(plugins.join("broken").join("manifest.json"), "{ not json").expect("manifest");
+
+    plugins_enable_in(&library, Some(vec!["test.a".into()])).expect("enable");
+    let registry = yukifile::plugin::registry::Registry::load(vec![
+        yukifile::plugin::manifest::Manifest { id: "test.b".into(), ..Default::default() },
+    ])
+    .expect("registry");
+
+    let info = library_info_in(&library, Some(&registry), &plugins).expect("info");
+
+    assert!(info.chosen);
+    assert_eq!(info.root, dir.path().display().to_string());
+    let a = info.plugins.iter().find(|p| p.id == "test.a").expect("a");
+    let b = info.plugins.iter().find(|p| p.id == "test.b").expect("b");
+    assert!(a.enabled && !a.running);
+    assert!(!b.enabled && b.running);
+    assert_eq!(info.skipped.len(), 1);
+    assert_eq!(info.skipped[0].0, "broken");
+}
+
+#[test]
+fn enabling_none_removes_the_list_and_means_everything() {
+    let (library, dir) = library();
+    plugins_enable_in(&library, Some(vec!["test.a".into()])).expect("enable");
+    let list = dir.path().join(".yukifile").join("plugins.json");
+    assert!(list.is_file());
+
+    plugins_enable_in(&library, None).expect("all");
+    assert!(!list.exists());
+    // Twice is fine.
+    plugins_enable_in(&library, None).expect("all again");
+
+    let plugins = dir.path().join("none-installed");
+    fs::create_dir_all(&plugins).expect("mkdir");
+    assert!(!library_info_in(&library, None, &plugins).expect("info").chosen);
+}
+
+#[test]
+fn mounts_can_be_put_in_a_new_order_only_as_a_whole() {
+    let (library, _dir) = library();
+    mount(&library, "booth", 1, 0);
+    mount(&library, "gumroad", 1, 1);
+    mount(&library, "booth", 2, 2);
+
+    let at = |namespace: &str, instance: u32| MountAt { namespace: namespace.into(), instance };
+
+    mount_order_set_in(&library, vec![at("gumroad", 1), at("booth", 2), at("booth", 1)]).expect("reorder");
+    let order: Vec<(String, u32)> = mount_order_in(&library)
+        .expect("order")
+        .into_iter()
+        .map(|m| (m.namespace, m.instance))
+        .collect();
+    assert_eq!(order, [("gumroad".to_string(), 1), ("booth".to_string(), 2), ("booth".to_string(), 1)]);
+
+    // Leaving one out would park it somewhere nobody chose.
+    assert!(matches!(
+        mount_order_set_in(&library, vec![at("gumroad", 1), at("booth", 2)]),
+        Err(BridgeError::BadRequest(_))
+    ));
+    // Naming one that is not mounted is not how mounting happens.
+    assert!(matches!(
+        mount_order_set_in(&library, vec![at("gumroad", 1), at("booth", 2), at("booth", 1), at("paper", 1)]),
+        Err(BridgeError::BadRequest(_))
+    ));
+    // Naming one twice.
+    assert!(matches!(
+        mount_order_set_in(&library, vec![at("gumroad", 1), at("booth", 2), at("booth", 2)]),
+        Err(BridgeError::BadRequest(_))
+    ));
+}
+
+#[test]
+fn a_pin_is_reported_on_the_resolved_object_and_unpinning_hands_back() {
+    // The page needs to know which source is pinned to draw it as such, and
+    // to offer to take the pin off.
+    let (library, _dir) = library();
+    mount(&library, "booth", 1, 0);
+    mount(&library, "gumroad", 1, 1);
+    let registry = registry_sharing("booth", &["title"]);
+    let id = object_with(&library, &[("booth#1/title", "booth says"), ("gumroad#1/title", "gumroad says")]);
+
+    let before = object_flat_in(&library, Some(&registry), id).expect("flat");
+    assert!(before.pins.is_empty());
+
+    object_value_set_in(&library, id, "@pin/title", "gumroad#1").expect("pin");
+    let pinned = object_flat_in(&library, Some(&registry), id).expect("flat");
+    assert_eq!(pinned.pins.get("title").map(String::as_str), Some("gumroad#1"));
+
+    object_value_set_in(&library, id, "@pin/title", "").expect("unpin");
+    assert!(object_flat_in(&library, Some(&registry), id).expect("flat").pins.is_empty());
+}

@@ -423,6 +423,76 @@ pub fn mount(connection: &Connection, namespace: &str, instance: u32) -> rusqlit
     Ok(())
 }
 
+/// Put the mounts in a new order.
+///
+/// The order is the whole of the library-wide rule, so a person changing it
+/// is changing what every page shows first. Every mount has to be named: a
+/// mount left out would keep its old position and sit somewhere nobody chose.
+/// Mounts are not created here -- a namespace not mounted is refused -- since
+/// mounting is what choosing a property does.
+pub fn reorder_mounts(connection: &Connection, order: &[(String, u32)]) -> Result<(), ReorderError> {
+    let current = mount_order(connection)?;
+    let have: std::collections::BTreeSet<(String, u32)> =
+        current.iter().map(|m| (m.namespace.clone(), m.instance)).collect();
+    let want: std::collections::BTreeSet<(String, u32)> = order.iter().cloned().collect();
+
+    if order.len() != want.len() {
+        return Err(ReorderError::Repeated);
+    }
+    if let Some(missing) = have.difference(&want).next() {
+        return Err(ReorderError::LeftOut(format!("{}#{}", missing.0, missing.1)));
+    }
+    if let Some(extra) = want.difference(&have).next() {
+        return Err(ReorderError::NotMounted(format!("{}#{}", extra.0, extra.1)));
+    }
+
+    // Positions are unique, so moving through a gap avoids colliding with a
+    // row that has not moved yet.
+    let gap = current.len() as i64;
+    for (at, (namespace, instance)) in order.iter().enumerate() {
+        connection.execute(
+            "UPDATE mounts SET position = ?1 WHERE namespace = ?2 AND instance = ?3",
+            params![gap + at as i64, namespace, instance],
+        )?;
+    }
+    for (at, (namespace, instance)) in order.iter().enumerate() {
+        connection.execute(
+            "UPDATE mounts SET position = ?1 WHERE namespace = ?2 AND instance = ?3",
+            params![at as i64, namespace, instance],
+        )?;
+    }
+    Ok(())
+}
+
+/// Why a new mount order was refused.
+#[derive(Debug)]
+pub enum ReorderError {
+    /// A mount named twice.
+    Repeated,
+    /// A mount the library has, not named.
+    LeftOut(String),
+    /// A mount named that the library does not have.
+    NotMounted(String),
+    Database(rusqlite::Error),
+}
+
+impl std::fmt::Display for ReorderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Repeated => write!(f, "a mount is named twice"),
+            Self::LeftOut(mount) => write!(f, "{mount} is mounted and was left out of the order"),
+            Self::NotMounted(mount) => write!(f, "{mount} is not mounted"),
+            Self::Database(error) => write!(f, "{error}"),
+        }
+    }
+}
+
+impl From<rusqlite::Error> for ReorderError {
+    fn from(error: rusqlite::Error) -> Self {
+        Self::Database(error)
+    }
+}
+
 /// This library's mount order, lowest position first.
 ///
 /// The shared list comes back empty: it is declared in each plugin's manifest,

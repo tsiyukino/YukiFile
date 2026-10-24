@@ -13,6 +13,7 @@ vi.mock("./invoke.js", () => ({
       case "object_edges": return [];
       case "path_list": return [];
       case "term_vocabularies": return [];
+      case "setting_get": return null;
       default: throw new Error(`unexpected ${command}`);
     }
   },
