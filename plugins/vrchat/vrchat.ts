@@ -34,6 +34,14 @@
  * too, since a file is never a grouping. That is a fact about how the person
  * arranged their library, told once, rather than a guess made per folder.
  *
+ * Before either of those, the product's own evidence. A folder that directly
+ * holds `Assets/`, `Packages/` or `ProjectSettings/`, or a model, a prefab or
+ * a material, is a Unity layout -- an unpacked package or a project -- and a
+ * Unity layout is one thing. That is not a judgement about meaning; it is
+ * what the format is. It is what lets `Bases/Airi_Ver1.00/` be a product
+ * without anyone saying so, and it is the rule VRCAL's scanner arrived at:
+ * "engine layouts and loose model sources prove a product boundary".
+ *
  * One more fact, from the same place: categories nest. The seed library has
  * `NSFW/BDSM/Accessory/`, and a depth of one read `NSFW/BDSM` as a product
  * holding 21 real ones. A folder inside a grouping whose name is one of the
@@ -83,6 +91,26 @@ export const CATEGORIES: readonly string[] = [
  */
 export const GROUPING_NAMES: readonly string[] = [...CATEGORIES, "BDSM", "BodyPart"];
 
+/**
+ * What proves a folder is a Unity layout, and so one thing.
+ *
+ * Folder names Unity itself makes, and file types that only exist inside
+ * one. `Textures/` is deliberately not here: a category can be called that,
+ * and `vrc-lessons.md` made the mistake of judging it twice.
+ */
+const ENGINE_FOLDERS: readonly string[] = ["assets", "packages", "projectsettings"];
+const ENGINE_FILES: readonly string[] = ["fbx", "obj", "blend", "prefab", "mat", "anim", "controller", "shader", "unity"];
+
+/** Whether these direct children prove a Unity layout. */
+export function isEngineLayout(children: readonly Entry[]): boolean {
+  return children.some((child) => {
+    const name = child.path.slice(child.path.lastIndexOf("/") + 1).toLowerCase();
+    if (child.kind === "folder") return ENGINE_FOLDERS.includes(name);
+    const dot = name.lastIndexOf(".");
+    return dot !== -1 && ENGINE_FILES.includes(name.slice(dot + 1));
+  });
+}
+
 /** One object a scan proposes. */
 export interface Proposed {
   readonly path: string;
@@ -117,11 +145,20 @@ export function productsFrom(entries: readonly Entry[], groupingDepth = 1): Prop
   const nameOf = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
   const depthOf = (path: string): number => path.split("/").length;
 
+  const childrenOf = new Map<string, Entry[]>();
+  for (const entry of entries) {
+    const held = childrenOf.get(parentOf(entry.path)) ?? [];
+    held.push(entry);
+    childrenOf.set(parentOf(entry.path), held);
+  }
+
   // Decided top-down: a folder can only be a grouping if its parent is one.
-  // The root is one by definition.
+  // The root is one by definition. A Unity layout is never one, whatever its
+  // depth or name: the product's own evidence comes first.
   const groupings = new Set<string>([""]);
   for (const entry of [...entries].sort((a, b) => depthOf(a.path) - depthOf(b.path))) {
     if (entry.kind !== "folder" || !groupings.has(parentOf(entry.path))) continue;
+    if (isEngineLayout(childrenOf.get(entry.path) ?? [])) continue;
     const named = GROUPING_NAMES.some((name) => name.toLowerCase() === nameOf(entry.path).toLowerCase());
     if (depthOf(entry.path) <= groupingDepth || named) groupings.add(entry.path);
   }
@@ -133,7 +170,7 @@ export function productsFrom(entries: readonly Entry[], groupingDepth = 1): Prop
       proposed.push({
         path: entry.path,
         isFolder: true,
-        contains: entries.filter((inside) => parentOf(inside.path) === entry.path).map((inside) => inside.path),
+        contains: (childrenOf.get(entry.path) ?? []).map((inside) => inside.path),
       });
     } else {
       proposed.push({ path: entry.path, isFolder: entry.kind === "folder", contains: [] });

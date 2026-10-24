@@ -8,6 +8,7 @@ import {
   boothUrl,
   categorySuggestedBy,
   documentFor,
+  isEngineLayout,
   productsFrom,
   vrchatFields,
 } from "./vrchat.js";
@@ -103,6 +104,40 @@ describe("what counts as a product", () => {
       ["NSFW/BodyPart", true],
       ["NSFW/BodyPart/DPS-SPS", false],
     ]);
+  });
+
+  test("a Unity layout is one thing, whatever its depth or name", () => {
+    // Bases/Airi_Ver1.00/ holds Assets/, so it is a product without anyone
+    // saying so. A top-level folder holding a prefab is a product too, even
+    // though depth alone would make it a grouping; and a folder named like
+    // a category that holds Assets/ is a product, because the format says
+    // so and the name only guesses.
+    const proposed = productsFrom([
+      entry("Bases", "folder"),
+      entry("Bases/Airi_Ver1.00", "folder"),
+      entry("Bases/Airi_Ver1.00/Assets", "folder"),
+      entry("Bases/Airi_Ver1.00/Assets/Airi/body.fbx"),
+      entry("Gloves", "folder"),
+      entry("Gloves/gloves.prefab"),
+      entry("Gloves/Textures", "folder"),
+      entry("Hair", "folder"),
+      entry("Hair/Assets", "folder"),
+      entry("Hair/Assets/x.fbx"),
+    ]);
+
+    expect(proposed.map((p) => p.path)).toEqual(["Bases", "Bases/Airi_Ver1.00", "Gloves", "Hair"]);
+    expect(proposed.find((p) => p.path === "Gloves")?.contains).toEqual([]);
+  });
+
+  test("what counts as a Unity layout", () => {
+    expect(isEngineLayout([entry("p/Assets", "folder")])).toBe(true);
+    expect(isEngineLayout([entry("p/ProjectSettings", "folder")])).toBe(true);
+    expect(isEngineLayout([entry("p/outfit.prefab")])).toBe(true);
+    expect(isEngineLayout([entry("p/skin.mat")])).toBe(true);
+    // A Textures/ folder or a png proves nothing: a category can be called
+    // Texture, and a promo image sits anywhere.
+    expect(isEngineLayout([entry("p/Textures", "folder"), entry("p/promo.png")])).toBe(false);
+    expect(isEngineLayout([])).toBe(false);
   });
 
   test("a category's name inside a product does not make it a grouping", () => {

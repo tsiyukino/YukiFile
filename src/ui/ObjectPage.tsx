@@ -75,7 +75,15 @@ export function ObjectPage({
   // an object the moment it carries the property, not once the plugin has
   // already written something under it.
   const contributions = panelsFor(plugins, object.carries, mounts);
-  const shown = regionsToShow(object);
+  // `file` and `folder` are the two properties everything on disk carries.
+  // A region for one with nothing in it and nothing drawing in it is a
+  // heading over an empty space on every object page there is.
+  const shown = regionsToShow(object).filter(
+    (region) =>
+      !(["file", "folder"].includes(region.property) &&
+        Object.keys(region.fields).length === 0 &&
+        !contributions.some((c) => c.property === region.property)),
+  );
   const counts = instanceCounts(shown);
 
   const headline = object.shared[HEADLINE];

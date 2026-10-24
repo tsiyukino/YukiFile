@@ -155,8 +155,8 @@ function Links({ api, app, object, plugins, onChanged }: ObjectEditorProps): Rea
   // Declared by a manifest or held by the library: the seed's avatars arrive
   // by import before any plugin draws them, and a person can still say an
   // outfit fits one.
-  const [held, setHeld] = useState<string[]>([]);
-  const vocabularies = [...new Set([...vocabulariesOf(plugins), ...held])].sort();
+  const [inLibraryVocabs, setInLibraryVocabs] = useState<string[]>([]);
+  const vocabularies = [...new Set([...vocabulariesOf(plugins), ...inLibraryVocabs])].sort();
 
   // New-edge form.
   const [kind, setKind] = useState("supports");
@@ -180,7 +180,7 @@ function Links({ api, app, object, plugins, onChanged }: ObjectEditorProps): Rea
       setEdges(found);
       setNames(named);
       setPaths(known);
-      setHeld(inLibrary);
+      setInLibraryVocabs(inLibrary);
       setTerms(vocabTerms.flat());
       setAim((chosen) => (chosen === "object" || every.includes(chosen) ? chosen : every[0] ?? "object"));
     };
@@ -213,15 +213,24 @@ function Links({ api, app, object, plugins, onChanged }: ObjectEditorProps): Rea
   };
 
   const termsIn = terms.filter((candidate) => candidate.vocab === aim);
+  const held = edges.filter((edge) => edge.kind === "contains");
+  const shownEdges = edges.filter((edge) => edge.kind !== "contains");
 
   return (
     <Stack gap="condensed">
       <Heading as="h3">Points at</Heading>
       {reading && <InlineMessage variant="warning">{reading}</InlineMessage>}
-      {edges.length === 0 && !reading && <Text size="small">Nothing yet.</Text>}
-      {edges.length > 0 && (
+      {held.length > 0 && (
+        // What a grouping holds is what the library pane draws when it is
+        // opened; forty rows of "contains" here say the same thing twice.
+        <Text size="small">
+          Holds {held.length} {held.length === 1 ? "object" : "objects"}, listed in the Library pane.
+        </Text>
+      )}
+      {shownEdges.length === 0 && held.length === 0 && !reading && <Text size="small">Nothing yet.</Text>}
+      {shownEdges.length > 0 && (
         <ActionList>
-          {edges.map((edge) => {
+          {shownEdges.map((edge) => {
             const key =
               edge.target === "object" ? `${edge.kind}:o:${edge.id}` : `${edge.kind}:t:${edge.vocab}:${edge.term}`;
             return (

@@ -554,7 +554,7 @@ describe("a property with nothing written under it", () => {
     render(
       <ObjectPage
         api={api}
-        object={flat({ carries: ["archive#1", "file#1"], regions: [] })}
+        object={flat({ carries: ["archive#1", "pdf#1"], regions: [] })}
         plugins={[]}
         loaded={[]}
         mounts={[]}
@@ -562,7 +562,27 @@ describe("a property with nothing written under it", () => {
     );
 
     const headings = screen.getAllByRole("heading", { level: 2 });
-    expect(headings.map((h) => h.textContent)).toEqual(["archive", "file"]);
+    expect(headings.map((h) => h.textContent)).toEqual(["archive", "pdf"]);
+  });
+
+  test("an empty file or folder region is not drawn", () => {
+    // Everything on disk carries one of the two. A heading over an empty
+    // space on every page says nothing; one with a field in it still draws.
+    render(
+      <ObjectPage
+        api={api}
+        object={flat({
+          carries: ["folder#1", "file#1", "archive#1"],
+          regions: [{ property: "file", instance: 1, fields: { note: "x" } }],
+        })}
+        plugins={[]}
+        loaded={[]}
+        mounts={[]}
+      />,
+    );
+
+    const headings = screen.getAllByRole("heading", { level: 2 });
+    expect(headings.map((h) => h.textContent)).toEqual(["file", "archive"]);
   });
 });
 

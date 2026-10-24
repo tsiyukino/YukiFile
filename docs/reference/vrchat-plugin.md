@@ -53,7 +53,16 @@ the folder says which. The first version decided by content — a folder with
 loose files is a product — and on the real library it made 800 objects of 174
 products, because an unpacked package is a folder of folders.
 
-So the library says, through which action is pressed:
+Before anything else, the product's own evidence. A folder that directly holds
+`Assets/`, `Packages/` or `ProjectSettings/`, or a model, prefab or material
+file, is a Unity layout — an unpacked package or a project — and one thing,
+whatever its depth or name. That is what the format is, not a judgement about
+meaning. It is the rule VRCAL's scanner arrived at ("engine layouts and loose
+model sources prove a product boundary"), and it is what lets
+`Bases/Airi_Ver1.00/` be a product without anyone saying so. `Textures/` is
+deliberately not evidence: a category can be called that.
+
+Then the library says, through which action is pressed:
 
 | action | groupings | a product is |
 |--------|-----------|--------------|

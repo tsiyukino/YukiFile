@@ -139,6 +139,14 @@ root and saying whether it is a file or a folder; the core checks it is there
 and nobody else's. Typed rather than picked for now — the disk browser is the
 natural picker and will become one.
 
+### What is not drawn
+
+A `file` or `folder` region with no fields and no panel is left out: every
+object on disk carries one of the two, and a heading over an empty space on
+every page says nothing. A grouping's `contains` edges are summarised as a
+count rather than listed, since the Library pane draws them when the grouping
+is opened.
+
 ### After any edit
 
 `onChanged` bumps the shell's generation, which re-reads the object on screen
