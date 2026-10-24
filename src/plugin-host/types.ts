@@ -55,6 +55,18 @@ export interface Contributes {
   /** Property to the actions offered on objects carrying it. */
   readonly actions?: Readonly<Record<string, readonly string[]>>;
 
+  /**
+   * The module holding this plugin's object actions.
+   *
+   * One module for all of them, as with library actions. Its
+   * `runObjectAction` is handed a `PressedApi`: the ordinary api plus the
+   * network, lent for the duration of the press and only for `hosts`.
+   */
+  readonly action_module?: string;
+
+  /** Hosts this plugin's actions may reach: `booth.pm`, `*.booth.pm`. */
+  readonly hosts?: readonly string[];
+
   /** Property to the full-screen viewer module. */
   readonly viewers?: Readonly<Record<string, string>>;
 

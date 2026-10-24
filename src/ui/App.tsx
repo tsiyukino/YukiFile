@@ -29,6 +29,7 @@ import { useEffect, useState } from "react";
 import {
   apiFor,
   appApiFor,
+  pressedApiFor,
   type Api,
   type AppApi,
   type FlatObject,
@@ -411,7 +412,9 @@ export function LibraryActions({
       return;
     }
 
-    fn({ api, action })
+    // The press lends the plugin the network, for the hosts it named.
+    const manifest = plugins.find((p) => p.id === plugin);
+    fn({ api: pressedApiFor(api, app, manifest?.contributes?.hosts ?? []), action })
       .then((outcome) => {
         setResult(outcome.summary);
         if (outcome.changed) onChanged();

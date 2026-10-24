@@ -11,5 +11,6 @@
 pub mod archive;
 pub mod cover;
 pub mod hash;
+pub mod http;
 pub mod scan;
 pub mod unitypackage;

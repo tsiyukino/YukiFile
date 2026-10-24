@@ -263,6 +263,13 @@ export interface LibraryInfo {
   readonly skipped: readonly (readonly [string, string])[];
 }
 
+/** What one request returned. */
+export interface Fetched {
+  readonly status: number;
+  /** The body as text. A picture goes through `coverFetch` instead. */
+  readonly body: string;
+}
+
 /** What an export wrote. */
 export interface Exported {
   readonly objects: number;
@@ -545,6 +552,10 @@ export interface AppApi {
   objectPathAdd(id: ObjectId, at: PathAt): Promise<void>;
   /** Take a place away. Only from the object that holds it. */
   objectPathRemove(id: ObjectId, path: string): Promise<void>;
+  /** GET one https URL. The application's; lent to a plugin inside a press. */
+  httpGet(url: string): Promise<Fetched>;
+  /** Fetch a picture and store it as a cover, without writing any field. Returns the path. */
+  coverFetch(url: string): Promise<string>;
   /** Write the library as a document to a file the person chose. An absolute path. */
   libraryExportFile(to: string): Promise<Exported>;
   /** Import a document from a file the person chose, through the usual review. */
@@ -615,6 +626,8 @@ export function appApiFor(invoke: Invoke): AppApi {
       invoke(handlerName("object.path.add"), { id, at }) as Promise<void>,
     objectPathRemove: (id, path) =>
       invoke(handlerName("object.path.remove"), { id, path }) as Promise<void>,
+    httpGet: (url) => invoke(handlerName("http.get"), { url }) as Promise<Fetched>,
+    coverFetch: (url) => invoke(handlerName("cover.fetch"), { url }) as Promise<string>,
     libraryExportFile: (to) => invoke(handlerName("library.export.file"), { to }) as Promise<Exported>,
     libraryImportFile: (from) => invoke(handlerName("library.import.file"), { from }) as Promise<Proposal>,
     settingAll: () => invoke(handlerName("setting.all"), {}) as Promise<SettingRow[]>,
@@ -667,5 +680,49 @@ export function apiFor(invoke: Invoke): Api {
     importPropose: (label, document) => call("import.propose", { label, document }),
     changesPending: () => call("changes.pending", {}),
     changesEntries: (set) => call("changes.entries", { set }),
+  };
+}
+
+/**
+ * The api a plugin is handed while an action a person pressed is running.
+ *
+ * The ordinary api plus the network. `docs.yml` says the network is reached
+ * when the user presses a button; a plugin is not a button, so `http.get` is
+ * not on the plugin list, and the host lends it here for the duration of a
+ * press, to the hosts the plugin's manifest named and no other. A panel
+ * drawing is not a press and gets the ordinary api.
+ */
+export interface PressedApi extends Api {
+  httpGet(url: string): Promise<Fetched>;
+  coverFetch(url: string): Promise<string>;
+}
+
+/**
+ * Whether a URL's host is one a manifest named.
+ *
+ * `booth.pm` matches itself; `*.booth.pm` matches any one or more labels
+ * before it and not `booth.pm` itself. Only https: a plugin told something
+ * came from a shop should have heard it from the shop.
+ */
+export function hostAllowed(hosts: readonly string[], url: string): boolean {
+  const match = /^https:\/\/([^/?#]+)/i.exec(url);
+  if (!match) return false;
+  const host = (match[1] ?? "").split("@").pop()?.split(":")[0]?.toLowerCase() ?? "";
+  if (host === "") return false;
+  return hosts.some((pattern) => {
+    const wanted = pattern.toLowerCase();
+    if (wanted.startsWith("*.")) return host.endsWith(wanted.slice(1)) && host !== wanted.slice(2);
+    return host === wanted;
+  });
+}
+
+/** The lent api, for one plugin's press. */
+export function pressedApiFor(api: Api, app: AppApi, hosts: readonly string[]): PressedApi {
+  const refuse = (url: string): Error =>
+    new Error(`${url} is not on a host this plugin may reach (${hosts.length === 0 ? "none named" : hosts.join(", ")})`);
+  return {
+    ...api,
+    httpGet: (url) => (hostAllowed(hosts, url) ? app.httpGet(url) : Promise.reject(refuse(url))),
+    coverFetch: (url) => (hostAllowed(hosts, url) ? app.coverFetch(url) : Promise.reject(refuse(url))),
   };
 }

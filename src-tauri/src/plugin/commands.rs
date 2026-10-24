@@ -282,6 +282,19 @@ pub const APP_ONLY: &[Command] = &[
                  review every import gets",
     },
     Command {
+        name: "http.get",
+        effect: Effect::Write,
+        reason: "the network is reached when a person presses a button; the \
+                 host lends this to a plugin only inside such a press, and \
+                 only for the hosts its manifest named",
+    },
+    Command {
+        name: "cover.fetch",
+        effect: Effect::Write,
+        reason: "a shop's picture stored as a cover, for a plugin to propose \
+                 the path under its own property",
+    },
+    Command {
         name: "cover.set",
         effect: Effect::Write,
         reason: "a person picks the picture that stands for a thing; the bytes \
@@ -450,6 +463,17 @@ mod tests {
             assert!(!command.reason.trim().is_empty(), "{} has no reason", command.name);
             assert!(!command.name.trim().is_empty(), "a command has no name");
         }
+    }
+
+    #[test]
+    fn the_network_is_the_applications_and_never_a_plugins() {
+        // docs.yml: the network is reached when the user presses a button.
+        // The command exists, on the list only the application may call,
+        // and the host lends it for the duration of a press. A plugin
+        // command named for the network would fail the test above this
+        // one, which is the point of that test.
+        assert!(!is_allowed("http.get"));
+        assert!(APP_ONLY.iter().any(|c| c.name == "http.get"));
     }
 
     #[test]

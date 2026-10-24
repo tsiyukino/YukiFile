@@ -50,7 +50,7 @@ export type Resolve = (specifier: string, plugin: string) => Promise<unknown>;
 /** A module a manifest asked for, and where it was asked for. */
 export interface Needed {
   /** Which kind of module this is. */
-  readonly slot: "panel" | "viewer" | "form" | "library-action";
+  readonly slot: "panel" | "viewer" | "form" | "library-action" | "action";
   /** The property whose region it renders in. */
   readonly property: string;
   readonly specifier: string;
@@ -105,6 +105,11 @@ export function modulesOf(manifest: Manifest): Needed[] {
   if (actions && !seen.has(actions)) {
     seen.add(actions);
     needed.push({ slot: "library-action", property: "", specifier: actions });
+  }
+  const objectActions = manifest.contributes?.action_module;
+  if (objectActions && !seen.has(objectActions)) {
+    seen.add(objectActions);
+    needed.push({ slot: "action", property: "", specifier: objectActions });
   }
 
   return needed;

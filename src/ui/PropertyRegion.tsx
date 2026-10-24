@@ -12,12 +12,21 @@
  */
 
 import { InlineMessage } from "@primer/react/experimental";
-import { Heading, Stack, Text } from "@primer/react";
+import { Button, Heading, Stack, Text } from "@primer/react";
+import { useState } from "react";
 
 import type { Api, ObjectId, Region } from "../plugin-host/commands.js";
 import type { Panel } from "../plugin-host/panel.js";
 import { isFieldName } from "./edit.js";
 import { FieldEditor, NewField } from "./FieldEditor.js";
+
+/** An action offered in this region, ready to run. */
+export interface ResolvedAction {
+  readonly plugin: string;
+  readonly action: string;
+  /** Run it. Resolves to one line and whether the library changed. */
+  readonly run: () => Promise<{ summary: string; changed: boolean }>;
+}
 
 /** A panel that belongs in this region, once resolved. */
 export interface ResolvedPanel {
@@ -43,6 +52,10 @@ export interface PropertyRegionProps {
    * read-only. The page spells the stored path; the region knows only names.
    */
   readonly onSet?: ((name: string, value: string) => Promise<void>) | undefined;
+  /** Actions plugins offer on this property, as buttons. */
+  readonly actions?: readonly ResolvedAction[] | undefined;
+  /** An action said the library changed; whoever owns it should re-read. */
+  readonly onChanged?: (() => void) | undefined;
 }
 
 export function PropertyRegion({
@@ -52,12 +65,47 @@ export function PropertyRegion({
   panels,
   instancesOfProperty,
   onSet,
+  actions,
+  onChanged,
 }: PropertyRegionProps): React.JSX.Element {
   const fields = Object.entries(region.fields);
+  const [running, setRunning] = useState<string | undefined>(undefined);
+  const [said, setSaid] = useState<string | undefined>(undefined);
+
+  const press = (action: ResolvedAction): void => {
+    setRunning(action.action);
+    setSaid(undefined);
+    action
+      .run()
+      .then((outcome) => {
+        setSaid(outcome.summary);
+        if (outcome.changed) onChanged?.();
+      })
+      .catch((error: unknown) => setSaid(error instanceof Error ? error.message : String(error)))
+      .finally(() => setRunning(undefined));
+  };
 
   return (
     <Stack gap="condensed">
       <Heading as="h2">{regionTitle(region, instancesOfProperty)}</Heading>
+
+      {actions && actions.length > 0 && (
+        // The press is what lends a plugin the network. Nothing on this page
+        // reaches outside until one of these is pressed.
+        <Stack direction="horizontal" gap="condensed" align="center" wrap="wrap">
+          {actions.map((action) => (
+            <Button
+              key={`${action.plugin}:${action.action}`}
+              size="small"
+              disabled={running !== undefined}
+              onClick={() => press(action)}
+            >
+              {running === action.action ? `${action.action}…` : action.action}
+            </Button>
+          ))}
+          {said && <Text size="small">{said}</Text>}
+        </Stack>
+      )}
 
       {fields.length > 0 && !onSet && (
         <Stack gap="none">

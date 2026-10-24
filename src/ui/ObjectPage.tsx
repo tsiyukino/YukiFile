@@ -27,15 +27,16 @@ import type {
   Region,
 } from "../plugin-host/commands.js";
 import type { Contribution, Mount } from "../plugin-host/slots.js";
-import { panelsFor } from "../plugin-host/slots.js";
-import { panelComponent, type Panel } from "../plugin-host/panel.js";
+import { actionsFor, panelsFor } from "../plugin-host/slots.js";
+import { objectAction, panelComponent, type Panel } from "../plugin-host/panel.js";
+import { pressedApiFor } from "../plugin-host/commands.js";
 import type { Loaded } from "../plugin-host/loader.js";
 import type { Manifest } from "../plugin-host/types.js";
 import { Cover } from "./Cover.js";
 import { fieldPath, isFieldName } from "./edit.js";
 import { FieldEditor, NewField } from "./FieldEditor.js";
 import { ObjectEditor } from "./ObjectEditor.js";
-import { PropertyRegion, type ResolvedPanel } from "./PropertyRegion.js";
+import { PropertyRegion, type ResolvedAction, type ResolvedPanel } from "./PropertyRegion.js";
 import { SourceList } from "./SourceList.js";
 import { Viewer } from "./Viewer.js";
 
@@ -205,6 +206,8 @@ export function ObjectPage({
           region={region}
           instancesOfProperty={counts.get(region.property) ?? 1}
           panels={panelsIn(region, contributions, loaded)}
+          actions={app && onChanged ? actionsIn(region, actionsFor(plugins, object.carries, mounts), plugins, loaded, api, app, object.id) : undefined}
+          onChanged={onChanged}
           onSet={
             app && onChanged
               ? async (name, value) => {
@@ -346,4 +349,47 @@ function componentFor(
   const owner = loaded.find((entry) => entry.manifest.id === contribution.plugin);
   if (!owner) return undefined;
   return panelComponent(owner.modules.get(contribution.value));
+}
+
+/**
+ * The actions offered in one region, each ready to run with the lent api.
+ *
+ * The api handed to the action carries the network for the hosts the
+ * plugin's manifest named: the press is what lends it. An action whose
+ * module did not load, or has no `runObjectAction`, is left out rather than
+ * drawn as a button that fails -- the panel in the same region already says
+ * which plugin is missing.
+ */
+export function actionsIn(
+  region: Region,
+  contributions: readonly Contribution[],
+  plugins: readonly Manifest[],
+  loaded: readonly Loaded[],
+  api: Api,
+  app: AppApi,
+  objectId: FlatObject["id"],
+): ResolvedAction[] {
+  const resolved: ResolvedAction[] = [];
+  for (const contribution of contributions) {
+    if (contribution.property !== region.property || contribution.instance !== region.instance) continue;
+    const manifest = plugins.find((plugin) => plugin.id === contribution.plugin);
+    const owner = loaded.find((entry) => entry.manifest.id === contribution.plugin);
+    const specifier = manifest?.contributes?.action_module;
+    const run = specifier ? objectAction(owner?.modules.get(specifier)) : undefined;
+    if (!run || !manifest) continue;
+    const pressed = pressedApiFor(api, app, manifest.contributes?.hosts ?? []);
+    resolved.push({
+      plugin: contribution.plugin,
+      action: contribution.value,
+      run: () =>
+        run({
+          api: pressed,
+          action: contribution.value,
+          objectId,
+          property: region.property,
+          instance: region.instance,
+        }),
+    });
+  }
+  return resolved;
 }

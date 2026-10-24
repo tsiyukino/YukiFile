@@ -6,7 +6,11 @@ import {
   apiFor,
   appApiFor,
   handlerName,
+  hostAllowed,
   methodName,
+  pressedApiFor,
+  type Api,
+  type AppApi,
   type Invoke,
 } from "./commands.js";
 
@@ -233,5 +237,33 @@ describe("the app's own surface is not the plugin's", () => {
 
     expect(listed).toContain("fs.walk");
     expect(listed).not.toContain("library.scan");
+  });
+});
+
+describe("the network is lent to a press, for named hosts", () => {
+  test("a host matches itself, and a wildcard matches labels before it", () => {
+    const hosts = ["booth.pm", "*.booth.pm"];
+    expect(hostAllowed(hosts, "https://booth.pm/en/items/1.json")).toBe(true);
+    expect(hostAllowed(hosts, "https://unya28.booth.pm/items/1")).toBe(true);
+    expect(hostAllowed(hosts, "https://BOOTH.PM/x")).toBe(true);
+    expect(hostAllowed(hosts, "https://gumroad.com/l/x")).toBe(false);
+    expect(hostAllowed(hosts, "https://booth.pm.evil.example/x")).toBe(false);
+    expect(hostAllowed(["*.booth.pm"], "https://booth.pm/x")).toBe(false);
+  });
+
+  test("only https, and nothing when no host is named", () => {
+    expect(hostAllowed(["booth.pm"], "http://booth.pm/x")).toBe(false);
+    expect(hostAllowed([], "https://booth.pm/x")).toBe(false);
+  });
+
+  test("the lent api refuses a host the manifest did not name before any request", async () => {
+    const httpGet = vi.fn(async () => ({ status: 200, body: "" }));
+    const pressed = pressedApiFor({} as Api, { httpGet } as unknown as AppApi, ["booth.pm"]);
+
+    await expect(pressed.httpGet("https://gumroad.com/l/x")).rejects.toThrow(/not on a host this plugin may reach/);
+    expect(httpGet).not.toHaveBeenCalled();
+
+    await pressed.httpGet("https://booth.pm/en/items/1.json");
+    expect(httpGet).toHaveBeenCalledWith("https://booth.pm/en/items/1.json");
   });
 });

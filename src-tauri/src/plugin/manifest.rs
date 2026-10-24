@@ -81,6 +81,23 @@ pub struct Contributes {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub actions: BTreeMap<String, Vec<String>>,
 
+    /// The module holding this plugin's object actions.
+    ///
+    /// One module for all of them, as with library actions: a fetch and an
+    /// export of the same object are two entry points into one body of
+    /// knowledge.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub action_module: String,
+
+    /// Hosts this plugin's actions may reach: `booth.pm`, `*.booth.pm`.
+    ///
+    /// The network is lent to a plugin only inside an action a person
+    /// pressed, and only for these. A plugin naming none reaches nothing.
+    /// Declared rather than discovered so that what a plugin can talk to is
+    /// one line in review.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub hosts: Vec<String>,
+
     /// Property to the full-screen viewer module.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub viewers: BTreeMap<String, String>,
@@ -280,6 +297,18 @@ impl Manifest {
                 slot: "library action",
                 specifier: self.contributes.library_action_module.clone(),
             });
+        }
+        if names_an_extension(&self.contributes.action_module) {
+            return Err(ManifestError::ExtensionInSpecifier {
+                slot: "action",
+                specifier: self.contributes.action_module.clone(),
+            });
+        }
+        for host in &self.contributes.hosts {
+            let bare = host.strip_prefix("*.").unwrap_or(host);
+            if bare.is_empty() || bare.contains(['/', ':', ' ']) || !bare.contains('.') {
+                return Err(ManifestError::Malformed(format!("{host:?} is not a host name")));
+            }
         }
 
         for (slot, modules) in [

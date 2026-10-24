@@ -27,7 +27,7 @@
 
 import type { ComponentType } from "react";
 
-import type { Api, ObjectId } from "./commands.js";
+import type { Api, ObjectId, PressedApi } from "./commands.js";
 
 /** What every panel is given. */
 export interface PanelProps {
@@ -125,8 +125,12 @@ export function formComponent(module: unknown): Form | undefined {
 
 /** What a library action is given. */
 export interface LibraryActionProps {
-  /** The commands this plugin may call. Built from the allowlist. */
-  readonly api: Api;
+  /**
+   * The commands this plugin may call, plus the network for the duration of
+   * the press. A person pressed the button, which is what `docs.yml` says the
+   * network waits for.
+   */
+  readonly api: PressedApi;
   /** Which of the plugin's library actions was chosen. */
   readonly action: string;
 }
@@ -155,4 +159,25 @@ export function libraryAction(module: unknown): LibraryAction | undefined {
 
   const exported = (module as { runLibraryAction?: unknown }).runLibraryAction;
   return typeof exported === "function" ? (exported as LibraryAction) : undefined;
+}
+
+/** What an object action is given. */
+export interface ObjectActionProps {
+  /** The commands this plugin may call, plus the network for this press. */
+  readonly api: PressedApi;
+  /** Which of the plugin's actions on this property was chosen. */
+  readonly action: string;
+  readonly objectId: ObjectId;
+  readonly property: string;
+  readonly instance: number;
+}
+
+/** An object action, once it has loaded. A function, like a library action. */
+export type ObjectAction = (props: ObjectActionProps) => Promise<ActionResult>;
+
+/** The object action in a loaded module, if there is one. */
+export function objectAction(module: unknown): ObjectAction | undefined {
+  if (typeof module !== "object" || module === null) return undefined;
+  const exported = (module as { runObjectAction?: unknown }).runObjectAction;
+  return typeof exported === "function" ? (exported as ObjectAction) : undefined;
 }

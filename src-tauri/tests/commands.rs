@@ -3007,3 +3007,31 @@ fn importing_a_file_that_is_not_there_says_so_and_one_that_is_not_json_is_a_bad_
     fs::write(&junk, "{ not json").expect("write");
     assert!(matches!(library_import_file_in(&library, None, &junk), Err(BridgeError::BadRequest(_))));
 }
+
+// --- http.get and cover.fetch (no network in a test) -----------------------
+
+use yukifile::bridge::network::{cover_fetch_in, http_get_in};
+
+#[test]
+fn a_url_that_is_not_https_is_refused_before_any_request() {
+    assert!(matches!(http_get_in("http://booth.pm/x"), Err(BridgeError::BadRequest(_))));
+    let (library, _dir) = library();
+    assert!(matches!(cover_fetch_in(&library, "ftp://x/y.png"), Err(BridgeError::BadRequest(_))));
+}
+
+#[test]
+fn a_manifest_may_name_hosts_and_an_action_module() {
+    use yukifile::plugin::manifest::Manifest;
+    let manifest = Manifest::parse(
+        r#"{"id":"x.shop","contributes":{"properties":["booth"],"actions":{"booth":["fetch listing"]},"action_module":"./actions","hosts":["booth.pm","*.booth.pm"]}}"#,
+    )
+    .expect("parse");
+    assert_eq!(manifest.contributes.hosts, ["booth.pm", "*.booth.pm"]);
+    assert_eq!(manifest.contributes.action_module, "./actions");
+
+    for bad in [r#"["booth"]"#, r#"["https://booth.pm"]"#, r#"["booth.pm/items"]"#, r#"[""]"#] {
+        let json = format!(r#"{{"id":"x.shop","contributes":{{"hosts":{bad}}}}}"#);
+        assert!(Manifest::parse(&json).is_err(), "{bad} was accepted as a host");
+    }
+    assert!(Manifest::parse(r#"{"id":"x","contributes":{"action_module":"./actions.ts"}}"#).is_err());
+}
