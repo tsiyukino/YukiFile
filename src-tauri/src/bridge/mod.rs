@@ -32,6 +32,7 @@ pub mod commands;
 pub mod objects;
 pub mod rescan;
 pub mod settings;
+pub mod transfer;
 pub mod error;
 pub mod library;
 pub mod views;
@@ -91,6 +92,8 @@ macro_rules! register_commands {
             $crate::bridge::settings::library_info,
             $crate::bridge::settings::plugins_enable,
             $crate::bridge::settings::mount_order_set,
+            $crate::bridge::transfer::library_export_file,
+            $crate::bridge::transfer::library_import_file,
             $crate::bridge::commands::hash_of,
             $crate::bridge::commands::history_of,
             $crate::bridge::commands::import_propose,

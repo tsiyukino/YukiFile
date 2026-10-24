@@ -2968,3 +2968,42 @@ fn a_pin_is_reported_on_the_resolved_object_and_unpinning_hands_back() {
     object_value_set_in(&library, id, "@pin/title", "").expect("unpin");
     assert!(object_flat_in(&library, Some(&registry), id).expect("flat").pins.is_empty());
 }
+
+// --- library.export.file and library.import.file ---------------------------
+
+use yukifile::bridge::transfer::{library_export_file_in, library_import_file_in};
+
+#[test]
+fn a_library_goes_out_to_a_file_and_comes_back_into_an_empty_one() {
+    let (from, dir) = library();
+    fs::write(dir.path().join("a.zip"), b"z").expect("write");
+    let id = created(&from, NewObject { paths: vec![at("a.zip", "file")], ..Default::default() });
+    object_value_set_in(&from, id, "title", "Cross Maid").expect("set");
+    term(&from, "avatar", "manuka", "Manuka");
+    points(&from, id, "supports", "avatar", "manuka");
+
+    let file = dir.path().parent().expect("parent").join(format!("yukifile-export-{}.json", std::process::id()));
+    let exported = library_export_file_in(&from, &file).expect("export");
+    assert_eq!((exported.objects, exported.terms, exported.edges_left_out), (1, 1, 0));
+
+    let (to, _dir2) = library();
+    let imported = library_import_file_in(&to, None, &file).expect("import");
+    let _ = fs::remove_file(&file);
+
+    assert_eq!(imported.objects_created, 1);
+    assert_eq!(imported.terms, 1);
+    assert_eq!(imported.edges, 1);
+    let pending = changes_pending_in(&to).expect("pending");
+    assert!(pending.is_empty());
+}
+
+#[test]
+fn importing_a_file_that_is_not_there_says_so_and_one_that_is_not_json_is_a_bad_request() {
+    let (library, dir) = library();
+    let missing = dir.path().join("nowhere.json");
+    assert!(matches!(library_import_file_in(&library, None, &missing), Err(BridgeError::NotFound(_))));
+
+    let junk = dir.path().join("junk.json");
+    fs::write(&junk, "{ not json").expect("write");
+    assert!(matches!(library_import_file_in(&library, None, &junk), Err(BridgeError::BadRequest(_))));
+}

@@ -49,6 +49,7 @@ fn start() -> Result<(), String> {
 
     let builder = tauri::Builder::default()
         .plugin(logging())
+        .plugin(tauri_plugin_dialog::init())
         .setup(move |_app| {
             log::info!("opened {opened}");
             log::info!("{plugins} plugins loaded");

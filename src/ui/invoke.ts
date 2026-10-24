@@ -11,6 +11,7 @@
  */
 
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { error } from "@tauri-apps/plugin-log";
 
 import type { Invoke } from "../plugin-host/commands.js";
@@ -32,4 +33,24 @@ export const invoke: Invoke = async (command, args) => {
     error(`${command} failed: ${JSON.stringify(thrown)}`);
     throw thrown;
   }
+};
+
+/**
+ * The operating system's own file dialogs.
+ *
+ * Here and nowhere else, for the reason `invoke` is: a component that opened
+ * a dialog itself could only be tested inside Tauri. The transfer buttons
+ * take these injected, and their tests hand in a function that answers.
+ */
+export const dialogs = {
+  /** A document to import, or `null` when the person closed the dialog. */
+  pickDocument: async (): Promise<string | null> => {
+    const chosen = await open({ multiple: false, directory: false, filters: [{ name: "Yukifile document", extensions: ["json"] }] });
+    return typeof chosen === "string" ? chosen : null;
+  },
+  /** Where to write an export, or `null`. */
+  pickTarget: async (): Promise<string | null> => {
+    const chosen = await save({ defaultPath: "library.json", filters: [{ name: "Yukifile document", extensions: ["json"] }] });
+    return typeof chosen === "string" ? chosen : null;
+  },
 };

@@ -82,3 +82,25 @@ does; nothing resolves it to a guess.
 · `term_parts()`
 
 `TermRecord` carries a term and its spellings: `桔梗`, `Kikyo`, `Kikyou`.
+
+## Export
+
+`export::document(&conn) -> Exported`
+
+The other direction, and the test of the contract's promise that one shape
+goes both ways: a library exported and imported into an empty one holds the
+same values, edges and terms, and an export of the receiving library says the
+same thing. Every object's paths with which are folders, its values, its
+edges, its terms' spellings. The import key becomes the record's `id` rather
+than a value, so an import of the export matches the objects it came from.
+Sizes and hashes are not written; a scan observes those, and the receiving
+library looks for itself.
+
+An edge to an object with no path cannot be written, since the contract names
+an object target by path and a grouping has none. Those are counted in
+`edges_left_out` rather than written as something the import would skip.
+
+`library.export.file` and `library.import.file` (`bridge::transfer`) take an
+absolute path the operating system's dialog handed back — the person chose
+it, which is why the two are `APP_ONLY` and the only commands not confined to
+the root — and the shell has **Import…** and **Export…** beside Rescan.

@@ -263,6 +263,14 @@ export interface LibraryInfo {
   readonly skipped: readonly (readonly [string, string])[];
 }
 
+/** What an export wrote. */
+export interface Exported {
+  readonly objects: number;
+  readonly terms: number;
+  /** Edges to objects with no path, which the contract cannot name. */
+  readonly edges_left_out: number;
+}
+
 /** One possible move a rescan could not prove. */
 export interface Candidate {
   readonly object: ObjectId;
@@ -537,6 +545,10 @@ export interface AppApi {
   objectPathAdd(id: ObjectId, at: PathAt): Promise<void>;
   /** Take a place away. Only from the object that holds it. */
   objectPathRemove(id: ObjectId, path: string): Promise<void>;
+  /** Write the library as a document to a file the person chose. An absolute path. */
+  libraryExportFile(to: string): Promise<Exported>;
+  /** Import a document from a file the person chose, through the usual review. */
+  libraryImportFile(from: string): Promise<Proposal>;
   /** Every setting the library holds. */
   settingAll(): Promise<SettingRow[]>;
   /** Set a setting. Empty clears. */
@@ -603,6 +615,8 @@ export function appApiFor(invoke: Invoke): AppApi {
       invoke(handlerName("object.path.add"), { id, at }) as Promise<void>,
     objectPathRemove: (id, path) =>
       invoke(handlerName("object.path.remove"), { id, path }) as Promise<void>,
+    libraryExportFile: (to) => invoke(handlerName("library.export.file"), { to }) as Promise<Exported>,
+    libraryImportFile: (from) => invoke(handlerName("library.import.file"), { from }) as Promise<Proposal>,
     settingAll: () => invoke(handlerName("setting.all"), {}) as Promise<SettingRow[]>,
     settingSet: (key, value) => invoke(handlerName("setting.set"), { key, value }) as Promise<void>,
     libraryInfo: () => invoke(handlerName("library.info"), {}) as Promise<LibraryInfo>,

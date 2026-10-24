@@ -29,6 +29,7 @@
     "@primer/octicons-react": "^19.33.0",
     "@primer/react": "^38.37.0",
     "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-dialog": "^2.8.3",
     "@tauri-apps/plugin-log": "^2.9.1",
     "pdfjs-dist": "^6.3.289",
     "react": "^19.2.8",

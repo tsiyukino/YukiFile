@@ -82,9 +82,12 @@ the Disk pane.
 A gear beside the segmented control opens the settings page in place of
 whatever the page was showing ([settings.md](settings.md)).
 
-Under the plugins' library actions sits the shell's own **Rescan**, which
+Under the plugins' library actions sit the shell's own **Rescan**, which
 brings locations back in line with the disk and asks about what it could not
-prove (`bridge.md`, *bridge::rescan*).
+prove (`bridge.md`, *bridge::rescan*), and **Import…** and **Export…**, the
+library in and out of a document through the operating system's dialogs
+(`contract.md`, *Export*). The dialogs are the second thing `invoke.ts`
+supplies, and for the same reason it supplies the first.
 
 The shell holds two API objects. `api` is built from the allowlist and is what
 every panel, viewer and form is handed. `app` is built from `APP_ONLY` and

@@ -42,7 +42,7 @@ import type { Manifest } from "../plugin-host/types.js";
 import { AddObject } from "./AddObject.js";
 import { DiskBrowser } from "./DiskBrowser.js";
 import { ForgetButton } from "./Forget.js";
-import { invoke } from "./invoke.js";
+import { dialogs, invoke } from "./invoke.js";
 import { describe } from "./problem.js";
 import { ObjectList } from "./ObjectList.js";
 import { fallbackTitle, ObjectPage } from "./ObjectPage.js";
@@ -51,6 +51,7 @@ import { ReviewList, ReviewPage } from "./Review.js";
 import { Settings } from "./Settings.js";
 import type { ThemePreference } from "./theme.js";
 import { TermList, TermPage, type TermRef } from "./Terms.js";
+import { Transfer } from "./Transfer.js";
 
 /** The API every panel is handed, wired to the real Tauri bridge. */
 export const api: Api = apiFor(invoke);
@@ -191,6 +192,7 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
         <Stack gap="condensed">
           <LibraryActions plugins={context.plugins} loaded={context.loaded} onChanged={changed} />
           <Rescan app={app} onChanged={refresh} />
+          <Transfer app={app} dialogs={dialogs} onChanged={refresh} />
 
           <Stack direction="horizontal" gap="condensed" align="center">
             <IconButton

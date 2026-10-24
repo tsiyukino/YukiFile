@@ -227,6 +227,20 @@ and taken away only from the object that holds it. Taking it from another
 would be a silent edit to an object nobody was looking at. An object left with
 no location is a grouping, which is a normal thing to be.
 
+## bridge::transfer
+
+`library_export_file_in` · `library_import_file_in`
+
+A library in and out of a file. Both take an absolute path: everything else
+in the bridge confines paths to the root because a plugin names them, and
+these take the one the operating system's dialog handed back, which the
+person chose. That is why they are `APP_ONLY`, and why the dialogs live in
+`invoke.ts`, the one door to the runtime, injected into the component that
+uses them so it can be tested with a function that answers. The import is
+`import_propose_in_with`, labelled by the file's name, so a document that
+disagrees with a value somebody chose opens a change set. See
+[contract.md](contract.md), *Export*.
+
 ## bridge::settings
 
 `setting_get_in` · `setting_all_in` · `setting_set_in` · `library_info_in` ·

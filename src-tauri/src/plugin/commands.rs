@@ -270,6 +270,18 @@ pub const APP_ONLY: &[Command] = &[
         reason: "the one library-wide rule, changed by the person it belongs to",
     },
     Command {
+        name: "library.export.file",
+        effect: Effect::Write,
+        reason: "the library as a document, to a file the person chose in a \
+                 dialog; the path is theirs, not a plugin's",
+    },
+    Command {
+        name: "library.import.file",
+        effect: Effect::Write,
+        reason: "a document from a file the person chose, through the same \
+                 review every import gets",
+    },
+    Command {
         name: "cover.set",
         effect: Effect::Write,
         reason: "a person picks the picture that stands for a thing; the bytes \
