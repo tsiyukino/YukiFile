@@ -114,6 +114,46 @@ pub fn list(path: &Path) -> Result<Listing, ArchiveError> {
     Ok(Listing { members })
 }
 
+/// The bytes of one member, by its stored name, up to a limit.
+///
+/// The one place the core reads inside a zip. It exists for covers: a promo
+/// image in a never-unpacked archive is the cover a person wants, and the
+/// bytes go from here into `cover::store` without passing through a plugin.
+/// The limit is what keeps a 4 GB member from being read into memory
+/// because somebody clicked the wrong row.
+pub fn read_member(path: &Path, member: &str, limit: u64) -> Result<Vec<u8>, ArchiveError> {
+    use std::io::Read;
+
+    let file = File::open(path).map_err(ArchiveError::Unreadable)?;
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|error| ArchiveError::NotAnArchive(error.to_string()))?;
+
+    let index = (0..archive.len())
+        .find(|&index| {
+            archive
+                .by_index(index)
+                .map(|entry| normalise(entry.name()) == member)
+                .unwrap_or(false)
+        })
+        .ok_or_else(|| ArchiveError::NotAnArchive(format!("no member {member:?}")))?;
+
+    let mut entry = archive
+        .by_index(index)
+        .map_err(|error| ArchiveError::NotAnArchive(error.to_string()))?;
+    if entry.size() > limit {
+        return Err(ArchiveError::NotAnArchive(format!(
+            "{member:?} is {} bytes, over the {limit} byte limit",
+            entry.size()
+        )));
+    }
+    let mut bytes = Vec::with_capacity(entry.size() as usize);
+    entry
+        .take(limit)
+        .read_to_end(&mut bytes)
+        .map_err(ArchiveError::Unreadable)?;
+    Ok(bytes)
+}
+
 /// Whether a stored name would land outside the archive root if extracted.
 ///
 /// Three shapes: a `..` segment, a leading `/`, and a Windows drive letter.

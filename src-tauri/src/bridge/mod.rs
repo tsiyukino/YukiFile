@@ -27,6 +27,7 @@
 //! the schema holds, and the two have separate reasons to change.
 
 pub mod changes;
+pub mod covers;
 pub mod commands;
 pub mod objects;
 pub mod rescan;
@@ -82,6 +83,7 @@ macro_rules! register_commands {
             $crate::bridge::objects::object_path_add,
             $crate::bridge::objects::object_path_remove,
             $crate::bridge::rescan::library_reconcile,
+            $crate::bridge::covers::cover_set,
             $crate::bridge::commands::hash_of,
             $crate::bridge::commands::history_of,
             $crate::bridge::commands::import_propose,

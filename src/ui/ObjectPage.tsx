@@ -31,6 +31,7 @@ import { panelsFor } from "../plugin-host/slots.js";
 import { panelComponent, type Panel } from "../plugin-host/panel.js";
 import type { Loaded } from "../plugin-host/loader.js";
 import type { Manifest } from "../plugin-host/types.js";
+import { Cover } from "./Cover.js";
 import { fieldPath, isFieldName } from "./edit.js";
 import { FieldEditor, NewField } from "./FieldEditor.js";
 import { ObjectEditor } from "./ObjectEditor.js";
@@ -87,7 +88,8 @@ export function ObjectPage({
   const counts = instanceCounts(shown);
 
   const headline = object.shared[HEADLINE];
-  const otherFields = Object.entries(object.shared).filter(([name]) => name !== HEADLINE);
+  // `cover` is drawn as a picture by `Cover`, not as a path in a row.
+  const otherFields = Object.entries(object.shared).filter(([name]) => name !== HEADLINE && name !== "cover");
 
   // Writing a shared field writes the bare one, which outranks every source:
   // that is what a person's own value means, and clearing it hands the field
@@ -127,6 +129,8 @@ export function ObjectPage({
           </Heading>
         )}
       </Stack>
+
+      <Cover api={api} app={app} object={object} onChanged={onChanged} />
 
       {object.locations.length > 0 && (
         <Stack gap="none">

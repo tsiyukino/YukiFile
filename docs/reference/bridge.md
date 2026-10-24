@@ -227,6 +227,22 @@ and taken away only from the object that holds it. Taking it from another
 would be a silent edit to an object nobody was looking at. An object left with
 no location is a grouping, which is a normal thing to be.
 
+## bridge::covers
+
+`cover_set_in(library, id, source)`, `APP_ONLY` as `cover.set`.
+
+A person points at an image — a file in the library, a member of a zip, the
+preview of an asset in a package — and the core reads the bytes, scales and
+stores them (`commands::cover`), and writes the stored path to the object's
+bare `cover` field through `object_value_set_in`, so the choice is recorded
+in history like any other edit. The bytes never pass through a plugin, which
+is the rule `2026-09-03_a-viewer-gets-a-url-not-bytes.md` sets. A shop's
+cover will arrive by proposal once the core can fetch, under the shop's own
+`booth#1/cover`.
+
+The source is tagged — `{ from: "file" | "member" | "preview", … }` — and a
+read is bounded at 64 MB, so a wrong click on a 4 GB member reads nothing.
+
 ## bridge::rescan
 
 `library_reconcile_in(library)`, `APP_ONLY` as `library.reconcile`.

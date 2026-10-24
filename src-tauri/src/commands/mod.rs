@@ -9,6 +9,7 @@
 //! during a scan — a plugin asks, when a plugin has a reason to.
 
 pub mod archive;
+pub mod cover;
 pub mod hash;
 pub mod scan;
 pub mod unitypackage;

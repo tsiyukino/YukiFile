@@ -595,6 +595,7 @@ describe("editing, when the page has something to write with", () => {
     objectEdges: async () => [],
     pathList: async () => [],
     termVocabularies: async () => [],
+    fileUrl: async (path: string) => `asset://${path}`,
   } as unknown as Api;
 
   test("a read-only page draws no pencils", () => {

@@ -237,6 +237,12 @@ pub const APP_ONLY: &[Command] = &[
         reason: "a location that was never this object's, or is no longer",
     },
     Command {
+        name: "cover.set",
+        effect: Effect::Write,
+        reason: "a person picks the picture that stands for a thing; the bytes \
+                 never pass through a plugin",
+    },
+    Command {
         name: "library.reconcile",
         effect: Effect::Write,
         reason: "a person moved, renamed or deleted things since the last look, \

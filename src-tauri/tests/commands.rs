@@ -2715,3 +2715,127 @@ fn the_librarys_own_folder_is_never_a_new_path() {
 
     assert!(view.added.iter().all(|p| !p.contains(".yukifile")), "{:?}", view.added);
 }
+
+// --- cover.set --------------------------------------------------------------
+
+use yukifile::bridge::covers::{cover_set_in, CoverSource};
+
+/// A real PNG, generated.
+fn png_bytes(width: u32, height: u32) -> Vec<u8> {
+    let img = image::RgbaImage::from_pixel(width, height, image::Rgba([10, 200, 10, 255]));
+    let mut out = Vec::new();
+    image::DynamicImage::ImageRgba8(img)
+        .write_to(&mut std::io::Cursor::new(&mut out), image::ImageFormat::Png)
+        .expect("encode");
+    out
+}
+
+#[test]
+fn a_cover_from_a_file_is_stored_scaled_and_pointed_at() {
+    let (library, dir) = library();
+    fs::write(dir.path().join("promo.png"), png_bytes(1600, 800)).expect("write");
+    let id = object_with(&library, &[]);
+
+    let stored = cover_set_in(&library, id, CoverSource::File { path: "promo.png".into() }).expect("cover");
+
+    assert!(stored.starts_with(".yukifile/covers/"), "{stored}");
+    let on_disk = image::open(dir.path().join(&stored)).expect("open");
+    assert_eq!((on_disk.width(), on_disk.height()), (512, 256));
+    // The field holds it, as a person's own value.
+    let view = object_flat_in(&library, None, id).expect("flat");
+    assert_eq!(view.shared["cover"][0].value, stored);
+    assert_eq!(view.shared["cover"][0].from, None);
+    // And it is a URL the viewer can fetch, since it sits inside the root.
+    assert!(library.resolve(&stored).is_ok());
+}
+
+#[test]
+fn a_cover_from_inside_a_zip_never_unpacks_the_zip() {
+    let (library, dir) = library();
+    dir.zip("product.zip", &[("promo/cover.png", &png_bytes(300, 300)), ("readme.txt", b"hi")]);
+    let id = object_with(&library, &[]);
+
+    let stored = cover_set_in(
+        &library,
+        id,
+        CoverSource::Member { path: "product.zip".into(), member: "promo/cover.png".into() },
+    )
+    .expect("cover");
+
+    assert!(dir.path().join(&stored).is_file());
+    assert!(!dir.path().join("promo").exists(), "the zip was unpacked");
+}
+
+#[test]
+fn a_cover_from_a_package_preview_by_guid() {
+    let (library, dir) = library();
+    let preview = png_bytes(64, 64);
+    dir.file(
+        "outfit.unitypackage",
+        &yukifile::commands::unitypackage::fixture::package(&[("g1", "Assets/x/a.fbx", Some(b"fbx"), false)]),
+    );
+    // The fixture writes a stub preview; build one carrying a real image.
+    let mut tar = tar::Builder::new(Vec::new());
+    for (name, bytes) in [("g1/pathname", b"Assets/x/a.fbx".as_slice()), ("g1/asset", b"fbx"), ("g1/preview.png", preview.as_slice())] {
+        let mut header = tar::Header::new_gnu();
+        header.set_size(bytes.len() as u64);
+        header.set_mode(0o644);
+        header.set_cksum();
+        tar.append_data(&mut header, name, bytes).expect("append");
+    }
+    let tar = tar.into_inner().expect("tar");
+    let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+    gz.write_all(&tar).expect("gz");
+    dir.file("outfit.unitypackage", &gz.finish().expect("finish"));
+    let id = object_with(&library, &[]);
+
+    let stored = cover_set_in(
+        &library,
+        id,
+        CoverSource::Preview { path: "outfit.unitypackage".into(), member: None, guid: "g1".into() },
+    )
+    .expect("cover");
+    assert!(dir.path().join(&stored).is_file());
+
+    let missing = cover_set_in(
+        &library,
+        id,
+        CoverSource::Preview { path: "outfit.unitypackage".into(), member: None, guid: "nobody".into() },
+    );
+    assert!(matches!(missing, Err(BridgeError::NotFound(_))), "{missing:?}");
+}
+
+#[test]
+fn a_file_that_is_not_an_image_is_refused_and_the_field_untouched() {
+    let (library, dir) = library();
+    dir.file("notes.txt", b"not a picture");
+    let id = object_with(&library, &[]);
+
+    assert!(matches!(
+        cover_set_in(&library, id, CoverSource::File { path: "notes.txt".into() }),
+        Err(BridgeError::BadRequest(_))
+    ));
+    assert!(object_flat_in(&library, None, id).expect("flat").shared.get("cover").is_none());
+}
+
+#[test]
+fn a_cover_outside_the_library_is_refused() {
+    let (library, _dir) = library();
+    let id = object_with(&library, &[]);
+    assert!(matches!(
+        cover_set_in(&library, id, CoverSource::File { path: "../elsewhere.png".into() }),
+        Err(BridgeError::OutsideLibrary(_) | BridgeError::NotFound(_))
+    ));
+}
+
+#[test]
+fn a_cover_source_deserialises_tagged() {
+    let source: CoverSource =
+        serde_json::from_str(r#"{"from":"preview","path":"a.zip","member":"x/y.unitypackage","guid":"g"}"#).expect("parse");
+    assert_eq!(
+        source,
+        CoverSource::Preview { path: "a.zip".into(), member: Some("x/y.unitypackage".into()), guid: "g".into() }
+    );
+    let file: CoverSource = serde_json::from_str(r#"{"from":"file","path":"p.png"}"#).expect("parse");
+    assert_eq!(file, CoverSource::File { path: "p.png".into() });
+}

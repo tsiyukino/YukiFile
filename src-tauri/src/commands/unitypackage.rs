@@ -183,6 +183,54 @@ pub fn list_from(reader: impl Read) -> Result<Package, UnityError> {
     Ok(Package { assets })
 }
 
+/// The preview image of one asset, by GUID, from any reader of the package.
+///
+/// Reads through the tar until the entry is found and stops there; a
+/// package's previews are small PNGs and the one wanted is usually early.
+/// `None` when the asset has no preview or is not in the package.
+pub fn preview_of(reader: impl Read, guid: &str) -> Result<Option<Vec<u8>>, UnityError> {
+    let mut tar = tar::Archive::new(GzDecoder::new(reader));
+    let entries = tar
+        .entries()
+        .map_err(|error| UnityError::NotAPackage(error.to_string()))?;
+    let wanted = format!("{guid}/preview.png");
+
+    for entry in entries {
+        let mut entry = entry.map_err(|error| UnityError::NotAPackage(error.to_string()))?;
+        let stored = entry
+            .path()
+            .map_err(|error| UnityError::NotAPackage(error.to_string()))?
+            .to_string_lossy()
+            .replace('\\', "/");
+        if stored.trim_start_matches("./") == wanted {
+            let mut bytes = Vec::with_capacity(entry.size() as usize);
+            entry
+                .read_to_end(&mut bytes)
+                .map_err(|error| UnityError::NotAPackage(error.to_string()))?;
+            return Ok(Some(bytes));
+        }
+    }
+    Ok(None)
+}
+
+/// The same, for a package stored inside a zip.
+pub fn preview_within(archive: &Path, member: &str, guid: &str) -> Result<Option<Vec<u8>>, UnityError> {
+    let file = File::open(archive).map_err(UnityError::Unreadable)?;
+    let mut zip = zip::ZipArchive::new(file)
+        .map_err(|error| UnityError::NotAPackage(format!("the archive holding it: {error}")))?;
+    let index = (0..zip.len())
+        .find(|&index| {
+            zip.by_index(index)
+                .map(|entry| entry.name().replace('\\', "/") == member)
+                .unwrap_or(false)
+        })
+        .ok_or_else(|| UnityError::NoSuchMember(member.to_string()))?;
+    let entry = zip
+        .by_index(index)
+        .map_err(|error| UnityError::NotAPackage(error.to_string()))?;
+    preview_of(entry, guid)
+}
+
 #[derive(Default)]
 struct Building {
     path: Option<String>,
@@ -279,6 +327,18 @@ mod tests {
     fn bytes_that_are_not_a_gzipped_tar_are_refused_in_words() {
         let refused = list_from(&b"PK\x03\x04 this is a zip, not a package"[..]);
         assert!(matches!(refused, Err(UnityError::NotAPackage(_))), "{refused:?}");
+    }
+
+    #[test]
+    fn a_preview_comes_back_by_guid_and_nothing_for_an_asset_without_one() {
+        let bytes = package(&[
+            ("a1", "Assets/x/a.fbx", Some(b"fbx"), true),
+            ("b2", "Assets/x/b.fbx", Some(b"fbx"), false),
+        ]);
+
+        assert_eq!(preview_of(&bytes[..], "a1").expect("read"), Some(b"\x89PNG".to_vec()));
+        assert_eq!(preview_of(&bytes[..], "b2").expect("read"), None);
+        assert_eq!(preview_of(&bytes[..], "nobody").expect("read"), None);
     }
 
     #[test]

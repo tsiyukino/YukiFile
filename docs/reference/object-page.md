@@ -139,6 +139,23 @@ root and saying whether it is a file or a folder; the core checks it is there
 and nobody else's. Typed rather than picked for now — the disk browser is the
 natural picker and will become one.
 
+### The cover
+
+`Cover.tsx` draws the `cover` field as a picture rather than a path: the first
+source, resolved like any other shared field, fetched through `file.url`.
+**Choose cover** lists what the object's own locations hold — the images at
+the top of its folder, the images in its zip, the previews of the assets in
+its package, including a package inside the zip — gathered when asked for
+rather than on every page draw, since listing a package reads it. Picking one
+goes through `cover.set`: the core reads the bytes, scales them to fit 512
+pixels, stores them under `.yukifile/covers/` named by content, and writes the
+path to the bare `cover` field as the person's own choice. **Clear cover** is
+offered only for a cover of one's own, for the reason the field editor gives.
+
+The order of preference is VRCAL's and worth copying: a cover the person set,
+then the shop's, then one found locally. The page draws the first of those
+that exists; the shop's arrives once the core can fetch.
+
 ### What is not drawn
 
 A `file` or `folder` region with no fields and no panel is left out: every

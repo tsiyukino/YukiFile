@@ -224,6 +224,18 @@ export interface ChangeEntry {
   readonly kind: "addition" | "modification";
 }
 
+/**
+ * Where a cover's bytes come from.
+ *
+ * A file in the library, an image inside a zip, or the preview of one asset
+ * in a package (on disk, or inside a zip via `member`). The core reads the
+ * bytes; a plugin never does.
+ */
+export type CoverSource =
+  | { readonly from: "file"; readonly path: string }
+  | { readonly from: "member"; readonly path: string; readonly member: string }
+  | { readonly from: "preview"; readonly path: string; readonly member?: string; readonly guid: string };
+
 /** One possible move a rescan could not prove. */
 export interface Candidate {
   readonly object: ObjectId;
@@ -492,6 +504,13 @@ export interface AppApi {
   /** Take a place away. Only from the object that holds it. */
   objectPathRemove(id: ObjectId, path: string): Promise<void>;
   /**
+   * Store an image, scaled to fit 512 pixels, and make it the object's cover.
+   *
+   * Written to the bare `cover` field, as the person's own choice. Returns
+   * the stored path, which `fileUrl` can serve.
+   */
+  coverSet(id: ObjectId, source: CoverSource): Promise<string>;
+  /**
    * Bring the library's locations back in line with the disk.
    *
    * Moves proven by hash, touches and removals are applied. Paths nothing
@@ -540,6 +559,8 @@ export function appApiFor(invoke: Invoke): AppApi {
       invoke(handlerName("object.path.add"), { id, at }) as Promise<void>,
     objectPathRemove: (id, path) =>
       invoke(handlerName("object.path.remove"), { id, path }) as Promise<void>,
+    coverSet: (id, source) =>
+      invoke(handlerName("cover.set"), { id, source }) as Promise<string>,
     libraryReconcile: () =>
       invoke(handlerName("library.reconcile"), {}) as Promise<Rescanned>,
     changesAccept: (change, accepted) =>

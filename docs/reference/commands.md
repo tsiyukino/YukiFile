@@ -119,6 +119,26 @@ handed.
 bridge maps the first to `not_found` or `unreadable`, the second to
 `not_found` naming the member, and the third to `not_an_archive`.
 
+## commands::cover
+
+`store(bytes, data) -> Result<String, CoverError>`
+
+Decodes an image, scales it to fit 512 pixels on its longest side, and writes
+it as PNG under `.yukifile/covers/`, named by the content hash of the scaled
+bytes so the same picture stored twice is one file. Returns the path from the
+library root, which is what the `cover` field holds and what `file.url` can
+serve. `architecture.md`: thumbnails are files with paths in the database,
+never blobs, and they never enter history.
+
+A promo image inside a package is often a 4000-pixel PNG of several
+megabytes, and a grid of 174 of them would be 174 of those. Scaling once on
+the way in is what makes a grid possible; the original stays where it was.
+
+Where the bytes come from is the bridge's business (`bridge::covers`): a
+file, a zip member through `archive::read_member`, or a package preview
+through `unitypackage::preview_of`. Those two readers are the only places the
+core reads bytes out of a container, and both are bounded.
+
 ## commands::hash
 
 Content hashes, which are what let a move be told from a delete plus an add.
