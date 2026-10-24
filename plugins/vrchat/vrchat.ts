@@ -27,13 +27,20 @@
  * products, because an unpacked package is a folder of folders.
  *
  * So the library says. A scan takes a grouping depth: every folder down to
- * that depth is a grouping, and everything directly below the last grouping
- * level is a product, whatever is inside it. One level for a library sorted
- * into categories (`Clothing/outfit/`), two for one sorted by avatar and then
- * by kind (`.LAPWING/Clothes/outfit/`). A file at a grouping level is a
- * product too, since a file is never a grouping. That is a fact about how
- * the person arranged their library, told once, rather than a guess made
- * per folder.
+ * that depth is a grouping, and everything directly below a grouping is a
+ * product, whatever is inside it. One level for a library sorted into
+ * categories (`Clothing/outfit/`), two for one sorted by avatar and then by
+ * kind (`.LAPWING/Clothes/outfit/`). A file at a grouping level is a product
+ * too, since a file is never a grouping. That is a fact about how the person
+ * arranged their library, told once, rather than a guess made per folder.
+ *
+ * One more fact, from the same place: categories nest. The seed library has
+ * `NSFW/BDSM/Accessory/`, and a depth of one read `NSFW/BDSM` as a product
+ * holding 21 real ones. A folder inside a grouping whose name is one of the
+ * plugin's own category names is a grouping too, at any depth. That is a
+ * judgement by name, and it is allowed where `Texture/` was not: the
+ * category list is the person's, and the question is "is this one of the
+ * folders I sort into", not "what is inside this".
  *
  * # What this does not decide
  *
@@ -67,6 +74,15 @@ export const CATEGORIES: readonly string[] = [
   "NSFW",
 ];
 
+/**
+ * Folders that are groupings wherever they sit inside another grouping.
+ *
+ * The categories, and the two names the seed nests under `NSFW/`. A product
+ * folder would have to be named exactly like one of these to be misread,
+ * which is the kind of coincidence a person notices on the object page.
+ */
+export const GROUPING_NAMES: readonly string[] = [...CATEGORIES, "BDSM", "BodyPart"];
+
 /** One object a scan proposes. */
 export interface Proposed {
   readonly path: string;
@@ -88,43 +104,53 @@ export const ACTIONS: Readonly<Record<string, number>> = {
  * top-level folders group, and `Clothing/outfit` is a product. Depth 2:
  * `.LAPWING/Clothes` groups too, and `.LAPWING/Clothes/outfit` is a product.
  * Depth 0: everything at the root is a product and there are no groupings.
+ * Below the depth, a folder named like a category inside a grouping is a
+ * grouping as well, so `NSFW/BDSM/Accessory/` holds products at depth 1.
  *
  * Whatever sits below a product is the product's and is not looked at.
  */
 export function productsFrom(entries: readonly Entry[], groupingDepth = 1): Proposed[] {
+  const parentOf = (path: string): string => {
+    const slash = path.lastIndexOf("/");
+    return slash === -1 ? "" : path.slice(0, slash);
+  };
+  const nameOf = (path: string): string => path.slice(path.lastIndexOf("/") + 1);
   const depthOf = (path: string): number => path.split("/").length;
+
+  // Decided top-down: a folder can only be a grouping if its parent is one.
+  // The root is one by definition.
+  const groupings = new Set<string>([""]);
+  for (const entry of [...entries].sort((a, b) => depthOf(a.path) - depthOf(b.path))) {
+    if (entry.kind !== "folder" || !groupings.has(parentOf(entry.path))) continue;
+    const named = GROUPING_NAMES.some((name) => name.toLowerCase() === nameOf(entry.path).toLowerCase());
+    if (depthOf(entry.path) <= groupingDepth || named) groupings.add(entry.path);
+  }
+
   const proposed: Proposed[] = [];
-
   for (const entry of entries) {
-    const depth = depthOf(entry.path);
-    if (depth > groupingDepth + 1) continue;
-
-    if (entry.kind === "folder" && depth <= groupingDepth) {
+    if (!groupings.has(parentOf(entry.path))) continue; // inside a product
+    if (groupings.has(entry.path)) {
       proposed.push({
         path: entry.path,
         isFolder: true,
-        contains: entries
-          .filter((inside) => inside.path.startsWith(`${entry.path}/`))
-          .filter((inside) => depthOf(inside.path) === depth + 1)
-          .map((inside) => inside.path),
+        contains: entries.filter((inside) => parentOf(inside.path) === entry.path).map((inside) => inside.path),
       });
     } else {
       proposed.push({ path: entry.path, isFolder: entry.kind === "folder", contains: [] });
     }
   }
-
   return proposed;
 }
 
 /**
- * Read as much of the disk as the rule needs and decide what to propose.
+ * Read the disk and decide what to propose.
  *
- * One level more than the groupings go, since the products sit there. A
- * product's own parts are never read: the seed library's root holds 10
- * entries and 441 below them.
+ * The whole tree, because a nested category can sit at any depth and the
+ * walk cannot know where to stop. The walk is cheap next to reading inside
+ * anything; the parts of a product are listed and then ignored.
  */
 export async function planFrom(api: Api, groupingDepth = 1): Promise<Proposed[]> {
-  return productsFrom(await api.fsWalk(null, groupingDepth + 1), groupingDepth);
+  return productsFrom(await api.fsWalk(null), groupingDepth);
 }
 
 /**

@@ -65,8 +65,14 @@ describe("what counts as a product", () => {
       [".LAPWING/Hair/pony.unitypackage", 0],
     ]);
     // The same tree at one level makes .LAPWING/Clothes a product, which is
-    // what the person asked for by saying one.
-    expect(productsFrom(entries, 1).map((p) => p.path)).toEqual([".LAPWING", ".LAPWING/Clothes", ".LAPWING/Hair"]);
+    // what the person asked for by saying one -- while .LAPWING/Hair still
+    // groups, because Hair is a category's name and categories nest.
+    expect(productsFrom(entries, 1).map((p) => p.path)).toEqual([
+      ".LAPWING",
+      ".LAPWING/Clothes",
+      ".LAPWING/Hair",
+      ".LAPWING/Hair/pony.unitypackage",
+    ]);
   });
 
   test("a file at a grouping level is a product, since a file is never a grouping", () => {
@@ -76,9 +82,45 @@ describe("what counts as a product", () => {
     expect(proposed[0]?.contains).toEqual([]);
   });
 
-  test("depth zero: everything at the root is a product", () => {
-    expect(productsFrom([entry("Clothing", "folder"), entry("Clothing/x.zip"), entry("a.zip")], 0)).toEqual([
-      { path: "Clothing", isFolder: true, contains: [] },
+  test("a folder named like a category inside a grouping is a grouping at any depth", () => {
+    // NSFW/BDSM/Accessory/ in the seed library. Read as a product, NSFW/BDSM
+    // swallowed 21 real ones.
+    const proposed = productsFrom([
+      entry("NSFW", "folder"),
+      entry("NSFW/BDSM", "folder"),
+      entry("NSFW/BDSM/Accessory", "folder"),
+      entry("NSFW/BDSM/Accessory/Gagak_Gagset_2.01", "folder"),
+      entry("NSFW/BDSM/Accessory/Gagak_Gagset_2.01/Assets", "folder"),
+      entry("NSFW/BodyPart", "folder"),
+      entry("NSFW/BodyPart/DPS-SPS", "folder"),
+    ]);
+
+    expect(proposed.map((p) => [p.path, p.isFolder && p.contains.length > 0])).toEqual([
+      ["NSFW", true],
+      ["NSFW/BDSM", true],
+      ["NSFW/BDSM/Accessory", true],
+      ["NSFW/BDSM/Accessory/Gagak_Gagset_2.01", false],
+      ["NSFW/BodyPart", true],
+      ["NSFW/BodyPart/DPS-SPS", false],
+    ]);
+  });
+
+  test("a category's name inside a product does not make it a grouping", () => {
+    // Only a folder whose parent is a grouping can be one. A product named
+    // Hair with a Hair folder inside it is still one product.
+    const proposed = productsFrom([
+      entry("Hair", "folder"),
+      entry("Hair/pony", "folder"),
+      entry("Hair/pony/Hair", "folder"),
+      entry("Hair/pony/Hair/mesh.fbx"),
+    ]);
+
+    expect(proposed.map((p) => p.path)).toEqual(["Hair", "Hair/pony"]);
+  });
+
+  test("depth zero: everything at the root is a product, unless named like a category", () => {
+    expect(productsFrom([entry("Stuff", "folder"), entry("Stuff/x.zip"), entry("a.zip")], 0)).toEqual([
+      { path: "Stuff", isFolder: true, contains: [] },
       { path: "a.zip", isFolder: false, contains: [] },
     ]);
   });

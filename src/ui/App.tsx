@@ -382,17 +382,23 @@ export function LibraryActions({
       .finally(() => setRunning(undefined));
   };
 
+  // Stacked, not in a row: the pane is narrow, two actions with long names
+  // overflowed it, and the result -- the one line that says what the scan
+  // did -- was pushed out of sight.
   return (
-    <Stack direction="horizontal" gap="condensed" align="center">
-      {offered.map(({ plugin, action }) => (
-        <Button
-          key={`${plugin}:${action}`}
-          disabled={running !== undefined}
-          onClick={() => run(plugin, action)}
-        >
-          {running === action ? `${action}…` : action}
-        </Button>
-      ))}
+    <Stack gap="condensed">
+      <Stack direction="horizontal" gap="condensed" wrap="wrap">
+        {offered.map(({ plugin, action }) => (
+          <Button
+            key={`${plugin}:${action}`}
+            size="small"
+            disabled={running !== undefined}
+            onClick={() => run(plugin, action)}
+          >
+            {running === action ? `${action}…` : action}
+          </Button>
+        ))}
+      </Stack>
       {result && <Text size="small">{result}</Text>}
     </Stack>
   );

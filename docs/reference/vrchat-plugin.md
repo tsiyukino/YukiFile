@@ -71,6 +71,16 @@ That is a fact about how the person arranged their library, told once, rather
 than a guess made per folder. The proper home for it is a library setting; a
 pair of actions is where it lives until there is a settings page.
 
+**Categories nest.** The seed library has `NSFW/BDSM/Accessory/`, and a depth
+of one read `NSFW/BDSM` as a product holding 21 real ones. So a folder inside
+a grouping whose name is one of the plugin's category names (`GROUPING_NAMES`:
+the eleven categories plus `BDSM` and `BodyPart`) is a grouping too, at any
+depth. That is a judgement by name, and it is allowed where `Texture/` was
+not: the list is the person's own, and the question is "is this one of the
+folders I sort into", not "what is inside this". A product would have to be
+named exactly like a category to be misread, and only when it sits directly
+in a grouping.
+
 **The scan writes no values.** A folder's name is where a thing sits, not what
 it is, and one library has `Clothes`, `Cloths` and `CLOTHS`. The category
 comes by import or from a person. When the folder happens to be spelled like
