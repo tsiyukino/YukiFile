@@ -7,14 +7,15 @@
  */
 
 import type { ActionResult, LibraryActionProps } from "../../src/plugin-host/panel.js";
-import { documentFor, planFrom } from "./vrchat.js";
+import { ACTIONS, documentFor, planFrom } from "./vrchat.js";
 
 export async function runLibraryAction({ api, action }: LibraryActionProps): Promise<ActionResult> {
-  if (action !== "scan products") {
+  const depth = ACTIONS[action];
+  if (depth === undefined) {
     return { summary: `${action} is not something this plugin does`, changed: false };
   }
 
-  const proposed = await planFrom(api);
+  const proposed = await planFrom(api, depth);
   if (proposed.length === 0) {
     return { summary: "nothing on disk", changed: false };
   }

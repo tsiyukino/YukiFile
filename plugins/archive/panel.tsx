@@ -23,14 +23,14 @@ export default function ArchivePanel({ api, objectId }: PanelProps): React.JSX.E
   useEffect(() => {
     let current = true;
 
-    // The path lives on the object's fs instances, which the region does not
-    // carry. Reading it here keeps the panel to one command and one concern.
+    // Where the object sits comes with the resolved object; the region does
+    // not carry it. The first file location is the archive.
     api
-      .objectGet(objectId)
-      .then((record) => {
-        const path = record.values.find((value) => value.path.endsWith("/path"));
-        if (!path) return { problem: "This object has no location on disk." };
-        return open(api, path.value);
+      .objectFlat(objectId)
+      .then((object) => {
+        const location = object.locations.find((at) => at.kind === "file");
+        if (!location) return { problem: "This object has no file on disk." };
+        return open(api, location.path);
       })
       .then((next) => {
         // The object can change while a listing is in flight. Dropping a late

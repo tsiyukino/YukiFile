@@ -6,7 +6,7 @@
     "vocabularies": ["avatar"],
     "forms": { "vrchat": "./form", "booth": "./booth-form" },
     "panels": { "vrchat": "./panel", "booth": "./booth-panel" },
-    "library_actions": ["scan products"],
+    "library_actions": ["scan products", "scan products, groupings two deep"],
     "library_action_module": "./action"
   }
 }

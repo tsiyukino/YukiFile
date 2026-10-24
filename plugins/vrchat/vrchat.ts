@@ -19,21 +19,21 @@
  * # What counts as an object here
  *
  * A product is one folder or one file. `vrc-lessons.md`: "A product maps to
- * exactly one folder or file. Products do not span folders." Which folders
- * are products is decided **by content, never by name** -- the lessons made
- * that mistake twice with `Texture/`, which is sometimes loose PNGs belonging
- * to a product and sometimes a category holding eighteen of them.
+ * exactly one folder or file. Products do not span folders." What the scan
+ * cannot know is *where products begin*: a folder is a category holding
+ * products, or a product holding its own parts, and nothing in the folder
+ * says which. The first version decided by content -- a folder with loose
+ * files is a product -- and on the real library it made 800 objects of 174
+ * products, because an unpacked package is a folder of folders.
  *
- * So: a folder that directly holds a loose file -- a texture, a mesh, a
- * readme -- is a product, and nothing below it is an object; the forty
- * textures inside an outfit are the outfit's. A folder that holds only
- * folders and packaged things is a grouping, and each thing directly inside
- * it is an object of its own. A zip or a unitypackage is never loose content:
- * it is a product by itself, wherever it sits, which is what makes
- * `_Archive/` forty-two products rather than one. That reads an organised
- * library and an unorganised one the same way, which it has to: before a
- * library is organised nobody knows what any of it is, and the scan is what
- * makes it possible to find out.
+ * So the library says. A scan takes a grouping depth: every folder down to
+ * that depth is a grouping, and everything directly below the last grouping
+ * level is a product, whatever is inside it. One level for a library sorted
+ * into categories (`Clothing/outfit/`), two for one sorted by avatar and then
+ * by kind (`.LAPWING/Clothes/outfit/`). A file at a grouping level is a
+ * product too, since a file is never a grouping. That is a fact about how
+ * the person arranged their library, told once, rather than a guess made
+ * per folder.
  *
  * # What this does not decide
  *
@@ -75,85 +75,56 @@ export interface Proposed {
   readonly contains: readonly string[];
 }
 
-/**
- * Files that are a product in themselves rather than part of one.
- *
- * An archive or a package sitting in a folder is a thing somebody bought and
- * put there; a texture or a mesh sitting in a folder is part of the thing the
- * folder is. The plugin may name extensions where the core may not, and this
- * is the one place it does.
- */
-const PACKAGED: readonly string[] = ["zip", "unitypackage", "rar", "7z"];
-
-/** Whether a file is part of whatever folder it sits in, rather than a thing of its own. */
-export function isLoose(entry: Entry): boolean {
-  if (entry.kind !== "file") return false;
-  const name = entry.path.split("/").pop() ?? "";
-  const dot = name.lastIndexOf(".");
-  const extension = dot === -1 ? "" : name.slice(dot + 1).toLowerCase();
-  return !PACKAGED.includes(extension);
-}
+/** How deep the groupings go, by what the library action was called. */
+export const ACTIONS: Readonly<Record<string, number>> = {
+  "scan products": 1,
+  "scan products, groupings two deep": 2,
+};
 
 /**
  * Which entries become objects.
  *
- * Decided from the whole walk, because whether a folder is a product depends
- * on what is directly inside it, and that is not visible from its name or
- * its depth.
+ * `groupingDepth` is how many folder levels are groupings. Depth 1: the
+ * top-level folders group, and `Clothing/outfit` is a product. Depth 2:
+ * `.LAPWING/Clothes` groups too, and `.LAPWING/Clothes/outfit` is a product.
+ * Depth 0: everything at the root is a product and there are no groupings.
+ *
+ * Whatever sits below a product is the product's and is not looked at.
  */
-export function productsFrom(entries: readonly Entry[]): Proposed[] {
-  // Direct children of each folder, with "" for the root.
-  const children = new Map<string, Entry[]>();
-  for (const entry of entries) {
-    const slash = entry.path.lastIndexOf("/");
-    const parent = slash === -1 ? "" : entry.path.slice(0, slash);
-    const held = children.get(parent) ?? [];
-    held.push(entry);
-    children.set(parent, held);
-  }
-
+export function productsFrom(entries: readonly Entry[], groupingDepth = 1): Proposed[] {
+  const depthOf = (path: string): number => path.split("/").length;
   const proposed: Proposed[] = [];
 
-  // A grouping: every direct child becomes an object, and the folders among
-  // them are looked at in turn.
-  const group = (folder: string): void => {
-    for (const child of children.get(folder) ?? []) {
-      if (child.kind === "file") {
-        proposed.push({ path: child.path, isFolder: false, contains: [] });
-      } else if (isGrouping(child.path)) {
-        proposed.push({
-          path: child.path,
-          isFolder: true,
-          contains: (children.get(child.path) ?? []).map((inside) => inside.path),
-        });
-        group(child.path);
-      } else {
-        proposed.push({ path: child.path, isFolder: true, contains: [] });
-      }
+  for (const entry of entries) {
+    const depth = depthOf(entry.path);
+    if (depth > groupingDepth + 1) continue;
+
+    if (entry.kind === "folder" && depth <= groupingDepth) {
+      proposed.push({
+        path: entry.path,
+        isFolder: true,
+        contains: entries
+          .filter((inside) => inside.path.startsWith(`${entry.path}/`))
+          .filter((inside) => depthOf(inside.path) === depth + 1)
+          .map((inside) => inside.path),
+      });
+    } else {
+      proposed.push({ path: entry.path, isFolder: entry.kind === "folder", contains: [] });
     }
-  };
+  }
 
-  // A folder holding nothing loose: only folders and packaged things. An
-  // empty folder is not a grouping: it is a thing somebody made, with
-  // nothing in it yet.
-  const isGrouping = (folder: string): boolean => {
-    const inside = children.get(folder) ?? [];
-    return inside.length > 0 && !inside.some(isLoose);
-  };
-
-  group("");
   return proposed;
 }
 
 /**
- * Read the whole disk and decide what to propose.
+ * Read as much of the disk as the rule needs and decide what to propose.
  *
- * The whole tree, not a level: whether a folder is a product is decided by
- * what is directly inside it, and that is one level further down than the
- * folder itself, all the way down.
+ * One level more than the groupings go, since the products sit there. A
+ * product's own parts are never read: the seed library's root holds 10
+ * entries and 441 below them.
  */
-export async function planFrom(api: Api): Promise<Proposed[]> {
-  return productsFrom(await api.fsWalk(null));
+export async function planFrom(api: Api, groupingDepth = 1): Promise<Proposed[]> {
+  return productsFrom(await api.fsWalk(null, groupingDepth + 1), groupingDepth);
 }
 
 /**

@@ -2,12 +2,12 @@ import { describe, expect, test } from "vitest";
 
 import type { Entry } from "../../src/plugin-host/commands.js";
 import {
+  ACTIONS,
   boothFields,
   boothItem,
   boothUrl,
   categorySuggestedBy,
   documentFor,
-  isLoose,
   productsFrom,
   vrchatFields,
 } from "./vrchat.js";
@@ -17,131 +17,77 @@ function entry(path: string, kind: "file" | "folder" = "file"): Entry {
 }
 
 describe("what counts as a product", () => {
-  test("a folder that holds a file is a product, and nothing below it is", () => {
-    // The forty textures inside an outfit are the outfit's. Listing them is
-    // what made the library impossible to organise.
+  test("one level of groupings: top folders group, what sits in them is a product", () => {
     const proposed = productsFrom([
       entry("Clothing", "folder"),
       entry("Clothing/outfit", "folder"),
-      entry("Clothing/outfit/skin.png"),
-      entry("Clothing/outfit/Texture", "folder"),
-      entry("Clothing/outfit/Texture/a.png"),
+      entry("Clothing/outfit/Textures", "folder"),
+      entry("Clothing/outfit/Textures/skin.png"),
+      entry("Clothing/Cross_Maid.zip"),
     ]);
 
-    expect(proposed.map((p) => p.path)).toEqual(["Clothing", "Clothing/outfit"]);
-    expect(proposed[1]).toEqual({ path: "Clothing/outfit", isFolder: true, contains: [] });
+    expect(proposed).toEqual([
+      { path: "Clothing", isFolder: true, contains: ["Clothing/outfit", "Clothing/Cross_Maid.zip"] },
+      { path: "Clothing/outfit", isFolder: true, contains: [] },
+      { path: "Clothing/Cross_Maid.zip", isFolder: false, contains: [] },
+    ]);
   });
 
-  test("a folder that holds only folders is a grouping, holding each of them", () => {
+  test("a product is a product whatever is inside it", () => {
+    // The content rule this replaces made 800 objects of 174 products: an
+    // unpacked package is a folder of folders, and read as a grouping.
     const proposed = productsFrom([
-      entry("Clothing", "folder"),
-      entry("Clothing/a", "folder"),
-      entry("Clothing/a/x.fbx"),
-      entry("Clothing/b", "folder"),
-      entry("Clothing/b/y.fbx"),
+      entry("Bases", "folder"),
+      entry("Bases/Airi_Ver1.00", "folder"),
+      entry("Bases/Airi_Ver1.00/Assets", "folder"),
+      entry("Bases/Airi_Ver1.00/Assets/Airi", "folder"),
+      entry("Bases/Airi_Ver1.00/Assets/Airi/body.fbx"),
     ]);
 
-    expect(proposed[0]).toEqual({ path: "Clothing", isFolder: true, contains: ["Clothing/a", "Clothing/b"] });
+    expect(proposed.map((p) => p.path)).toEqual(["Bases", "Bases/Airi_Ver1.00"]);
   });
 
-  test("the rule is the same at any depth, so an unorganised library reads too", () => {
-    // Before a library is organised nobody knows what any of it is. The old
-    // layout grouped by avatar, then by a word for the kind, then products.
-    const proposed = productsFrom([
-      entry(".AASHAREE", "folder"),
-      entry(".AASHAREE/CLOTHS", "folder"),
-      entry(".AASHAREE/CLOTHS/AW KLASSIK MAID", "folder"),
-      entry(".AASHAREE/CLOTHS/AW KLASSIK MAID/outfit.unitypackage"),
-      entry(".AASHAREE/CLOTHS/AW KLASSIK MAID/readme.txt"),
-      entry(".AASHAREE/CLOTHS/Cross_Maid.zip"),
-    ]);
+  test("two levels of groupings read the layout sorted by avatar and then by kind", () => {
+    const entries = [
+      entry(".LAPWING", "folder"),
+      entry(".LAPWING/Clothes", "folder"),
+      entry(".LAPWING/Clothes/outfit", "folder"),
+      entry(".LAPWING/Clothes/outfit/a.fbx"),
+      entry(".LAPWING/Hair", "folder"),
+      entry(".LAPWING/Hair/pony.unitypackage"),
+    ];
 
-    expect(proposed.map((p) => p.path)).toEqual([
-      ".AASHAREE",
-      ".AASHAREE/CLOTHS",
-      ".AASHAREE/CLOTHS/AW KLASSIK MAID",
-      ".AASHAREE/CLOTHS/Cross_Maid.zip",
+    expect(productsFrom(entries, 2).map((p) => [p.path, p.contains.length])).toEqual([
+      [".LAPWING", 2],
+      [".LAPWING/Clothes", 1],
+      [".LAPWING/Clothes/outfit", 0],
+      [".LAPWING/Hair", 1],
+      [".LAPWING/Hair/pony.unitypackage", 0],
     ]);
-    expect(proposed[1]?.contains).toEqual([".AASHAREE/CLOTHS/AW KLASSIK MAID", ".AASHAREE/CLOTHS/Cross_Maid.zip"]);
+    // The same tree at one level makes .LAPWING/Clothes a product, which is
+    // what the person asked for by saying one.
+    expect(productsFrom(entries, 1).map((p) => p.path)).toEqual([".LAPWING", ".LAPWING/Clothes", ".LAPWING/Hair"]);
   });
 
-  test("a package beside product folders is a product by itself", () => {
-    // A zip or a unitypackage is never loose content. The old layout kept
-    // product folders and product zips side by side in one folder, and
-    // _Archive/ holds forty-two zips that are forty-two things.
-    const proposed = productsFrom([
-      entry("Hair", "folder"),
-      entry("Hair/pony", "folder"),
-      entry("Hair/pony/a.fbx"),
-      entry("Hair/loose.unitypackage"),
-      entry("_Archive", "folder"),
-      entry("_Archive/a.zip"),
-      entry("_Archive/b.ZIP"),
-    ]);
+  test("a file at a grouping level is a product, since a file is never a grouping", () => {
+    const proposed = productsFrom([entry("T2 Collar.unitypackage"), entry("_Archive", "folder"), entry("_Archive/a.zip")]);
 
-    expect(proposed.map((p) => p.path)).toEqual([
-      "Hair",
-      "Hair/pony",
-      "Hair/loose.unitypackage",
-      "_Archive",
-      "_Archive/a.zip",
-      "_Archive/b.ZIP",
-    ]);
-    expect(proposed[0]?.contains).toEqual(["Hair/pony", "Hair/loose.unitypackage"]);
+    expect(proposed.map((p) => p.path)).toEqual(["T2 Collar.unitypackage", "_Archive", "_Archive/a.zip"]);
+    expect(proposed[0]?.contains).toEqual([]);
   });
 
-  test("a folder holding only a package is a grouping of one", () => {
-    // The rule's other known cost. A Booth download unpacked to a folder
-    // holding just its unitypackage reads as a grouping and the package as
-    // the product. Usually a readme or a license sits beside it and the
-    // folder is the product; when not, the person says so by hand. Deciding
-    // by count -- "one package means the folder is it" -- would be a guess,
-    // and _Archive/ with its forty-two zips is why the count cannot decide.
-    const proposed = productsFrom([
-      entry("Hair", "folder"),
-      entry("Hair/pony", "folder"),
-      entry("Hair/pony/pony.unitypackage"),
+  test("depth zero: everything at the root is a product", () => {
+    expect(productsFrom([entry("Clothing", "folder"), entry("Clothing/x.zip"), entry("a.zip")], 0)).toEqual([
+      { path: "Clothing", isFolder: true, contains: [] },
+      { path: "a.zip", isFolder: false, contains: [] },
     ]);
-
-    expect(proposed.map((p) => p.path)).toEqual(["Hair", "Hair/pony", "Hair/pony/pony.unitypackage"]);
-  });
-
-  test("a loose file beside product folders makes the folder a product", () => {
-    // The rule's known cost: a readme dropped into a category folder. The
-    // person fixes it by hand; the alternative, judging the readme by its
-    // name, is the mistake the lessons made twice with Texture/.
-    const proposed = productsFrom([
-      entry("Hair", "folder"),
-      entry("Hair/pony", "folder"),
-      entry("Hair/pony/a.fbx"),
-      entry("Hair/readme.txt"),
-    ]);
-
-    expect(proposed.map((p) => p.path)).toEqual(["Hair"]);
-  });
-
-  test("what is loose and what is packaged", () => {
-    expect(isLoose(entry("a/skin.png"))).toBe(true);
-    expect(isLoose(entry("a/outfit.unitypackage"))).toBe(false);
-    expect(isLoose(entry("a/outfit.ZIP"))).toBe(false);
-    expect(isLoose(entry("a/folder", "folder"))).toBe(false);
-  });
-
-  test("a file at the root is a product", () => {
-    expect(productsFrom([entry("T2 Collar.unitypackage")])).toEqual([
-      { path: "T2 Collar.unitypackage", isFolder: false, contains: [] },
-    ]);
-  });
-
-  test("an empty folder is a thing somebody made, not a grouping", () => {
-    expect(productsFrom([entry("New", "folder")])).toEqual([{ path: "New", isFolder: true, contains: [] }]);
   });
 
   test("the document carries containment and no values", () => {
     // The scan knows where things are, not what they are. A category comes
     // by import or from a person.
     const document = JSON.parse(
-      documentFor(productsFrom([entry("Hair", "folder"), entry("Hair/pony", "folder"), entry("Hair/pony/a.fbx")])),
+      documentFor(productsFrom([entry("Hair", "folder"), entry("Hair/pony", "folder")])),
     ) as { objects: Array<Record<string, unknown>> };
 
     expect(document.objects[0]).toMatchObject({
@@ -150,7 +96,12 @@ describe("what counts as a product", () => {
       values: {},
       edges: [{ kind: "contains", object: "Hair/pony" }],
     });
-    expect(document.objects[1]).toMatchObject({ paths: ["Hair/pony"], values: {} });
+    expect(document.objects[1]).toMatchObject({ paths: ["Hair/pony"], folders: ["Hair/pony"], values: {} });
+  });
+
+  test("each action names its depth", () => {
+    expect(ACTIONS["scan products"]).toBe(1);
+    expect(ACTIONS["scan products, groupings two deep"]).toBe(2);
   });
 });
 

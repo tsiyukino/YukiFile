@@ -879,6 +879,12 @@ pub struct ProposalView {
 
 // --- the Tauri surface -------------------------------------------------
 //
+// A synchronous command runs on the main thread, which is the webview's
+// thread: a gzip over an 84 MB package or a walk of a 35 GB library freezes
+// the window for as long as it takes. The commands that read the disk are
+// `async`, which Tauri runs on its own runtime instead. The bodies are still
+// blocking code; what changes is which thread blocks.
+//
 // Each of these unwraps `State` and calls the function above it. The split
 // exists so the work is reachable from a test: a `State` cannot be built
 // outside a running Tauri app, and a command that can only run inside one is
@@ -1041,7 +1047,7 @@ fn plainly_written(path: &std::path::Path) -> String {
 
 /// What is on disk under a path in the library.
 #[tauri::command]
-pub fn fs_walk(
+pub async fn fs_walk(
     library: State<'_, Library>,
     under: Option<String>,
     depth: Option<u32>,
@@ -1113,7 +1119,7 @@ pub fn term_objects(
 
 /// List a Unity package, on disk or inside a zip.
 #[tauri::command]
-pub fn unitypackage_list(
+pub async fn unitypackage_list(
     library: State<'_, Library>,
     path: String,
     member: Option<String>,
@@ -1122,7 +1128,7 @@ pub fn unitypackage_list(
 }
 
 #[tauri::command]
-pub fn archive_list(
+pub async fn archive_list(
     library: State<'_, Library>,
     path: String,
 ) -> Result<Vec<ArchiveMemberView>, BridgeError> {
@@ -1131,7 +1137,7 @@ pub fn archive_list(
 
 /// Hash a file or folder with the same function the core uses.
 #[tauri::command]
-pub fn hash_of(library: State<'_, Library>, path: String) -> Result<String, BridgeError> {
+pub async fn hash_of(library: State<'_, Library>, path: String) -> Result<String, BridgeError> {
     hash_of_in(&library, path)
 }
 
@@ -1146,7 +1152,7 @@ pub fn history_of(
 
 /// Submit a document.
 #[tauri::command]
-pub fn import_propose(
+pub async fn import_propose(
     library: State<'_, Library>,
     registry: State<'_, Registry>,
     label: String,

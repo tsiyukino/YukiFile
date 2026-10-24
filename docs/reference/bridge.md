@@ -156,6 +156,16 @@ It exists because a library where every mistake is permanent is one nobody will
 risk organising. Forgetting frees the path it held, so a mis-click can be redone
 properly.
 
+### Reading the disk runs off the main thread
+
+A synchronous command runs on the main thread, which is the webview's thread:
+a gzip over an 84 MB package or a walk of a 35 GB library froze the window for
+as long as it took. `fs.walk`, `archive.list`, `unitypackage.list`, `hash.of`
+and `import.propose` are `async` commands, which Tauri runs on its own
+runtime. The bodies are still blocking code; what changed is which thread
+blocks. A debug build is also several times slower at gzip than a release
+build, which is worth knowing before measuring.
+
 ## bridge::changes
 
 `changes_pending_in` · `changes_entries_in` · `changes_accept_in` ·

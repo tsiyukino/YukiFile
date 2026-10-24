@@ -47,37 +47,29 @@ is where the answer shows.
 ## The scan: what counts as a product
 
 `productsFrom` in `vrchat.ts`, pure and tested. A product is one folder or one
-file, and which folders are products is decided **by content, never by name**:
+file. What the scan cannot know is **where products begin**: a folder is a
+category holding products or a product holding its own parts, and nothing in
+the folder says which. The first version decided by content — a folder with
+loose files is a product — and on the real library it made 800 objects of 174
+products, because an unpacked package is a folder of folders.
 
-- a folder that directly holds a **loose** file — a texture, a mesh, a
-  readme — is a product, and nothing below it is an object: the forty
-  textures inside an outfit are the outfit's;
-- a zip, a unitypackage, a rar or a 7z is never loose content; it is a
-  product by itself wherever it sits, which is what makes `_Archive/`
-  forty-two products rather than one;
-- a folder that holds only folders and packaged things is a grouping, holding
-  each thing directly inside it through `contains`;
-- an empty folder is a thing somebody made, not a grouping.
+So the library says, through which action is pressed:
 
-Naming those four extensions is the one place the plugin judges a file by its
-name, and it is a judgement about packaging rather than about meaning: a
-package is a thing somebody bought and put there. The core may not name an
-extension; a plugin may.
+| action | groupings | a product is |
+|--------|-----------|--------------|
+| `scan products` | the top-level folders | anything directly inside one: `Clothing/outfit/` |
+| `scan products, groupings two deep` | two levels | anything at the third: `.LAPWING/Clothes/outfit/` |
 
-The rule reads an organised library (`Clothing/outfit/`) and an unorganised
-one (`.AASHAREE/CLOTHS/AW KLASSIK MAID/`) the same way, at any depth. It has
-to: before a library is organised nobody knows what any of it is, and the scan
-is what makes it possible to find out. `vrc-lessons.md` is where the rule comes
-from, and where its opposite — judging `Texture/` by its name — was made twice.
+Every folder down to the grouping depth is a grouping, holding each thing
+directly inside it through `contains`. Everything directly below the last
+grouping level is a product, whatever is inside it. A file at a grouping level
+is a product too, since a file is never a grouping — which is what makes
+`_Archive/` forty-two products. The walk reads one level more than the
+groupings go and never a product's own parts.
 
-**Known costs, both fixed by hand.** A grouping with one stray loose file in
-it — a `readme.txt` beside the product folders — reads as a product holding
-everything below it. A folder holding nothing but a single package reads as a
-grouping of one, with the package as the product; usually a readme or a
-license sits beside the package and the folder is the product. The
-alternatives are deciding by the file's name, which is the mistake the
-lessons made, and deciding by count, which `_Archive/` and its forty-two zips
-rule out.
+That is a fact about how the person arranged their library, told once, rather
+than a guess made per folder. The proper home for it is a library setting; a
+pair of actions is where it lives until there is a settings page.
 
 **The scan writes no values.** A folder's name is where a thing sits, not what
 it is, and one library has `Clothes`, `Cloths` and `CLOTHS`. The category
@@ -115,14 +107,17 @@ when a person presses a button.
 `src-tauri/examples/seed.rs` turns `seed/` into a contract document:
 
 ```bash
-cargo run --example seed -- ../seed seed.json
+cargo run --example seed -- ../seed seed.json to
 cargo run --example import -- <library-root> seed.json "seed"
 ```
 
-174 products and 76 avatar terms with their spellings. Each product carries
-both the path it was at and the path it was going to be moved to, so the
-document matches whichever layout the library has; an import records no
-locations, so the extra path costs nothing. A product with a Booth listing
+173 products and 76 avatar terms with their spellings. The third argument
+picks the layout: `to` (the default) writes the path each product was going to
+be moved to, `from` the path it was at. **One path, not both**: an import
+records every path it is given as a location, and the first version wrote
+both, which put 174 locations in the library that were not on disk and sent
+every panel looking for them. The one product whose path is absolute — being
+moved out to `World/` — is left out and counted. A product with a Booth listing
 gets its title under `booth#1/title`; one identified from a license PDF or a
 promo image gets a bare `title`, because that is what a bare field means. A
 redundant zip becomes an `archived-as` edge, in both the old place and the

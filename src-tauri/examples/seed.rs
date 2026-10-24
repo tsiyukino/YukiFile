@@ -1,7 +1,7 @@
 //! Turn the seed library's notes into a contract document.
 //!
 //! ```text
-//! cargo run --example seed -- <seed dir> <out.json>
+//! cargo run --example seed -- <seed dir> <out.json> [to|from]
 //! cargo run --example import -- <library-root> <out.json> "seed"
 //! ```
 //!
@@ -14,9 +14,12 @@
 //! # What goes where
 //!
 //! The manifest records where a product *was* and where it was going to be
-//! moved. Both paths are written, so the document matches whichever layout
-//! the library has. An import records no locations; the paths only match.
-//! The `to` path is the stable id.
+//! moved. One of them is written, chosen by the third argument -- `to` by
+//! default, `from` for a library that was never reorganised. Not both: an
+//! import records every path it is given as a location, and the first
+//! version wrote both, which put 174 locations in the library that were not
+//! on disk and sent every panel looking for them. A product whose path is
+//! absolute -- one being moved out of the library -- is left out and counted.
 //!
 //! A product with a Booth listing gets its title under `booth#1/title`, where
 //! it is a source for the shared title; one without -- including one whose
@@ -53,7 +56,12 @@ fn main() -> ExitCode {
 fn run() -> Result<(), String> {
     let mut args = std::env::args().skip(1);
     let (Some(seed), Some(out)) = (args.next(), args.next()) else {
-        return Err("usage: seed <seed dir> <out.json>".to_string());
+        return Err("usage: seed <seed dir> <out.json> [to|from]".to_string());
+    };
+    let layout = match args.next().as_deref() {
+        None | Some("to") => Layout::To,
+        Some("from") => Layout::From,
+        Some(other) => return Err(format!("{other:?} is not a layout; say to or from")),
     };
     let seed = Path::new(&seed);
 
@@ -61,14 +69,27 @@ fn run() -> Result<(), String> {
     let avatars = read(&seed.join("av.json"))?;
     let aliases = read(&seed.join("alias.json"))?;
 
-    let document = convert(&manifest, &avatars, &aliases)?;
+    let document = convert(&manifest, &avatars, &aliases, layout)?;
     let text = serde_json::to_string_pretty(&document).map_err(|error| error.to_string())?;
     std::fs::write(&out, text).map_err(|error| format!("cannot write {out}: {error}"))?;
 
     let objects = document["objects"].as_array().map(Vec::len).unwrap_or(0);
     let terms = document["terms"].as_array().map(Vec::len).unwrap_or(0);
+    let total = manifest.as_array().map(Vec::len).unwrap_or(0);
     println!("{objects} objects, {terms} avatar terms, written to {out}");
+    if total > objects {
+        println!("{} left out: their path is outside the library", total - objects);
+    }
     Ok(())
+}
+
+/// Which of the manifest's two paths a product is at.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Layout {
+    /// Where it was going to be moved: `Clothing/outfit`.
+    To,
+    /// Where it was: `.AASHAREE/CLOTHS/outfit`.
+    From,
 }
 
 fn read(path: &Path) -> Result<Value, String> {
@@ -78,7 +99,7 @@ fn read(path: &Path) -> Result<Value, String> {
 }
 
 /// The document, from the three seed files.
-pub fn convert(manifest: &Value, avatars: &Value, aliases: &Value) -> Result<Value, String> {
+pub fn convert(manifest: &Value, avatars: &Value, aliases: &Value, layout: Layout) -> Result<Value, String> {
     let products = manifest
         .as_array()
         .ok_or("manifest.json is not a list")?;
@@ -116,7 +137,13 @@ pub fn convert(manifest: &Value, avatars: &Value, aliases: &Value) -> Result<Val
         })
         .collect();
 
-    let objects: Vec<Value> = products.iter().map(object_of).collect::<Result<_, _>>()?;
+    let objects: Vec<Value> = products
+        .iter()
+        .map(|product| object_of(product, layout))
+        .collect::<Result<Vec<Option<Value>>, _>>()?
+        .into_iter()
+        .flatten()
+        .collect();
 
     Ok(json!({
         "version": 1,
@@ -126,18 +153,23 @@ pub fn convert(manifest: &Value, avatars: &Value, aliases: &Value) -> Result<Val
     }))
 }
 
-fn object_of(product: &Value) -> Result<Value, String> {
-    let from = text(product, "from")?;
-    let to = text(product, "to")?;
-
-    let mut paths = vec![to.clone()];
-    if from != to {
-        paths.push(from.clone());
+/// One product as a record, or `None` for one that is not in the library.
+fn object_of(product: &Value, layout: Layout) -> Result<Option<Value>, String> {
+    let path = match layout {
+        Layout::To => text(product, "to")?,
+        Layout::From => text(product, "from")?,
+    };
+    // `E:/...` is a product being moved out of the library. The core would
+    // refuse the path anyway; leaving it out here says so once.
+    if path.contains(':') || path.starts_with('/') {
+        return Ok(None);
     }
-    // Which of them are folders is what the import needs to mount `archive`
-    // on a zip and nothing on a folder. A name with no extension is a folder
-    // in this manifest; the two products whose folder names end in a
-    // version number still have no dot after the last separator.
+
+    let paths = vec![path.clone()];
+    // Whether it is a folder is what the import needs to mount `archive` on
+    // a zip and nothing on a folder. A name with no extension is a folder in
+    // this manifest; the products whose folder names end in a version number
+    // have digits after the last dot, which is not an extension.
     let folders: Vec<String> = paths.iter().filter(|p| !looks_like_file(p)).cloned().collect();
 
     let mut values: Map<String, Value> = Map::new();
@@ -197,13 +229,13 @@ fn object_of(product: &Value) -> Result<Value, String> {
         }
     }
 
-    Ok(json!({
+    Ok(Some(json!({
         "paths": paths,
         "folders": folders,
-        "id": to,
+        "id": path,
         "values": values,
         "edges": edges,
-    }))
+    })))
 }
 
 fn text(product: &Value, field: &str) -> Result<String, String> {
@@ -278,9 +310,9 @@ mod tests {
 
     #[test]
     fn a_booth_product_puts_its_listing_under_booth_and_the_rest_under_vrchat() {
-        let object = object_of(&product(json!({}))).unwrap();
+        let object = object_of(&product(json!({})), Layout::To).unwrap().unwrap();
 
-        assert_eq!(object["paths"], json!(["Clothing/Cross_Maid_Fullset", ".AASHAREE/CLOTHS/Cross_Maid_Fullset"]));
+        assert_eq!(object["paths"], json!(["Clothing/Cross_Maid_Fullset"]));
         assert_eq!(object["folders"], object["paths"]);
         assert_eq!(object["id"], "Clothing/Cross_Maid_Fullset");
         let values = &object["values"];
@@ -298,7 +330,7 @@ mod tests {
     fn a_product_without_a_listing_gets_a_bare_title() {
         // Typed by a person from a license PDF or a promo image: that is
         // what a bare field means.
-        let object = object_of(&product(json!({ "url": null, "price": null, "status": "vendor-from-package" }))).unwrap();
+        let object = object_of(&product(json!({ "url": null, "price": null, "status": "vendor-from-package" })), Layout::To).unwrap().unwrap();
 
         assert_eq!(object["values"]["title"], "Cross Maid");
         assert!(object["values"].get("booth#1/url").is_none());
@@ -306,7 +338,7 @@ mod tests {
 
     #[test]
     fn a_non_booth_source_is_kept_without_claiming_to_be_booth() {
-        let object = object_of(&product(json!({ "url": "https://gumroad.com/l/x" }))).unwrap();
+        let object = object_of(&product(json!({ "url": "https://gumroad.com/l/x" })), Layout::To).unwrap().unwrap();
 
         assert_eq!(object["values"]["vrchat#1/source_url"], "https://gumroad.com/l/x");
         assert!(object["values"].get("booth#1/url").is_none());
@@ -315,7 +347,7 @@ mod tests {
     #[test]
     fn a_booth_shop_front_is_a_source_and_not_a_listing() {
         // 24 of the seed's Booth URLs name the shop, not the product.
-        let object = object_of(&product(json!({ "url": "https://ikshop.booth.pm/" }))).unwrap();
+        let object = object_of(&product(json!({ "url": "https://ikshop.booth.pm/" })), Layout::To).unwrap().unwrap();
 
         assert_eq!(object["values"]["vrchat#1/source_url"], "https://ikshop.booth.pm/");
         assert_eq!(object["values"]["title"], "Cross Maid");
@@ -324,7 +356,7 @@ mod tests {
 
     #[test]
     fn avatars_become_supports_edges_and_archives_become_archived_as_in_both_layouts() {
-        let object = object_of(&product(json!({}))).unwrap();
+        let object = object_of(&product(json!({})), Layout::To).unwrap().unwrap();
         let edges = object["edges"].as_array().unwrap();
 
         assert!(edges.contains(&json!({ "kind": "supports", "term": "avatar:manuka" })));
@@ -335,7 +367,7 @@ mod tests {
 
     #[test]
     fn a_file_product_is_not_a_folder() {
-        let object = object_of(&product(json!({ "from": "a/x.unitypackage", "to": "Hair/x.unitypackage" }))).unwrap();
+        let object = object_of(&product(json!({ "from": "a/x.unitypackage", "to": "Hair/x.unitypackage" })), Layout::To).unwrap().unwrap();
         assert_eq!(object["folders"], json!([]));
 
         // A version number after a dot is not an extension.
@@ -345,11 +377,34 @@ mod tests {
     }
 
     #[test]
+    fn the_old_layout_uses_the_path_a_product_was_at() {
+        let object = object_of(&product(json!({})), Layout::From).unwrap().unwrap();
+
+        assert_eq!(object["paths"], json!([".AASHAREE/CLOTHS/Cross_Maid_Fullset"]));
+        assert_eq!(object["id"], ".AASHAREE/CLOTHS/Cross_Maid_Fullset");
+    }
+
+    #[test]
+    fn a_product_being_moved_out_of_the_library_is_left_out() {
+        // An import records every path it is given as a location, and the
+        // core would refuse an absolute one. Saying so once beats a panel
+        // failing on it every time the object opens.
+        let gone = object_of(
+            &product(json!({ "to": "E:/Unity/VRChat/.Resources/World/Music Player.unitypackage" })),
+            Layout::To,
+        )
+        .unwrap();
+
+        assert!(gone.is_none());
+    }
+
+    #[test]
     fn every_avatar_a_product_names_gets_a_term_even_if_the_vocabulary_forgot_it() {
         let document = convert(
             &json!([product(json!({ "avatars": ["manuka", "nagi"] }))]),
             &json!(["manuka"]),
             &json!({ "manuka": ["Manuka", "マヌカ"] }),
+            Layout::To,
         )
         .unwrap();
 
@@ -366,10 +421,18 @@ mod tests {
             &read(&seed.join("manifest.json")).unwrap(),
             &read(&seed.join("av.json")).unwrap(),
             &read(&seed.join("alias.json")).unwrap(),
+            Layout::To,
         )
         .unwrap();
 
-        assert_eq!(document["objects"].as_array().unwrap().len(), 174);
+        // 174 less the one being moved out to World/.
+        assert_eq!(document["objects"].as_array().unwrap().len(), 173);
+        // No path is absolute, and none is in the old layout.
+        for object in document["objects"].as_array().unwrap() {
+            let path = object["paths"][0].as_str().unwrap();
+            assert!(!path.contains(':'), "{path}");
+            assert!(!path.starts_with('.'), "{path} is an old-layout path");
+        }
         // 67 listed plus the 9 only products mention.
         assert_eq!(document["terms"].as_array().unwrap().len(), 76);
         // And the core reads it as a document.
