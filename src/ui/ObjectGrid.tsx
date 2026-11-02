@@ -264,7 +264,7 @@ export function ObjectGrid(props: ObjectGridProps): React.JSX.Element {
                 ? "Nothing in the library has everything chosen. Remove a filter to widen it."
                 : trail.length > 0
                   ? "This holds nothing the library has recorded."
-                  : "Scan it from the Library menu, if an installed plugin offers to, or add something by hand from the Disk view."}
+                  : "Scan it from the Library menu, if an installed plugin offers to, or add something by hand from the Disk view. Another library opens from its name at the top left."}
             </Blankslate.Description>
           </Blankslate>
         </div>

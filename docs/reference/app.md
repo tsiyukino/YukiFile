@@ -11,7 +11,7 @@ webview at a React frontend.
 `src-tauri/src/main.rs`
 
 ```
-library_root()  → the first argument, or the working directory
+library_root()  → a switch made in the window, the first argument, the last library, or a scratch one
 open_library()  → .yukifile/library.db, created on first run
 load_plugins()  → discover::in_directory, then Registry::load
 register_commands!(builder).run(...)
@@ -180,15 +180,39 @@ binary without Vite, and the window points at a dev server that is not there.
 
 ### Which library opens
 
-The first argument, or the working directory — except when the working
-directory is a source tree, which is what `tauri dev` gives you. Scanning that
-would pull in `target/` and `node_modules/`, several gigabytes of build output,
-so a scratch library under `target/` opens instead and the reason goes to
-stderr.
+In order: a switch made from inside the window, a folder named as the first
+argument, the library opened last, and otherwise a scratch library
+(`src-tauri/src/libraries.rs`). A remembered library whose folder is gone, a
+drive not plugged in, is passed over and stays on the list.
 
-Opening something rather than refusing to start is deliberate: a GUI that exits
-with a message on stderr has, from where the user is sitting, done nothing at
-all.
+What was opened is remembered in `libraries.json` in the application's own
+config directory (`%APPDATA%\yukifile` on Windows), not in any library: which
+library a machine opens is a fact about the machine. The list keeps the last
+eight.
+
+The scratch library sits under `target/` when the working directory is a
+source tree, which is what `tauri dev` gives you, and in the config directory
+otherwise. The working directory itself is never opened: from a shortcut it is
+often the install folder, and making that a library would write `.yukifile/`
+into it. Opening something rather than refusing to start is deliberate: a GUI
+that exits with a message on stderr has, from where the user is sitting, done
+nothing at all.
+
+### Choosing a library from the window
+
+The library's name at the top left opens **Libraries**: the ones opened
+before, each with **Open** and a button to forget it from the list, and **Open
+another library…**, which asks the operating system for a folder. A folder
+that has never been a library becomes one when opened. The three commands,
+`library.recent`, `library.switch` and `library.recent.remove`, are the
+application's own: a plugin that could switch libraries could point the window
+at any folder on the machine.
+
+Switching writes the choice down and restarts the process. Everything on
+screen hangs off the opened library -- its connection, the plugins it
+enables, the asset scope granted for its files -- and a restart replaces all
+of it correctly by construction, where swapping it under a running window
+would be a dozen places to get half right.
 
 Vite uses `strictPort`, so a busy 5173 fails at startup instead of moving to
 another port and leaving the window pointed at nothing.

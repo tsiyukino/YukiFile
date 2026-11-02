@@ -12,6 +12,7 @@ pub mod changes;
 pub mod commands;
 pub mod contract;
 pub mod export;
+pub mod libraries;
 pub mod plugin;
 pub mod scan;
 pub mod store;

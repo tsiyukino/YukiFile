@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 
 vi.mock("./invoke.js", () => ({
-  dialogs: { pickDocument: async () => null, pickTarget: async () => null },
+  dialogs: { pickDocument: async () => null, pickTarget: async () => null, pickLibrary: async () => null },
   invoke: async (command: string) => {
     switch (command) {
       case "plugin_list": return [{"id": "yukifile.archive", "contributes": {"properties": ["archive"], "file_types": {"zip": ["archive"]}, "panels": {"archive": "./panel"}, "columns": {"archive": ["entries", "unpacked"]}}, "directory": "archive"}, {"id": "yukifile.pdf", "contributes": {"properties": ["pdf"], "file_types": {"pdf": ["pdf"]}, "panels": {"pdf": "./panel"}, "viewers": {"pdf": "./viewer"}}, "directory": "pdf"}, {"id": "yukifile.paper", "contributes": {"properties": ["paper"], "shared": ["title"], "forms": {"paper": "./form"}, "panels": {"paper": "./panel"}}, "requires": {"properties": ["pdf"]}, "directory": "paper"}, {"id": "yukifile.unitypackage", "contributes": {"properties": ["unitypackage"], "file_types": {"unitypackage": ["unitypackage"]}, "panels": {"unitypackage": "./panel"}}, "directory": "unitypackage"}, {"id": "yukifile.vrchat", "contributes": {"properties": ["vrchat", "booth"], "shared": ["title", "price", "url", "vendor"], "vocabularies": ["avatar"], "forms": {"vrchat": "./form", "booth": "./booth-form"}, "panels": {"vrchat": "./panel", "booth": "./booth-panel"}, "actions": {"booth": ["fetch listing"]}, "action_module": "./actions", "hosts": ["booth.pm", "*.booth.pm"], "facets": ["category", "vendor"], "library_actions": ["scan products"], "library_action_module": "./action"}, "directory": "vrchat"}, {"id": "yukifile.explorer", "contributes": {"library_actions": ["scan"], "library_action_module": "./action"}, "directory": "explorer"}];
@@ -13,6 +13,7 @@ vi.mock("./invoke.js", () => ({
       case "object_summaries": return [{ id: "1", name: "Cross Maid", path: "a.zip", kind: "file", cover: null, children: 0 }];
       case "object_query": return { ids: ["1"], total: 1 };
       case "object_facets": return { total: 1, properties: [{ property: "archive", count: 1 }], fields: [{ field: "category", values: [{ value: "Clothing", count: 1 }] }], vocabularies: [] };
+      case "library_recent": return [{ path: "/libraries/vrchat", name: "vrchat", exists: true, current: true }];
       case "library_info": return { root: "/libraries/vrchat", plugins: [], chosen: false, skipped: [] };
       case "object_edges": return [];
       case "path_list": return [];

@@ -19,6 +19,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use yukifile::bridge::Library;
+use yukifile::libraries;
 use yukifile::plugin::{discover, enabled, registry::Registry};
 use yukifile::register_commands;
 use yukifile::store::schema;
@@ -34,9 +35,20 @@ fn main() -> ExitCode {
 }
 
 fn start() -> Result<(), String> {
-    let root = library_root()?;
+    let config = libraries::config_dir();
+    let remembered = config.as_deref().map(libraries::read).unwrap_or_default();
+    let root = library_root(&remembered, config.as_deref())?;
     let library = open_library(&root)?;
     let (registry, skipped) = load_plugins(&root.join(DATA))?;
+
+    // Remember what opened, and clear a switch that has now happened. A
+    // failure here costs the recent list, never the window.
+    if let Some(dir) = config.as_deref() {
+        let opened = remembered.opened(&libraries::plain(library.root()));
+        if let Err(error) = libraries::write(dir, &opened) {
+            eprintln!("could not remember the library: {error}");
+        }
+    }
 
     // What happened before the window existed, reported from inside `setup`.
     //
@@ -60,7 +72,8 @@ fn start() -> Result<(), String> {
         })
         .manage(library)
         .manage(registry)
-        .manage(yukifile::bridge::settings::PluginsDir(plugins_dir()));
+        .manage(yukifile::bridge::settings::PluginsDir(plugins_dir()))
+        .manage(yukifile::bridge::libraries::ConfigDir(config));
 
     register_commands!(builder)
         .run(tauri::generate_context!())
@@ -95,39 +108,47 @@ fn logging() -> tauri::plugin::TauriPlugin<tauri::Wry> {
 
 /// Which library to open.
 ///
-/// The first argument, or the working directory. A picker belongs in the UI
-/// rather than here: this has to work before a window exists.
-fn library_root() -> Result<PathBuf, String> {
-    if let Some(given) = std::env::args().nth(1) {
-        return Ok(PathBuf::from(given));
+/// A switch made from the window, then a folder named on the command line,
+/// then the library opened last (`libraries::choose`). A remembered library
+/// whose folder is gone -- a drive not plugged in -- is passed over rather
+/// than recreated empty, and the picker still lists it.
+///
+/// With nothing chosen, a scratch library rather than the working directory.
+/// Started from a shortcut the working directory is wherever the shortcut
+/// says, often the install folder, and making that a library would write
+/// `.yukifile/` into it. A window that opens on an empty scratch library can
+/// say "open a library" from its picker; a GUI that exits with a message on
+/// stderr has, from where the person is sitting, done nothing at all.
+fn library_root(remembered: &libraries::Remembered, config: Option<&std::path::Path>) -> Result<PathBuf, String> {
+    if let Some(chosen) = libraries::choose(remembered, std::env::args().nth(1)) {
+        let path = PathBuf::from(&chosen);
+        if path.is_dir() {
+            return Ok(path);
+        }
+        eprintln!("{chosen} is not there any more; opening a scratch library instead");
     }
 
     let here =
         std::env::current_dir().map_err(|error| format!("no working directory: {error}"))?;
 
     // `tauri dev` runs from `src-tauri/`, so the working directory during
-    // development is the source tree rather than anything a person wants
-    // managed. Scanning it would pull in `target/` and `node_modules/` --
-    // several gigabytes of build output -- which would make the first run of
-    // the application its worst experience.
-    //
-    // Opening a scratch library instead of refusing to start: a GUI that
-    // exits with a message on stderr has, from where the user is sitting,
-    // done nothing at all. A window that opens empty can at least say so.
-    if here.join("Cargo.toml").is_file() || here.join("package.json").is_file() {
-        let scratch = here.join("target").join("scratch-library");
-        std::fs::create_dir_all(&scratch)
-            .map_err(|error| format!("cannot create {}: {error}", scratch.display()))?;
-        eprintln!(
-            "{} is a source tree, so opening {} instead.\n\
-             Pass a folder to open a real library: yukifile <path>",
-            here.display(),
-            scratch.display()
-        );
-        return Ok(scratch);
-    }
-
-    Ok(here)
+    // development is the source tree. Its scratch library lives under
+    // `target/`, where a `cargo clean` takes it away with everything else.
+    let scratch = if here.join("Cargo.toml").is_file() || here.join("package.json").is_file() {
+        here.join("target").join("scratch-library")
+    } else if let Some(dir) = config {
+        dir.join("scratch-library")
+    } else {
+        here.join("scratch-library")
+    };
+    std::fs::create_dir_all(&scratch)
+        .map_err(|error| format!("cannot create {}: {error}", scratch.display()))?;
+    eprintln!(
+        "no library chosen, so opening {}.\n\
+         Choose one from the window, or pass a folder: yukifile <path>",
+        scratch.display()
+    );
+    Ok(scratch)
 }
 
 /// Where a library keeps what Yukifile wrote: the database, the plugin list.

@@ -48,6 +48,11 @@ export const dialogs = {
     const chosen = await open({ multiple: false, directory: false, filters: [{ name: "Yukifile document", extensions: ["json"] }] });
     return typeof chosen === "string" ? chosen : null;
   },
+  /** A folder to open as a library, or `null`. */
+  pickLibrary: async (): Promise<string | null> => {
+    const chosen = await open({ multiple: false, directory: true, title: "Open a library folder" });
+    return typeof chosen === "string" ? chosen : null;
+  },
   /** Where to write an export, or `null`. */
   pickTarget: async (): Promise<string | null> => {
     const chosen = await save({ defaultPath: "library.json", filters: [{ name: "Yukifile document", extensions: ["json"] }] });

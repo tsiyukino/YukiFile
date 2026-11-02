@@ -308,6 +308,17 @@ export interface PluginRow {
 }
 
 /** The library, as a settings page describes it. */
+/** A library the picker offers. */
+export interface RecentLibrary {
+  readonly path: string;
+  /** The folder's own name. */
+  readonly name: string;
+  /** Whether the folder is there now. A drive not plugged in is not. */
+  readonly exists: boolean;
+  /** Whether it is the one open. */
+  readonly current: boolean;
+}
+
 export interface LibraryInfo {
   readonly root: string;
   readonly plugins: readonly PluginRow[];
@@ -628,6 +639,15 @@ export interface AppApi {
   settingSet(key: string, value: string): Promise<void>;
   /** What is installed, what this library runs, and where it is. */
   libraryInfo(): Promise<LibraryInfo>;
+  /** The libraries this machine opened before, the open one marked. */
+  libraryRecent(): Promise<RecentLibrary[]>;
+  /** Take a library off the picker's list. Its folder is not touched. */
+  libraryRecentRemove(path: string): Promise<void>;
+  /**
+   * Open another library. The application restarts into it, so this does
+   * not resolve when it works; it rejects when the folder is not there.
+   */
+  librarySwitch(path: string): Promise<void>;
   /** Which plugins the library runs; `null` means everything installed. Takes effect at the next open. */
   pluginsEnable(ids: readonly string[] | null): Promise<void>;
   /** Put the mounts in a new order. Every mount has to be named. */
@@ -697,6 +717,9 @@ export function appApiFor(invoke: Invoke): AppApi {
     settingAll: () => invoke(handlerName("setting.all"), {}) as Promise<SettingRow[]>,
     settingSet: (key, value) => invoke(handlerName("setting.set"), { key, value }) as Promise<void>,
     libraryInfo: () => invoke(handlerName("library.info"), {}) as Promise<LibraryInfo>,
+    libraryRecent: () => invoke(handlerName("library.recent"), {}) as Promise<RecentLibrary[]>,
+    libraryRecentRemove: (path) => invoke(handlerName("library.recent.remove"), { path }) as Promise<void>,
+    librarySwitch: (path) => invoke(handlerName("library.switch"), { path }) as Promise<void>,
     pluginsEnable: (ids) => invoke(handlerName("plugins.enable"), { ids }) as Promise<void>,
     mountOrderSet: (order) => invoke(handlerName("mount.order.set"), { order }) as Promise<void>,
     coverSet: (id, source) =>

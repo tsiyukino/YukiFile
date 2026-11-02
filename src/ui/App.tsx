@@ -72,6 +72,7 @@ import { NOTHING, onlyField, onlyTerm, withText, type Narrowing } from "./filter
 import { ForgetButton } from "./Forget.js";
 import { dialogs, invoke } from "./invoke.js";
 import { LibraryMenu, type Report } from "./LibraryMenu.js";
+import { LibrarySwitcher } from "./LibrarySwitcher.js";
 import { ObjectGrid, type Crumb } from "./ObjectGrid.js";
 import { fallbackTitle, ObjectPage } from "./ObjectPage.js";
 import { describe } from "./problem.js";
@@ -302,17 +303,10 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
     app.settingSet(CARD_SIZE, next).catch(() => undefined);
   };
 
-  const libraryName = root ? (root.split(/[\\/]/).filter(Boolean).pop() ?? root) : "Library";
-
   return (
     <div className="yk-app">
       <header className="yk-header">
-        <div className="yk-brand">
-          <span className="yk-brand-name">Yukifile</span>
-          <span className="yk-brand-root" title={root}>
-            {libraryName}
-          </span>
-        </div>
+        <LibrarySwitcher app={app} dialogs={dialogs} root={root} />
 
         <div className="yk-search">
           <TextInput

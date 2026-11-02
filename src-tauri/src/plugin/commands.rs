@@ -275,6 +275,22 @@ pub const APP_ONLY: &[Command] = &[
         reason: "what is installed, what this library runs, and where it is",
     },
     Command {
+        name: "library.recent",
+        effect: Effect::Write,
+        reason: "the libraries this machine opened before, for the picker",
+    },
+    Command {
+        name: "library.recent.remove",
+        effect: Effect::Write,
+        reason: "taking a library off the picker's list",
+    },
+    Command {
+        name: "library.switch",
+        effect: Effect::Write,
+        reason: "which library the window shows is the person's choice, and a \
+                 plugin that could make it could point the window anywhere",
+    },
+    Command {
         name: "plugins.enable",
         effect: Effect::Write,
         reason: "a library says which plugins it uses; a plugin may not say it \

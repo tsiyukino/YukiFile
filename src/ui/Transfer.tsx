@@ -21,6 +21,8 @@ import { describe } from "./problem.js";
 export interface Dialogs {
   readonly pickDocument: () => Promise<string | null>;
   readonly pickTarget: () => Promise<string | null>;
+  /** A folder to open as a library. Optional where nothing opens one. */
+  readonly pickLibrary?: () => Promise<string | null>;
 }
 
 export interface TransferProps {

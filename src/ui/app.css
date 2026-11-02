@@ -41,9 +41,28 @@ body {
 .yk-brand {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   min-width: 0;
   width: 232px;
   flex-shrink: 0;
+  margin: calc(-1 * var(--base-size-4)) 0;
+  padding: var(--base-size-4) var(--base-size-8);
+  border: 0;
+  border-radius: var(--borderRadius-medium);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.yk-brand:hover {
+  background: var(--bgColor-neutral-muted);
+}
+
+.yk-brand:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 0;
 }
 
 .yk-brand-name {
@@ -53,6 +72,7 @@ body {
 }
 
 .yk-brand-root {
+  max-width: 100%;
   color: var(--fgColor-muted);
   font-size: var(--text-body-size-small, 0.75rem);
   white-space: nowrap;
@@ -536,4 +556,41 @@ body {
 .yk-order-name {
   font-family: var(--fontStack-monospace, ui-monospace, monospace);
   font-size: var(--text-body-size-small);
+}
+
+/* --- the library picker -------------------------------------------------- */
+
+.yk-libraries {
+  list-style: none;
+  margin: 0 0 var(--base-size-12);
+  padding: 0;
+}
+
+.yk-library-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--base-size-12);
+  padding: var(--base-size-8) 0;
+  border-bottom: 1px solid var(--borderColor-muted);
+}
+
+.yk-library-row[data-missing="true"] {
+  opacity: 0.6;
+}
+
+.yk-library-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.yk-library-text .yk-mono {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.yk-library-name {
+  font-weight: 600;
 }

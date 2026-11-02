@@ -3319,3 +3319,40 @@ fn query_browses_one_level_of_the_tree_with_its_sort() {
     let bad = object_query_in(&library, None, filter(r#"{"within":"not an id"}"#), Sort::Name, 0, 50);
     assert!(matches!(bad, Err(BridgeError::BadRequest(_))));
 }
+
+// --- choosing a library ------------------------------------------------------
+
+#[test]
+fn the_open_library_is_always_offered_even_on_a_first_run() {
+    use yukifile::bridge::libraries::library_recent_in;
+    let (library, _dir) = library();
+    let offered = library_recent_in(&library, None);
+    assert_eq!(offered.len(), 1);
+    assert!(offered[0].current);
+    assert!(offered[0].exists);
+}
+
+#[test]
+fn switching_remembers_the_choice_and_refuses_a_folder_that_is_not_there() {
+    use yukifile::bridge::libraries::{library_recent_in, library_switch_in};
+    use yukifile::libraries;
+    let (library, dir) = library();
+    let config = dir.path().join("config");
+    let other = dir.path().join("other");
+    fs::create_dir_all(&other).expect("other library");
+
+    library_switch_in(Some(&config), other.to_str().expect("utf-8")).expect("switch");
+    assert_eq!(libraries::read(&config).switch_to.as_deref(), other.to_str());
+
+    let missing = dir.path().join("nowhere");
+    assert!(matches!(
+        library_switch_in(Some(&config), missing.to_str().expect("utf-8")),
+        Err(BridgeError::NotFound(_))
+    ));
+
+    // A library remembered on a drive that is not plugged in is listed, greyed.
+    libraries::write(&config, &libraries::Remembered::default().opened(missing.to_str().expect("utf-8"))).expect("write");
+    let offered = library_recent_in(&library, Some(&config));
+    assert!(offered.iter().any(|row| !row.exists && !row.current));
+    assert!(offered.iter().any(|row| row.current));
+}

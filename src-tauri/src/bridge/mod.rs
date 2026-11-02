@@ -35,6 +35,7 @@ pub mod rescan;
 pub mod settings;
 pub mod transfer;
 pub mod error;
+pub mod libraries;
 pub mod library;
 pub mod network;
 pub mod views;
@@ -97,6 +98,9 @@ macro_rules! register_commands {
             $crate::bridge::settings::setting_all,
             $crate::bridge::settings::setting_set,
             $crate::bridge::settings::library_info,
+            $crate::bridge::libraries::library_recent,
+            $crate::bridge::libraries::library_recent_remove,
+            $crate::bridge::libraries::library_switch,
             $crate::bridge::settings::plugins_enable,
             $crate::bridge::settings::mount_order_set,
             $crate::bridge::transfer::library_export_file,
