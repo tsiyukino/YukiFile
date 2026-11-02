@@ -553,6 +553,11 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.yk-order-fixed {
+  grid-column: span 2;
+  font-size: var(--text-body-size-small);
+}
+
 .yk-order-name {
   font-family: var(--fontStack-monospace, ui-monospace, monospace);
   font-size: var(--text-body-size-small);

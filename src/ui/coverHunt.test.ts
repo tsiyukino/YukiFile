@@ -50,8 +50,9 @@ describe("finding covers for the whole library", () => {
     expect(result.looked).toBe(4);
     expect(result.found).toBe(2);
     expect(result.unreadable).toEqual(["Broken"]);
-    expect(app.coverSet).toHaveBeenCalledWith("1", { from: "file", path: "Clothing/Outfit/thumbnail.png" });
-    expect(app.coverSet).toHaveBeenCalledWith("6", { from: "preview", path: "Hair/h.unitypackage", guid: "g1" });
+    // Written as finds, which rank after a shop's picture.
+    expect(app.coverSet).toHaveBeenCalledWith("1", { from: "file", path: "Clothing/Outfit/thumbnail.png" }, true);
+    expect(app.coverSet).toHaveBeenCalledWith("6", { from: "preview", path: "Hair/h.unitypackage", guid: "g1" }, true);
     // A zip holding nothing but a mask gets no cover rather than a bad one.
     expect(app.coverSet).not.toHaveBeenCalledWith("2", expect.anything());
     expect(api.objectFlat).not.toHaveBeenCalledWith("3");

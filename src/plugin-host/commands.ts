@@ -673,7 +673,12 @@ export interface AppApi {
    * Written to the bare `cover` field, as the person's own choice. Returns
    * the stored path, which `fileUrl` can serve.
    */
-  coverSet(id: ObjectId, source: CoverSource): Promise<string>;
+  /**
+   * Store a picture as the object's cover. `found` says the application
+   * picked it, not a person: it is then a source ranked after every plugin's,
+   * so a shop's picture fetched later still wins.
+   */
+  coverSet(id: ObjectId, source: CoverSource, found?: boolean): Promise<string>;
   /**
    * Bring the library's locations back in line with the disk.
    *
@@ -737,8 +742,8 @@ export function appApiFor(invoke: Invoke): AppApi {
     librarySwitch: (path) => invoke(handlerName("library.switch"), { path }) as Promise<void>,
     pluginsEnable: (ids) => invoke(handlerName("plugins.enable"), { ids }) as Promise<void>,
     mountOrderSet: (order) => invoke(handlerName("mount.order.set"), { order }) as Promise<void>,
-    coverSet: (id, source) =>
-      invoke(handlerName("cover.set"), { id, source }) as Promise<string>,
+    coverSet: (id, source, found = false) =>
+      invoke(handlerName("cover.set"), { id, source, found }) as Promise<string>,
     libraryReconcile: () =>
       invoke(handlerName("library.reconcile"), {}) as Promise<Rescanned>,
     changesAccept: (change, accepted) =>

@@ -150,8 +150,10 @@ One request at a time with a second between them, so the seed's 72 listings
 are 72 polite requests rather than a burst. A listing that fails or says
 nothing new is counted and passed over.
 
-Run it before **Find covers…**: a picture that finds stores the object's own
-cover, which outranks the shop's.
+`cover` is one of the plugin's shared fields, so the shop's picture is a
+source of the object's cover like the person's own and the application's
+finds: it outranks a find, and a person's own pick outranks it. A listing
+counts as fetched once the shop's cover is among the object's cover sources.
 
 ## Facets
 

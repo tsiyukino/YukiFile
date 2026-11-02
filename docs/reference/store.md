@@ -39,6 +39,17 @@ the plugin layer to have looked first. Three copies of this list existed across
 `plugin::manifest`, `plugin::registry` and `store::flatten` before it was
 collected here.
 
+### `found`
+
+`found` is reserved from plugins like `fs`, `@pin` and `@import`, but unlike
+`@pin` and `@import` it is mounted and shown. It holds what the application
+found by itself: today, covers picked from the pictures inside an object. It
+shares `cover` without a manifest saying so (`bridge::query::resolved_order`),
+and `values::mount_order` always sorts it after every plugin, whichever was
+mounted first, so a guess from inside a folder never outranks a picture a shop
+published. An import mounts it like a plugin's namespace, since an export
+carries finds.
+
 ### `ValuePath<'a>`
 
 A parsed path, borrowing from the input rather than allocating.

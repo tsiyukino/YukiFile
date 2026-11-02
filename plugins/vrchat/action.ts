@@ -42,9 +42,10 @@ export async function runLibraryAction({ api, action }: LibraryActionProps): Pro
 /**
  * Fetch every Booth listing the library records and has not fetched yet.
  *
- * A listing counts as fetched once its region holds the shop's cover: that
- * is the one thing a fetch always tries to store, and the picture a grid of
- * products most needs. One request at a time with a pause between, so four
+ * A listing counts as fetched once the object holds the shop's cover from
+ * that region: that is the one thing a fetch always tries to store, and the
+ * picture a grid of products most needs. The cover is a shared field, so it
+ * is looked for among the object's cover sources rather than in the region. One request at a time with a pause between, so four
  * hundred listings are four hundred polite requests rather than a burst.
  * A listing that fails is counted and passed over; the rest go on.
  */
@@ -59,7 +60,8 @@ export async function fetchAllListings(
       const object = await api.objectFlat(id);
       for (const region of object.regions) {
         if (region.property !== "booth") continue;
-        if (region.fields["cover"]) continue;
+        const from = `${region.property}#${region.instance}`;
+        if ((object.shared["cover"] ?? []).some((source) => source.from === from)) continue;
         if (!region.fields["item_id"] && !region.fields["url"]) continue;
         wanted.push({ id, property: region.property, instance: region.instance });
       }

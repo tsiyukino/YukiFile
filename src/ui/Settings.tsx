@@ -207,22 +207,30 @@ export function Settings({ api, app, generation, onTheme, onChanged }: SettingsP
                   {mount.namespace}
                   {mount.instance !== 1 && ` #${mount.instance}`}
                 </span>
-                <IconButton
-                  icon={ArrowUpIcon}
-                  size="small"
-                  variant="invisible"
-                  disabled={working || index === 0}
-                  onClick={() => move(index, -1)}
-                  aria-label={`Move ${mount.namespace} up`}
-                />
-                <IconButton
-                  icon={ArrowDownIcon}
-                  size="small"
-                  variant="invisible"
-                  disabled={working || index === mounts.length - 1}
-                  onClick={() => move(index, 1)}
-                  aria-label={`Move ${mount.namespace} down`}
-                />
+                {mount.namespace === FOUND ? (
+                  // What the application found by itself always ranks last;
+                  // the core sorts it there whatever order is written.
+                  <span className="yk-muted yk-order-fixed">always last</span>
+                ) : (
+                  <>
+                    <IconButton
+                      icon={ArrowUpIcon}
+                      size="small"
+                      variant="invisible"
+                      disabled={working || index === 0}
+                      onClick={() => move(index, -1)}
+                      aria-label={`Move ${mount.namespace} up`}
+                    />
+                    <IconButton
+                      icon={ArrowDownIcon}
+                      size="small"
+                      variant="invisible"
+                      disabled={working || index === mounts.length - 1 || mounts[index + 1]?.namespace === FOUND}
+                      onClick={() => move(index, 1)}
+                      aria-label={`Move ${mount.namespace} down`}
+                    />
+                  </>
+                )}
               </li>
             ))}
           </ol>
@@ -283,6 +291,9 @@ export function Settings({ api, app, generation, onTheme, onChanged }: SettingsP
     </div>
   );
 }
+
+/** The core's source for what it found by itself (`store::path::FOUND`). */
+const FOUND = "found";
 
 /** One boxed part of the page, titled. */
 function Section({ title, children }: { readonly title: string; readonly children: React.ReactNode }): React.JSX.Element {

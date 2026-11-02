@@ -26,6 +26,15 @@ pub const PIN: &str = "@pin";
 /// The namespace an import's bookkeeping is written under.
 pub const IMPORT: &str = "@import";
 
+/// What the application found by itself, as opposed to what a person chose
+/// or a plugin said: a cover picked from the pictures inside an object.
+///
+/// A source like a plugin's, mounted like one, so a page lists it and a
+/// person can clear it. It always ranks after every plugin (`values::
+/// mount_order`): a guess from inside a folder should never outrank the
+/// picture a shop published, and a person's own choice outranks both.
+pub const FOUND: &str = "found";
+
 /// Namespaces the core keeps for itself.
 ///
 /// `fs` is the one core property, stored in its own typed table rather than in
@@ -37,7 +46,7 @@ pub const IMPORT: &str = "@import";
 /// storage has to be able to refuse them without depending on the plugin layer
 /// to have looked first. Two copies of this list existed before it was
 /// collected here, which is what a list living in the wrong place produces.
-pub const RESERVED: &[&str] = &[FS, PIN, IMPORT];
+pub const RESERVED: &[&str] = &[FS, PIN, IMPORT, FOUND];
 
 /// Whether a string is usable as a namespace on its own.
 ///

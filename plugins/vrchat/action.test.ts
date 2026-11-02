@@ -14,14 +14,15 @@ const answer = JSON.stringify({
 function world() {
   const regions: Record<string, Record<string, string>> = {
     "1": { item_id: "6467347" },
-    "2": { item_id: "1", cover: ".yukifile/covers/done.png" },
+    "2": { item_id: "1" },
     "3": {},
   };
   const api = {
     objectQuery: vi.fn(async () => ({ ids: ["1", "2", "3"], total: 3 })),
     objectFlat: vi.fn(async (id: string) => ({
       id,
-      shared: {},
+      // Object 2 was fetched before: the shop's cover is among its sources.
+      shared: id === "2" ? { cover: [{ value: ".yukifile/covers/done.png", from: "booth#1" }] } : {},
       regions: [{ property: "booth", instance: 1, fields: regions[id] ?? {} }],
       skipped: [],
       carries: ["booth#1"],

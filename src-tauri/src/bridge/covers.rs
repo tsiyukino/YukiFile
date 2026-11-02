@@ -36,8 +36,13 @@ pub enum CoverSource {
     },
 }
 
-/// Store the image and point the object's `cover` at it. Returns the path.
-pub fn cover_set_in(library: &Library, id: i64, source: CoverSource) -> Result<String, BridgeError> {
+/// Store the image and point the object's cover at it. Returns the path.
+///
+/// `found` says the application picked it rather than a person: it is then
+/// written as `found#1/cover`, a source that ranks after every plugin's, so a
+/// shop's picture fetched later still wins. A person's pick is the bare
+/// `cover`, which outranks everything.
+pub fn cover_set_in(library: &Library, id: i64, source: CoverSource, found: bool) -> Result<String, BridgeError> {
     let bytes = match &source {
         CoverSource::File { path } => {
             let resolved = library.resolve(path)?;
@@ -72,7 +77,8 @@ pub fn cover_set_in(library: &Library, id: i64, source: CoverSource) -> Result<S
         cover::CoverError::Unwritable(io) => BridgeError::Storage(io.to_string()),
     })?;
 
-    object_value_set_in(library, id, "cover", &stored)?;
+    let field = if found { format!("{}#1/cover", crate::store::path::FOUND) } else { "cover".to_string() };
+    object_value_set_in(library, id, &field, &stored)?;
     Ok(stored)
 }
 
@@ -82,6 +88,7 @@ pub async fn cover_set(
     library: tauri::State<'_, Library>,
     id: String,
     source: CoverSource,
+    found: Option<bool>,
 ) -> Result<String, BridgeError> {
-    cover_set_in(&library, crate::bridge::commands::parse_id(&id)?, source)
+    cover_set_in(&library, crate::bridge::commands::parse_id(&id)?, source, found.unwrap_or(false))
 }

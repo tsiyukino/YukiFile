@@ -2,7 +2,7 @@
   "id": "yukifile.vrchat",
   "contributes": {
     "properties": ["vrchat", "booth"],
-    "shared": ["title", "price", "url", "vendor"],
+    "shared": ["title", "price", "url", "vendor", "cover"],
     "vocabularies": ["avatar"],
     "forms": { "vrchat": "./form", "booth": "./booth-form" },
     "panels": { "vrchat": "./panel", "booth": "./booth-panel" },

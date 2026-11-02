@@ -2784,7 +2784,7 @@ fn a_cover_from_a_file_is_stored_scaled_and_pointed_at() {
     fs::write(dir.path().join("promo.png"), png_bytes(1600, 800)).expect("write");
     let id = object_with(&library, &[]);
 
-    let stored = cover_set_in(&library, id, CoverSource::File { path: "promo.png".into() }).expect("cover");
+    let stored = cover_set_in(&library, id, CoverSource::File { path: "promo.png".into() }, false).expect("cover");
 
     assert!(stored.starts_with(".yukifile/covers/"), "{stored}");
     let on_disk = image::open(dir.path().join(&stored)).expect("open");
@@ -2807,6 +2807,7 @@ fn a_cover_from_inside_a_zip_never_unpacks_the_zip() {
         &library,
         id,
         CoverSource::Member { path: "product.zip".into(), member: "promo/cover.png".into() },
+        false,
     )
     .expect("cover");
 
@@ -2841,6 +2842,7 @@ fn a_cover_from_a_package_preview_by_guid() {
         &library,
         id,
         CoverSource::Preview { path: "outfit.unitypackage".into(), member: None, guid: "g1".into() },
+        false,
     )
     .expect("cover");
     assert!(dir.path().join(&stored).is_file());
@@ -2849,6 +2851,7 @@ fn a_cover_from_a_package_preview_by_guid() {
         &library,
         id,
         CoverSource::Preview { path: "outfit.unitypackage".into(), member: None, guid: "nobody".into() },
+        false,
     );
     assert!(matches!(missing, Err(BridgeError::NotFound(_))), "{missing:?}");
 }
@@ -2860,7 +2863,7 @@ fn a_file_that_is_not_an_image_is_refused_and_the_field_untouched() {
     let id = object_with(&library, &[]);
 
     assert!(matches!(
-        cover_set_in(&library, id, CoverSource::File { path: "notes.txt".into() }),
+        cover_set_in(&library, id, CoverSource::File { path: "notes.txt".into() }, false),
         Err(BridgeError::BadRequest(_))
     ));
     assert!(object_flat_in(&library, None, id).expect("flat").shared.get("cover").is_none());
@@ -2871,7 +2874,7 @@ fn a_cover_outside_the_library_is_refused() {
     let (library, _dir) = library();
     let id = object_with(&library, &[]);
     assert!(matches!(
-        cover_set_in(&library, id, CoverSource::File { path: "../elsewhere.png".into() }),
+        cover_set_in(&library, id, CoverSource::File { path: "../elsewhere.png".into() }, false),
         Err(BridgeError::OutsideLibrary(_) | BridgeError::NotFound(_))
     ));
 }
@@ -3403,4 +3406,47 @@ fn a_grouping_without_a_cover_borrows_four_from_inside_it() {
     let rows = object_summaries_in(&library, vec![shelf, inside[0]]).expect("summaries");
     assert_eq!(rows[0].previews.len(), 4, "two levels down, four at most");
     assert!(rows[1].previews.is_empty(), "a thing with its own cover borrows nothing");
+}
+
+#[test]
+fn a_found_cover_ranks_after_a_shops_and_a_shops_after_a_persons() {
+    // Finding covers ran before the shop listing was fetched; the shop's
+    // picture still has to be the one shown.
+    let (library, dir) = library();
+    fs::write(dir.path().join("promo.png"), png_bytes(64, 64)).expect("write");
+    let registry = registry_sharing("booth", &["cover"]);
+    let id = object_with(&library, &[]);
+
+    let found = cover_set_in(&library, id, CoverSource::File { path: "promo.png".into() }, true).expect("found");
+    // Mounted after `found`, and still ahead of it.
+    library
+        .with_connection(|connection| {
+            let mut store = Values::new();
+            store.set(connection, id, "booth#1/cover", ".yukifile/covers/shop.png").expect("shop");
+            yukifile::store::values::mount(connection, "booth", 1)?;
+            Ok(())
+        })
+        .expect("shop cover");
+
+    let view = object_flat_in(&library, Some(&registry), id).expect("flat");
+    let sources: Vec<(Option<&str>, &str)> =
+        view.shared["cover"].iter().map(|s| (s.from.as_deref(), s.value.as_str())).collect();
+    assert_eq!(sources, [(Some("booth#1"), ".yukifile/covers/shop.png"), (Some("found#1"), found.as_str())]);
+    assert_eq!(
+        object_summaries_in(&library, vec![id]).expect("summary")[0].cover.as_deref(),
+        Some(".yukifile/covers/shop.png"),
+        "the card agrees with the page"
+    );
+
+    // A person's own pick outranks both.
+    cover_set_in(&library, id, CoverSource::File { path: "promo.png".into() }, false).expect("own");
+    let view = object_flat_in(&library, Some(&registry), id).expect("flat");
+    assert_eq!(view.shared["cover"][0].from, None);
+}
+
+#[test]
+fn a_plugin_may_not_call_a_property_found() {
+    use yukifile::plugin::manifest::Manifest;
+    let manifest = Manifest::parse(r#"{"id":"sneaky","contributes":{"properties":["found"]}}"#);
+    assert!(manifest.is_err() || manifest.expect("parsed").check().is_err());
 }

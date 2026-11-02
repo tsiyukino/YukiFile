@@ -106,6 +106,9 @@ archives, then keeps the one `bestCover` ranks highest
 
 One object at a time, with a progress bar and **Stop**; an archive that cannot
 be read is counted and passed over. The chosen picture goes through
-`cover.set`, which stores it as the object's own cover. That outranks a shop's
-cover fetched later, so the dialog says to fetch listings first. Running it
-twice is harmless: the second run looks only at what the first left without.
+`cover.set` with `found`, which writes it as `found#1/cover`: a source like a
+plugin's that always ranks after every plugin's (`store.md`, *found*). A
+shop's picture, fetched before or after, is shown instead, and a person's own
+pick outranks both. A wrong guess is cleared from the object's page. Running
+it twice is harmless: the second run looks only at what the first left
+without.

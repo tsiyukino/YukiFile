@@ -502,11 +502,15 @@ impl From<rusqlite::Error> for ReorderError {
 pub fn mount_order(connection: &Connection) -> rusqlite::Result<Vec<MountRow>> {
     let mut statement = connection
         .prepare("SELECT namespace, instance FROM mounts ORDER BY position")?;
-    let mounts = statement
+    let mut mounts = statement
         .query_map([], |row| {
             Ok(MountRow { namespace: row.get(0)?, instance: row.get(1)?, shared: Vec::new() })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
+    // What the application found by itself ranks after every plugin,
+    // whichever was mounted first: a guess from inside a folder never
+    // outranks what a shop published. Stable, so the rest keep their order.
+    mounts.sort_by_key(|row| row.namespace == crate::store::path::FOUND);
     Ok(mounts)
 }
 

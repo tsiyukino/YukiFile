@@ -102,16 +102,7 @@ pub fn object_flat_in(
             return Err(BridgeError::NoSuchObject(id.to_string()));
         }
 
-        let mut order = values::mount_order(connection)?;
-        if let Some(registry) = registry {
-            let shared = registry.shared_fields();
-            for row in &mut order {
-                if let Some(fields) = shared.get(row.namespace.as_str()) {
-                    row.shared = fields.to_vec();
-                }
-            }
-        }
-
+        let order = crate::bridge::query::resolved_order(connection, registry)?;
         let mounts = values::mounts(&order);
         let view = flatten::flatten(&rows, &mounts);
 
@@ -1022,7 +1013,12 @@ pub fn import_propose_in_with(
                 for written in record.values.keys() {
                     let Ok(path) = crate::store::path::ValuePath::parse(written) else { continue };
                     if let (Some(namespace), Some(instance)) = (path.namespace, path.instance) {
-                        if !crate::store::path::is_reserved(namespace) {
+                        // `found` is reserved from plugins, not from being
+                        // shown: an export carries finds and an import has to
+                        // mount them to show them again.
+                        if !crate::store::path::is_reserved(namespace)
+                            || namespace == crate::store::path::FOUND
+                        {
                             values::mount(transaction, namespace, instance)?;
                         }
                     }

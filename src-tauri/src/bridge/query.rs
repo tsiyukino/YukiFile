@@ -316,6 +316,13 @@ pub(crate) fn resolved_order(
             }
         }
     }
+    // The application's own finds are a source of the cover and nothing
+    // else; no manifest says so, because no plugin owns them.
+    for row in &mut order {
+        if row.namespace == crate::store::path::FOUND {
+            row.shared = vec!["cover".to_string()];
+        }
+    }
     Ok(order)
 }
 

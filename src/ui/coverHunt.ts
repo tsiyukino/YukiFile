@@ -92,7 +92,8 @@ export async function findCovers(api: Api, app: AppApi, hunt: CoverHunt): Promis
       const flat = await api.objectFlat(object.id);
       const best = bestCover(await candidatesFor(api, flat.locations, hunt.packages));
       if (best) {
-        await app.coverSet(object.id, best.source);
+        // As a find, not a choice: a shop's picture fetched later outranks it.
+        await app.coverSet(object.id, best.source, true);
         found += 1;
       }
     } catch {

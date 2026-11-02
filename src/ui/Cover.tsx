@@ -40,6 +40,9 @@ export function Cover({ api, app, object, onChanged }: CoverProps): React.JSX.El
   const sources = object.shared["cover"] ?? [];
   const held = sources[0]?.value;
   const own = sources.find((source) => source.from === null)?.value;
+  // A cover the application found by itself can be cleared like a person's
+  // own: it was a guess, and a wrong guess has to be removable.
+  const found = sources[0]?.from === "found#1" ? sources[0].value : undefined;
 
   const [url, setUrl] = useState<string | undefined>(undefined);
   const [choosing, setChoosing] = useState(false);
@@ -116,7 +119,7 @@ export function Cover({ api, app, object, onChanged }: CoverProps): React.JSX.El
     if (!app) return;
     setWorking(true);
     app
-      .objectValueSet(object.id, "cover", "")
+      .objectValueSet(object.id, own !== undefined ? "cover" : "found#1/cover", "")
       .then(() => onChanged?.())
       .catch((error: unknown) => setProblem(describe(error)))
       .finally(() => setWorking(false));
@@ -140,7 +143,7 @@ export function Cover({ api, app, object, onChanged }: CoverProps): React.JSX.El
           <Button size="small" leadingVisual={ImageIcon} disabled={working} onClick={open}>
             {held ? "Change cover" : "Choose cover"}
           </Button>
-          {own !== undefined && (
+          {(own !== undefined || found !== undefined) && (
             <Button size="small" variant="danger" disabled={working} onClick={clear}>
               Clear cover
             </Button>

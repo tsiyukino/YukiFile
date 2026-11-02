@@ -72,8 +72,8 @@ export function FindCovers({ api, app, onClose, onChanged }: FindCoversProps): R
           never do. A cover anyone chose, or a shop provided, is left alone.
         </Text>
         <Text size="small" className="yk-muted">
-          A cover found here counts as chosen, and outranks one a shop provides later. If a plugin can fetch shop
-          listings, run that first, from the Library menu, and let this fill in the rest.
+          A cover found here is a guess: one a shop provides, fetched before or after, is shown instead, and a cover you
+          pick yourself outranks both. A wrong guess can be cleared from the object&apos;s page.
         </Text>
 
         <FormControl disabled={running}>
