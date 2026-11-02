@@ -711,8 +711,9 @@ export async function gather(api: Api): Promise<Context> {
   );
 
   const mounts = await api.mountOrder();
-  // One id, for the total that comes with it. The grid fetches its own pages.
-  const page = await api.objectIds(null, 1);
+  // One id, for the total that comes with it: every object, wherever it sits
+  // in the tree. The grid fetches its own pages.
+  const page = await api.objectQuery({}, "oldest", 0, 1);
   const pending = await api.changesPending();
 
   return {

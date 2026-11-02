@@ -9,7 +9,7 @@ function fakeApi(over: Partial<Api> = {}): Api {
   return {
     pluginList: async () => [],
     mountOrder: async () => [],
-    objectIds: async () => ({ ids: [], total: 0 }),
+    objectQuery: async () => ({ ids: [], total: 0 }),
     changesPending: async () => [],
     objectFlat: async (id: string) => ({
       id,
@@ -38,22 +38,24 @@ describe("gathering what the page needs", () => {
     const objectFlat = vi.fn();
 
     const context = await gather(
-      fakeApi({ objectIds: async () => ({ ids: ["42"], total: 7 }), objectFlat }),
+      fakeApi({ objectQuery: async () => ({ ids: ["42"], total: 7 }), objectFlat }),
     );
 
     expect(objectFlat).not.toHaveBeenCalled();
     expect(context.total).toBe(7);
   });
 
-  test("only one object is asked for", async () => {
+  test("only one object is asked for, across the whole library", async () => {
     // The shell wants the total, which comes with any page. Fetching the
     // whole library for it is the shape that stops working on somebody
-    // else's 1518 objects.
-    const objectIds = vi.fn(async () => ({ ids: ["1"], total: 1500 }));
+    // else's 1518 objects. An empty filter counts every object, not only
+    // the top of the tree.
+    const objectQuery = vi.fn(async () => ({ ids: ["1"], total: 1500 }));
 
-    await gather(fakeApi({ objectIds }));
+    const context = await gather(fakeApi({ objectQuery }));
 
-    expect(objectIds).toHaveBeenCalledWith(null, 1);
+    expect(objectQuery).toHaveBeenCalledWith({}, "oldest", 0, 1);
+    expect(context.total).toBe(1500);
   });
 
   test("a plugin whose module will not load does not stop the rest", async () => {
@@ -133,13 +135,13 @@ describe("reloading after a scan", () => {
     // Clearing the context alone left a spinner nothing would replace: the
     // effect ran once, had no reason to run again, and "reload" meant "show
     // the loading state forever". This is the property that was missing.
-    const objectIds = vi.fn(async () => ({ ids: [], total: 0 }));
-    const api = fakeApi({ objectIds });
+    const objectQuery = vi.fn(async () => ({ ids: [], total: 0 }));
+    const api = fakeApi({ objectQuery });
 
     await gather(api);
     await gather(api);
 
-    expect(objectIds).toHaveBeenCalledTimes(2);
+    expect(objectQuery).toHaveBeenCalledTimes(2);
   });
 
   test("a second gather sees what the first did not", async () => {
@@ -147,7 +149,7 @@ describe("reloading after a scan", () => {
     // has to read the library again rather than reuse an answer.
     let scanned = false;
     const api = fakeApi({
-      objectIds: async () => (scanned ? { ids: ["1"], total: 441 } : { ids: [], total: 0 }),
+      objectQuery: async () => (scanned ? { ids: ["1"], total: 441 } : { ids: [], total: 0 }),
     });
 
     expect((await gather(api)).total).toBe(0);

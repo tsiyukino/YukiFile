@@ -16,7 +16,8 @@
  * is a viewer-extension-point question.
  */
 
-import { Button, Stack, Text } from "@primer/react";
+import { Button, Heading, Stack, Text } from "@primer/react";
+import { ScreenFullIcon, ScreenNormalIcon } from "@primer/octicons-react";
 import { useState } from "react";
 
 import type { Api, FlatObject } from "../plugin-host/commands.js";
@@ -61,8 +62,14 @@ export function Viewer({
   const Component = componentFor(showing, loaded);
 
   return (
-    <Stack gap="condensed">
-      <Stack direction="horizontal" gap="condensed" align="center">
+    // Boxed like a region, so the page reads as one set of sections; the
+    // header holds the choice of viewer and the size.
+    <section className="yk-region">
+      <header className="yk-region-head">
+        <Heading as="h2" variant="small">
+          Preview
+        </Heading>
+        <Stack direction="horizontal" gap="condensed" align="center">
         {offered.length > 1 &&
           offered.map((viewer) => (
             <Button
@@ -74,10 +81,15 @@ export function Viewer({
             </Button>
           ))}
 
-        <Button onClick={() => setExtent(extent === "inline" ? "covering" : "inline")}>
+        <Button
+          size="small"
+          leadingVisual={extent === "inline" ? ScreenFullIcon : ScreenNormalIcon}
+          onClick={() => setExtent(extent === "inline" ? "covering" : "inline")}
+        >
           {extent === "inline" ? "Fill the window" : "Shrink"}
         </Button>
       </Stack>
+      </header>
 
       <div
         style={
@@ -89,7 +101,7 @@ export function Viewer({
                 background: "var(--bgColor-default)",
                 overflow: "auto",
               }
-            : { height: "60vh", overflow: "auto" }
+            : { height: "60vh", overflow: "auto", borderRadius: "0 0 var(--borderRadius-medium) var(--borderRadius-medium)" }
         }
       >
         {extent === "covering" && (
@@ -109,7 +121,7 @@ export function Viewer({
           <Text size="small">{showing.plugin} could not be loaded</Text>
         )}
       </div>
-    </Stack>
+    </section>
   );
 }
 

@@ -56,7 +56,10 @@ that belong here anyway.
 | `src/main.tsx` | mounts `App` inside Primer's `ThemeProvider` |
 | `src/ui/theme.ts` | follows the operating system's colour mode |
 | `src/ui/invoke.ts` | the only file that imports `@tauri-apps/api` |
-| `src/ui/App.tsx` | the shell |
+| `src/ui/App.tsx` | the shell: header, sidebar, page |
+| `src/ui/app.css` | the shell's layout and every page's shared styles, on Primer's variables |
+| `src/ui/LibraryMenu.tsx` | the header's Library menu: plugin actions, rescan, import, export |
+| `src/ui/PageHead.tsx` | the heading every page but the grid shares |
 | `src/ui/problem.ts` | a thrown value in words, for every screen that shows one |
 
 ### The shell
