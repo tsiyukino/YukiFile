@@ -74,6 +74,20 @@ which fields mean something to a person browsing is the plugin's knowledge,
 and a field with a thousand distinct values makes a poor facet in a way only
 the plugin knows. A path, a pin or a name with a space is refused.
 
+### `automatic_actions` may run without a press
+
+Library actions a plugin allows to run by themselves: `["fetch booth
+listings"]`. Each must also be in `library_actions`, or the manifest is
+refused. Listing one does not make it run; a library runs it only after a
+person switches it on in settings, and then once when the library opens and
+after a scan, an import or an added object
+(`2026-11-02_a-switch-can-stand-for-a-press.md`). It is handed the api a press
+would hand it: the network for `hosts` and no other.
+
+A library action may report how far it has got through the optional
+`progress(done, total)` it is handed; the shell shows it in the Library menu's
+button, or in the header when the action is running by itself.
+
 ### Module specifiers name no extension
 
 `"./panel"`, never `"./panel.js"`. Which extension a module carries on disk --

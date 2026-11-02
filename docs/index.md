@@ -54,6 +54,9 @@
 - [2026-10-24 the network is lent to a press](decisions/2026-10-24_the-network-is-lent-to-a-press.md)
   — how "only when the user presses a button" became a shape: an api a plugin
   holds only while its action runs, for the hosts it named.
+- [2026-11-02 a switch can stand for a press](decisions/2026-11-02_a-switch-can-stand-for-a-press.md)
+  — actions a plugin allows to run by themselves, once a person switches them
+  on for a library; the same hosts, off by default.
 
 ## Reference
 

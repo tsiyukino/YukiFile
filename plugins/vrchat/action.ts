@@ -13,8 +13,8 @@ import { DEPTH_SETTING, depthFrom, documentFor, planFrom } from "./vrchat.js";
 /** Waited between two requests to Booth, so a library of listings is not a burst. */
 export const BETWEEN_REQUESTS_MS = 1000;
 
-export async function runLibraryAction({ api, action }: LibraryActionProps): Promise<ActionResult> {
-  if (action === "fetch booth listings") return fetchAllListings(api);
+export async function runLibraryAction({ api, action, progress }: LibraryActionProps): Promise<ActionResult> {
+  if (action === "fetch booth listings") return fetchAllListings(api, undefined, progress);
   if (action !== "scan products") {
     return { summary: `${action} is not something this plugin does`, changed: false };
   }
@@ -52,6 +52,7 @@ export async function runLibraryAction({ api, action }: LibraryActionProps): Pro
 export async function fetchAllListings(
   api: LibraryActionProps["api"],
   pause: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  progress?: LibraryActionProps["progress"],
 ): Promise<ActionResult> {
   const wanted: { id: string; property: string; instance: number }[] = [];
   for (let offset = 0; ; offset += 500) {
@@ -74,6 +75,7 @@ export async function fetchAllListings(
   let fetched = 0;
   let failed = 0;
   for (const [index, listing] of wanted.entries()) {
+    progress?.(index, wanted.length);
     if (index > 0) await pause(BETWEEN_REQUESTS_MS);
     try {
       const result = await fetchListing(api, listing.id, listing.property, listing.instance);
@@ -84,6 +86,7 @@ export async function fetchAllListings(
     }
   }
 
+  progress?.(wanted.length, wanted.length);
   const parts = [`${fetched} of ${wanted.length} listings fetched`];
   if (failed > 0) parts.push(`${failed} gave nothing new or failed`);
   return { summary: parts.join(", "), changed: fetched > 0 };

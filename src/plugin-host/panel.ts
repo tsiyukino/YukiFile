@@ -133,6 +133,12 @@ export interface LibraryActionProps {
   readonly api: PressedApi;
   /** Which of the plugin's library actions was chosen. */
   readonly action: string;
+  /**
+   * How far a long action has got, for the shell to show. Optional both
+   * ways: an action that never calls it is fine, and a caller may not pass
+   * it.
+   */
+  readonly progress?: ((done: number, total: number) => void) | undefined;
 }
 
 /** What a library action reports when it finishes. */

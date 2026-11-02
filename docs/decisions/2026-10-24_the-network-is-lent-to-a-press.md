@@ -1,7 +1,7 @@
 # The network is lent to a press
 
 Date: 2026-10-24
-Status: accepted
+Status: accepted, revised by `2026-11-02_a-switch-can-stand-for-a-press.md`
 
 ## Context
 

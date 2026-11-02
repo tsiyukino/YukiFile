@@ -89,6 +89,13 @@ card size live in the shell for the same reason.
 
 The card size is a library setting, `grid.card_size`, beside `theme`.
 
+Actions a person switched on to run by themselves (`src/ui/automatic.ts`)
+run once when the library opens and again after a library action, an import,
+an object added by hand, or a switch being turned on; a run asked for while
+one is going becomes one more run after it. While one runs, the header shows
+its name and how far it has got; when it changed something, a banner says
+what and the library is re-read.
+
 ### Themes
 
 `main.tsx` imports Primer's primitives: the light and dark theme files and

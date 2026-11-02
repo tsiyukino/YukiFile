@@ -65,6 +65,7 @@ import { loadAll, type Loaded } from "../plugin-host/loader.js";
 import type { Mount } from "../plugin-host/slots.js";
 import type { Manifest } from "../plugin-host/types.js";
 import { AddObject } from "./AddObject.js";
+import { runSwitchedOn, type Running } from "./automatic.js";
 import { CARD_SIZE, type CardSize } from "./Card.js";
 import { DiskBrowser } from "./DiskBrowser.js";
 import { FilterSidebar } from "./FilterSidebar.js";
@@ -160,6 +161,16 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
 
   const [report, setReport] = useState<Report | undefined>(undefined);
 
+  // Actions a person switched on to run by themselves (`automatic.ts`):
+  // bumped to ask for a run, with what is running now for the header.
+  const [autoTick, setAutoTick] = useState(0);
+  const [running, setRunning] = useState<Running | undefined>(undefined);
+  const autoBusy = useRef(false);
+  const autoAgain = useRef(false);
+  const contextRef = useRef<Context | undefined>(undefined);
+  contextRef.current = context;
+  const ready = context !== undefined;
+
   const main = useRef<HTMLElement>(null);
   const search = useRef<HTMLInputElement>(null);
   // Where each view was scrolled to when an object was opened over it.
@@ -230,6 +241,33 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
     return () => clearTimeout(timer);
   }, [typed]);
 
+  // Once the library is open, and again whenever something may have brought
+  // in work for them: a scan, an import, an added object, a switch turned on.
+  // A run asked for while one is going is folded into one more after it.
+  useEffect(() => {
+    const held = contextRef.current;
+    if (!ready || !held) return;
+    if (autoBusy.current) {
+      autoAgain.current = true;
+      return;
+    }
+    autoBusy.current = true;
+    runSwitchedOn(api, app, held.plugins, held.loaded, setRunning)
+      .then((outcome) => {
+        if (!outcome.changed) return;
+        setReport({ tone: "success", title: "Done automatically", detail: outcome.said.join(" · ") });
+        setGeneration((n) => n + 1);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        autoBusy.current = false;
+        if (autoAgain.current) {
+          autoAgain.current = false;
+          setAutoTick((n) => n + 1);
+        }
+      });
+  }, [ready, autoTick]);
+
   // "/" finds the search box from anywhere that is not itself a text field.
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -248,7 +286,6 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
     if (!scroller) return;
     scroller.scrollTop = chosen ? 0 : (scrolls.current.get(view) ?? 0);
     // Only on opening and closing an object, not on every view change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chosen]);
 
   if (problem) {
@@ -269,6 +306,9 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
   }
 
   const refresh = (): void => setGeneration((n) => n + 1);
+
+  // The library took in something new; switched-on actions may have work.
+  const kick = (): void => setAutoTick((n) => n + 1);
 
   // The library changed under the page: an object was added or forgotten, or
   // a scan ran. Re-read everything; an object that was forgotten closes.
@@ -342,6 +382,13 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
         </div>
 
         <div className="yk-header-end">
+          {running && (
+            <span className="yk-auto" role="status">
+              <Spinner size="small" />
+              {running.action}
+              {running.total > 0 && ` ${running.done}/${running.total}`}
+            </span>
+          )}
           {context.pending > 0 && (
             <Button
               leadingVisual={CheckCircleIcon}
@@ -358,7 +405,10 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
             plugins={context.plugins}
             loaded={context.loaded}
             onReport={setReport}
-            onChanged={refresh}
+            onChanged={() => {
+              refresh();
+              kick();
+            }}
           />
           <IconButton
             icon={GearIcon}
@@ -561,6 +611,7 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
                     onAdded={(id) => {
                       setAdding(undefined);
                       refresh();
+                      kick();
                       open(id);
                     }}
                     onCancel={() => setAdding(undefined)}
@@ -621,7 +672,11 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
                   app={app}
                   generation={generation}
                   onTheme={(preference) => onTheme?.(preference)}
-                  onChanged={refresh}
+                  onChanged={() => {
+                    refresh();
+                    kick();
+                  }}
+                  plugins={context.plugins}
                 />
               )}
             </div>

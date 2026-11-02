@@ -155,6 +155,11 @@ source of the object's cover like the person's own and the application's
 finds: it outranks a find, and a person's own pick outranks it. A listing
 counts as fetched once the shop's cover is among the object's cover sources.
 
+It is also the plugin's one `automatic_actions` entry. Switched on in
+settings, it runs by itself when the library opens and after every scan,
+import or added object, so a product scanned in with a Booth number gets the
+shop's picture as its cover without anyone pressing anything.
+
 ## Facets
 
 `facets: ["category", "vendor"]`: the sidebar counts both and narrows the

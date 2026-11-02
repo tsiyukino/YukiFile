@@ -4,6 +4,16 @@ import { describe, expect, test, vi } from "vitest";
 import type { Api, AppApi } from "../plugin-host/commands.js";
 import { Settings } from "./Settings.js";
 
+const shop = {
+  id: "yukifile.vrchat",
+  contributes: {
+    library_actions: ["fetch booth listings"],
+    library_action_module: "./action",
+    automatic_actions: ["fetch booth listings"],
+    hosts: ["booth.pm"],
+  },
+};
+
 function world() {
   let settings = [{ key: "theme", value: "dark" }, { key: "vrchat.grouping_depth", value: "2" }];
   const api = { mountOrder: vi.fn(async () => [{ namespace: "booth", instance: 1 }, { namespace: "gumroad", instance: 1 }]) };
@@ -27,7 +37,16 @@ function world() {
   };
   const onTheme = vi.fn();
   const onChanged = vi.fn();
-  render(<Settings api={api as unknown as Api} app={app as unknown as AppApi} generation={0} onTheme={onTheme} onChanged={onChanged} />);
+  render(
+    <Settings
+      api={api as unknown as Api}
+      app={app as unknown as AppApi}
+      generation={0}
+      onTheme={onTheme}
+      onChanged={onChanged}
+      plugins={[shop]}
+    />,
+  );
   return { api, app, onTheme, onChanged };
 }
 
@@ -107,5 +126,20 @@ describe("the settings page", () => {
     fireEvent.change(screen.getByLabelText("Value"), { target: { value: "1" } });
     fireEvent.click(screen.getByRole("button", { name: "Set" }));
     await waitFor(() => expect(w.app.settingSet).toHaveBeenCalledWith("vrchat.grouping_depth", "1"));
+  });
+});
+
+describe("what runs by itself", () => {
+  test("is off until switched on, says where it reaches, and switching it on asks for a run", async () => {
+    const { app, onChanged } = world();
+    expect(await screen.findByText("fetch booth listings")).toBeDefined();
+    expect(screen.getByText(/reaches booth.pm/)).toBeDefined();
+    // Primer draws the switch as a pressed-or-not button.
+    const toggle = screen.getByRole("button", { name: "fetch booth listings" });
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(toggle);
+    await waitFor(() => expect(app.settingSet).toHaveBeenCalledWith("auto.yukifile.vrchat.fetch_booth_listings", "on"));
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
   });
 });

@@ -74,6 +74,14 @@ describe("fetching every listing", () => {
     expect(result.summary).toBe("2 of 3 listings fetched, 1 gave nothing new or failed");
   });
 
+  test("says how far it got", async () => {
+    const api = world();
+    const progress = vi.fn();
+    await fetchAllListings(api as unknown as LibraryActionProps["api"], async () => undefined, progress);
+    expect(progress).toHaveBeenCalledWith(0, 1);
+    expect(progress).toHaveBeenLastCalledWith(1, 1);
+  });
+
   test("is one of the plugin's library actions", async () => {
     const api = world();
     api.objectQuery.mockImplementation(async () => ({ ids: [], total: 0 }));

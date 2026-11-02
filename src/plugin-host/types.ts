@@ -104,6 +104,12 @@ export interface Contributes {
    * two entry points into one body of knowledge.
    */
   readonly library_action_module?: string;
+
+  /**
+   * Library actions that may run without a press, once a person switches
+   * them on in the library's settings. Each is also in `library_actions`.
+   */
+  readonly automatic_actions?: readonly string[];
 }
 
 /**

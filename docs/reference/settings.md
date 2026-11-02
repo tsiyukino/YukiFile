@@ -38,6 +38,13 @@ other settings. The mount order is a numbered list with arrows to move a row,
 and the shell's own keys, `theme` and `grid.card_size`, are left out of
 **Other settings** since each has a control of its own.
 
+**Automatic** lists every action a plugin allows to run by itself, each with
+a switch, off until turned on, and the hosts it reaches. The switch is the
+setting `auto.<plugin>.<action>`, spaces in the action's name written as `_`,
+holding `on`; those keys are left out of **Other settings** too. Turning one on
+asks the shell to run it at once
+(`2026-11-02_a-switch-can-stand-for-a-press.md`).
+
 **Appearance.** The theme: follow the system, light, or dark. Stored under
 `theme` and applied at once; following the system clears the key rather than
 storing a word for it. `app.md` used to say a toggle would be localStorage in

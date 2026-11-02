@@ -108,6 +108,16 @@ pub struct Contributes {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub facets: Vec<String>,
 
+    /// Library actions that may run without a press, once a person says so.
+    ///
+    /// Each must also be one of `library_actions`. Listing one here does not
+    /// make it run: a library runs it only after a person switches it on in
+    /// settings, and the switch is the consent the press used to be
+    /// (`2026-11-02_a-switch-can-stand-for-a-press.md`). The network it is
+    /// lent is still only `hosts`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub automatic_actions: Vec<String>,
+
     /// Property to the full-screen viewer module.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub viewers: BTreeMap<String, String>,
@@ -321,6 +331,14 @@ impl Manifest {
             }
         }
 
+        for action in &self.contributes.automatic_actions {
+            if !self.contributes.library_actions.contains(action) {
+                return Err(ManifestError::Malformed(format!(
+                    "{action:?} runs automatically but is not one of this plugin's library actions"
+                )));
+            }
+        }
+
         for field in &self.contributes.facets {
             // A bare field name: the sidebar asks for the value an object
             // shows under it, wherever that value came from. A path would tie
@@ -502,5 +520,17 @@ mod tests {
                 "{bad:?} was accepted"
             );
         }
+    }
+
+    #[test]
+    fn an_automatic_action_has_to_be_a_library_action() {
+        let mut manifest = Manifest { id: "test.plugin".into(), ..Default::default() };
+        manifest.contributes.library_actions = vec!["fetch".into()];
+        manifest.contributes.library_action_module = "./action".into();
+        manifest.contributes.automatic_actions = vec!["fetch".into()];
+        assert!(manifest.check().is_ok());
+
+        manifest.contributes.automatic_actions = vec!["delete everything".into()];
+        assert!(matches!(manifest.check(), Err(ManifestError::Malformed(_))));
     }
 }

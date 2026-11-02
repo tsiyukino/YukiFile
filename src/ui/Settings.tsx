@@ -14,12 +14,14 @@
  * the window is opened again.
  */
 
-import { Button, Checkbox, FormControl, Heading, IconButton, Select, Spinner, Stack, Text, TextInput } from "@primer/react";
+import { Button, Checkbox, FormControl, Heading, IconButton, Select, Spinner, Stack, Text, TextInput, ToggleSwitch } from "@primer/react";
 import { ArrowDownIcon, ArrowUpIcon } from "@primer/octicons-react";
 import { InlineMessage } from "@primer/react/experimental";
 import { useEffect, useState } from "react";
 
 import type { Api, AppApi, LibraryInfo, MountRow, SettingRow } from "../plugin-host/commands.js";
+import type { Manifest } from "../plugin-host/types.js";
+import { automaticActionsOf, switchKey } from "./automatic.js";
 import { CARD_SIZE } from "./Card.js";
 import { PageHead } from "./PageHead.js";
 import { describe } from "./problem.js";
@@ -34,9 +36,11 @@ export interface SettingsProps {
   readonly onTheme: (preference: ThemePreference) => void;
   /** Mount order changed; every page should re-read. */
   readonly onChanged: () => void;
+  /** The running plugins, for the actions that may run by themselves. */
+  readonly plugins?: readonly Manifest[];
 }
 
-export function Settings({ api, app, generation, onTheme, onChanged }: SettingsProps): React.JSX.Element {
+export function Settings({ api, app, generation, onTheme, onChanged, plugins = [] }: SettingsProps): React.JSX.Element {
   const [info, setInfo] = useState<LibraryInfo | undefined>(undefined);
   const [settings, setSettings] = useState<SettingRow[]>([]);
   const [mounts, setMounts] = useState<MountRow[]>([]);
@@ -131,6 +135,51 @@ export function Settings({ api, app, generation, onTheme, onChanged }: SettingsP
           </Select>
         </FormControl>
       </Section>
+
+      {automaticActionsOf(plugins).length > 0 && (
+        <Section title="Automatic">
+          <Text size="small">
+            Actions a plugin allows to run by themselves, when this library opens and after a scan, an import or an
+            added object. Each is off until switched on here, for this library only. One that reaches the network
+            reaches only the hosts its plugin names.
+          </Text>
+          {automaticActionsOf(plugins).map((automatic) => {
+            const key = switchKey(automatic);
+            const on = settings.some((row) => row.key === key && row.value === "on");
+            // An id may not hold spaces: `aria-labelledby` reads a list of them.
+            const label = `${key.replace(/[^A-Za-z0-9_-]/g, "-")}-label`;
+            return (
+              <div key={key} className="yk-switch-row">
+                <div>
+                  <Text id={label} weight="semibold">
+                    {automatic.action}
+                  </Text>
+                  <div className="yk-muted yk-switch-caption">
+                    {automatic.plugin}
+                    {automatic.hosts.length > 0 && ` · reaches ${automatic.hosts.join(", ")}`}
+                  </div>
+                </div>
+                <ToggleSwitch
+                  size="small"
+                  aria-labelledby={label}
+                  checked={on}
+                  disabled={working}
+                  onClick={() =>
+                    run(
+                      () => app.settingSet(key, on ? "" : "on"),
+                      () => {
+                        reloadSettings();
+                        // Switching one on is asking for it: the shell runs it.
+                        if (!on) onChanged();
+                      },
+                    )
+                  }
+                />
+              </div>
+            );
+          })}
+        </Section>
+      )}
 
       <Section title="Plugins">
         <Text size="small">
@@ -244,7 +293,7 @@ export function Settings({ api, app, generation, onTheme, onChanged }: SettingsP
         </Text>
         {settings
           // The shell's own, each with a control of its own elsewhere.
-          .filter((row) => row.key !== "theme" && row.key !== CARD_SIZE)
+          .filter((row) => row.key !== "theme" && row.key !== CARD_SIZE && !row.key.startsWith("auto."))
           .map((row) => (
             <Stack key={row.key} direction="horizontal" gap="condensed" align="center">
               <Text size="small" className="yk-mono">

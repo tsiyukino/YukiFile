@@ -56,6 +56,7 @@ export interface LibraryMenuProps {
 
 export function LibraryMenu({ api, app, dialogs, plugins, loaded, onReport, onChanged }: LibraryMenuProps): React.JSX.Element {
   const [running, setRunning] = useState<string | undefined>(undefined);
+  const [counted, setCounted] = useState<{ done: number; total: number } | undefined>(undefined);
   const [rescanning, setRescanning] = useState(false);
   const [covering, setCovering] = useState(false);
   const offered = libraryActionsOf(plugins);
@@ -74,13 +75,21 @@ export function LibraryMenu({ api, app, dialogs, plugins, loaded, onReport, onCh
     setRunning(action);
     onReport({ tone: "info", title: `Running ${action}…` });
     // The press lends the plugin the network, for the hosts it named.
-    fn({ api: pressedApiFor(api, app, manifest?.contributes?.hosts ?? []), action })
+    setCounted(undefined);
+    fn({
+      api: pressedApiFor(api, app, manifest?.contributes?.hosts ?? []),
+      action,
+      progress: (done, total) => setCounted({ done, total }),
+    })
       .then((outcome) => {
         onReport({ tone: "success", title: `${capitalised(action)} finished`, detail: outcome.summary });
         if (outcome.changed) onChanged();
       })
       .catch((error: unknown) => onReport({ tone: "critical", title: `${action} failed`, detail: describe(error) }))
-      .finally(() => setRunning(undefined));
+      .finally(() => {
+        setRunning(undefined);
+        setCounted(undefined);
+      });
   };
 
   const transfer = (label: string, work: () => ReturnType<typeof exportLibrary>): void => {
@@ -98,7 +107,11 @@ export function LibraryMenu({ api, app, dialogs, plugins, loaded, onReport, onCh
   return (
     <>
       <ActionMenu>
-        <ActionMenu.Button size="medium">{running ? `${capitalised(running)}…` : "Library"}</ActionMenu.Button>
+        <ActionMenu.Button size="medium">
+          {running
+            ? `${capitalised(running)}${counted && counted.total > 0 ? ` ${counted.done}/${counted.total}` : ""}…`
+            : "Library"}
+        </ActionMenu.Button>
         <ActionMenu.Overlay width="medium" align="end">
           <ActionList>
             {offered.length > 0 && (

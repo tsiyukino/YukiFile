@@ -11,6 +11,7 @@
     "hosts": ["booth.pm", "*.booth.pm"],
     "facets": ["category", "vendor"],
     "library_actions": ["scan products", "fetch booth listings"],
+    "automatic_actions": ["fetch booth listings"],
     "library_action_module": "./action"
   }
 }

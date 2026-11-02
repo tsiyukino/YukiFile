@@ -599,3 +599,26 @@ body {
 .yk-library-name {
   font-weight: 600;
 }
+
+/* What is running by itself, in the header. */
+.yk-auto {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--base-size-6);
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+  white-space: nowrap;
+}
+
+.yk-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--base-size-16);
+  padding: var(--base-size-8) 0;
+  border-top: 1px solid var(--borderColor-muted);
+}
+
+.yk-switch-caption {
+  font-size: var(--text-body-size-small);
+}
