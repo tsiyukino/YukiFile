@@ -141,6 +141,23 @@ until the button is pressed. The matching VRCAL does — scoring a filename
 against candidates — is a later rule; this one only has to be right about a
 listing whose number is already known.
 
+## Fetch every listing
+
+**Fetch booth listings**, a library action in the Library menu, presses
+**fetch listing** for every Booth listing the library records and has not
+fetched yet: each `booth` region with an `item_id` and no `cover` of its own.
+One request at a time with a second between them, so the seed's 72 listings
+are 72 polite requests rather than a burst. A listing that fails or says
+nothing new is counted and passed over.
+
+Run it before **Find covers…**: a picture that finds stores the object's own
+cover, which outranks the shop's.
+
+## Facets
+
+`facets: ["category", "vendor"]`: the sidebar counts both and narrows the
+grid by them, and every card says them under its name.
+
 ## The seed
 
 `src-tauri/examples/seed.rs` turns `seed/` into a contract document:

@@ -10,7 +10,7 @@
     "action_module": "./actions",
     "hosts": ["booth.pm", "*.booth.pm"],
     "facets": ["category", "vendor"],
-    "library_actions": ["scan products"],
+    "library_actions": ["scan products", "fetch booth listings"],
     "library_action_module": "./action"
   }
 }

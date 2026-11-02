@@ -85,3 +85,27 @@ own page.
 
 The last object opened is outlined when the grid comes back, so the eye finds
 its place.
+
+## Finding covers
+
+**Find covers…** in the Library menu looks through every object that has no
+cover from anyone, skipping groupings, which borrow theirs. For each it lists
+the pictures in its folder (two levels down), in its archives, and, when
+ticked, the previews Unity stores in its packages and in packages inside its
+archives, then keeps the one `bestCover` ranks highest
+(`src/ui/covers.ts`, `src/ui/coverHunt.ts`):
+
+- a picture beside the product beats a preview inside its package;
+- a name that says cover, thumbnail, main, preview, promo, サムネ or 表紙 wins;
+- a name that says normal, mask, matcap, emission, texture, readme or licence
+  loses, and an object holding nothing better gets no cover at all rather
+  than a normal map;
+- among previews, a prefab's (the product as worn) beats a material's, which
+  beats a texture's;
+- shallower and larger break ties.
+
+One object at a time, with a progress bar and **Stop**; an archive that cannot
+be read is counted and passed over. The chosen picture goes through
+`cover.set`, which stores it as the object's own cover. That outranks a shop's
+cover fetched later, so the dialog says to fetch listings first. Running it
+twice is harmless: the second run looks only at what the first left without.

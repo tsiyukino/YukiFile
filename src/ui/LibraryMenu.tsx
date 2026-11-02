@@ -16,13 +16,14 @@
  */
 
 import { ActionList, ActionMenu, Dialog } from "@primer/react";
-import { DownloadIcon, PlayIcon, SyncIcon, UploadIcon } from "@primer/octicons-react";
+import { DownloadIcon, ImageIcon, PlayIcon, SyncIcon, UploadIcon } from "@primer/octicons-react";
 import { useState } from "react";
 
 import { pressedApiFor, type Api, type AppApi } from "../plugin-host/commands.js";
 import type { Loaded } from "../plugin-host/loader.js";
 import { libraryAction } from "../plugin-host/panel.js";
 import type { Manifest } from "../plugin-host/types.js";
+import { FindCovers } from "./FindCovers.js";
 import { describe } from "./problem.js";
 import { Rescan } from "./Rescan.js";
 import { exportLibrary, importDocument, type Dialogs } from "./Transfer.js";
@@ -56,6 +57,7 @@ export interface LibraryMenuProps {
 export function LibraryMenu({ api, app, dialogs, plugins, loaded, onReport, onChanged }: LibraryMenuProps): React.JSX.Element {
   const [running, setRunning] = useState<string | undefined>(undefined);
   const [rescanning, setRescanning] = useState(false);
+  const [covering, setCovering] = useState(false);
   const offered = libraryActionsOf(plugins);
 
   const runPlugin = (plugin: string, action: string): void => {
@@ -125,6 +127,15 @@ export function LibraryMenu({ api, app, dialogs, plugins, loaded, onReport, onCh
               Rescan disk…
               <ActionList.Description variant="block">Bring locations back in line with the disk</ActionList.Description>
             </ActionList.Item>
+            <ActionList.Item onSelect={() => setCovering(true)} disabled={running !== undefined}>
+              <ActionList.LeadingVisual>
+                <ImageIcon />
+              </ActionList.LeadingVisual>
+              Find covers…
+              <ActionList.Description variant="block">
+                A picture from inside everything that has none yet
+              </ActionList.Description>
+            </ActionList.Item>
             <ActionList.Divider />
             <ActionList.Item
               disabled={running !== undefined}
@@ -147,6 +158,8 @@ export function LibraryMenu({ api, app, dialogs, plugins, loaded, onReport, onCh
           </ActionList>
         </ActionMenu.Overlay>
       </ActionMenu>
+
+      {covering && <FindCovers api={api} app={app} onClose={() => setCovering(false)} onChanged={onChanged} />}
 
       {rescanning && (
         <Dialog title="Rescan disk" width="large" onClose={() => setRescanning(false)}>

@@ -17,7 +17,19 @@ export async function runObjectAction({ api, action, objectId, property, instanc
   if (action !== "fetch listing") {
     return { summary: `${action} is not something this plugin does`, changed: false };
   }
+  return fetchListing(api, objectId, property, instance);
+}
 
+/**
+ * Fetch one listing and propose what it says. Shared by the button on one
+ * object and the library action that presses it for every listing.
+ */
+export async function fetchListing(
+  api: ObjectActionProps["api"],
+  objectId: ObjectActionProps["objectId"],
+  property: string,
+  instance: number,
+): Promise<ActionResult> {
   const object = await api.objectFlat(objectId);
   const region = object.regions.find((r) => r.property === property && r.instance === instance);
   const item = region?.fields["item_id"] ?? (region?.fields["url"] ? boothItem(region.fields["url"]) : undefined);
