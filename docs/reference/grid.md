@@ -54,14 +54,22 @@ Every choice is also a chip above the grid that removes itself, with
 
 ## A card
 
-A cover, the name under it, and the path under that unless it would repeat
-the name.
+A cover, the name under it, and under that what the thing is and what it
+fits: the values of the fields the plugins filter by (`Clothing · SilverSpace`)
+and the terms it points at (`Airi, Chiffon, Manuka +10`), with the full list
+on hover. `object.summaries` returns both when asked for fields and
+vocabularies, read the way a page shows them. A card with neither shows its
+path instead, which says where a thing is: the least useful thing to say about
+it, and the only thing known about some. Small cards leave the terms out.
 
 - **Name.** The bare `title` if somebody typed one, else the first plugin's
   `title` by mount order, else the location's name.
 - **Cover.** The same rule for `cover`, through `file.url`, asked once per
   path and kept: covers are stored under a name made from their content, so a
   changed cover is a new path and never a stale entry.
+- **A grouping with no cover** borrows up to four covers from what it holds,
+  two levels down, as a mosaic: the top of a library is shelves, and a shelf
+  is recognised by what is on it.
 - **No cover.** The cover is tinted by what the thing is on disk, in Primer's
   display colours, with an icon and a word: a folder, a Unity package, an
   archive, an image, a document, a file, or a group with no location. A grid

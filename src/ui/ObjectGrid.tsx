@@ -71,10 +71,18 @@ export interface ObjectGridProps {
   readonly current?: ObjectId | undefined;
   /** Changes when the library does. */
   readonly generation: number;
+  /** What cards say under their names: these fields and these vocabularies. */
+  readonly detail?: Detail | undefined;
+}
+
+/** The fields and vocabularies a card shows. */
+export interface Detail {
+  readonly fields: readonly string[];
+  readonly vocabularies: readonly string[];
 }
 
 export function ObjectGrid(props: ObjectGridProps): React.JSX.Element {
-  const { api, narrowing, onNarrow, trail, onTrail, sort, onSort, size, onSize, labels, onChoose, current, generation } =
+  const { api, narrowing, onNarrow, trail, onTrail, sort, onSort, size, onSize, labels, onChoose, current, generation, detail } =
     props;
 
   const [rows, setRows] = useState<Summary[]>([]);
@@ -96,7 +104,7 @@ export function ObjectGrid(props: ObjectGridProps): React.JSX.Element {
     const ticket = ++asked.current;
     setLoading(true);
     setProblem(undefined);
-    page(api, JSON.parse(key) as typeof filter, sort, 0)
+    page(api, JSON.parse(key) as typeof filter, sort, 0, detail)
       .then((next) => {
         if (asked.current !== ticket) return;
         setRows(next.rows);
@@ -109,13 +117,14 @@ export function ObjectGrid(props: ObjectGridProps): React.JSX.Element {
         if (asked.current === ticket) setLoading(false);
       });
     // `filter` is `key` parsed; listing both would re-run on every render.
+    // `detail` comes from the manifests, which change only with the library.
   }, [api, key, sort, generation]);
 
   const more = (): void => {
     if (loading) return;
     const ticket = asked.current;
     setLoading(true);
-    page(api, filter, sort, rows.length)
+    page(api, filter, sort, rows.length, detail)
       .then((next) => {
         if (asked.current !== ticket) return;
         setRows((held) => [...held, ...next.rows]);
@@ -301,9 +310,13 @@ async function page(
   filter: Parameters<Api["objectQuery"]>[0],
   sort: Sort,
   offset: number,
+  detail?: Detail,
 ): Promise<{ rows: Summary[]; total: number }> {
   const found = await api.objectQuery(filter, sort, offset, PAGE);
-  const rows = found.ids.length > 0 ? await api.objectSummaries(found.ids) : [];
+  const rows =
+    found.ids.length > 0
+      ? await api.objectSummaries(found.ids, detail?.fields ?? [], detail?.vocabularies ?? [])
+      : [];
   // Summaries come back in the order asked, but nothing promises it; the
   // query's order is the one the person chose.
   const byId = new Map(rows.map((row) => [row.id, row]));

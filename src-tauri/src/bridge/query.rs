@@ -238,15 +238,7 @@ fn records(
         pointed.entry(src).or_default().push((vocabulary, term));
     }
 
-    let mut order = values::mount_order(connection)?;
-    if let Some(registry) = registry {
-        let shared = registry.shared_fields();
-        for row in &mut order {
-            if let Some(fields) = shared.get(row.namespace.as_str()) {
-                row.shared = fields.to_vec();
-            }
-        }
-    }
+    let order = resolved_order(connection, registry)?;
     let mounts = values::mounts(&order);
     let mount_names: Vec<String> =
         order.iter().map(|m| format!("{}#{}", m.namespace, m.instance)).collect();
@@ -264,18 +256,7 @@ fn records(
 
         let mut fields = HashMap::new();
         for field in wanted_fields {
-            let shown = view.value(field).map(str::to_string).or_else(|| {
-                view.plugin_mounts()
-                    .filter_map(|mount| {
-                        let rank = order
-                            .iter()
-                            .position(|m| m.namespace == mount.0 && m.instance == mount.1)?;
-                        Some((rank, view.plugin_value(mount, field)?))
-                    })
-                    .min_by_key(|(rank, _)| *rank)
-                    .map(|(_, value)| value.to_string())
-            });
-            fields.insert(field.clone(), shown);
+            fields.insert(field.clone(), shown(&view, &order, field));
         }
 
         let name = crate::bridge::commands::card_field(&held, "title", &mount_names)
@@ -318,6 +299,40 @@ fn records(
     }
 
     Ok(built)
+}
+
+/// The library's mount order, with each mount told which fields its plugin
+/// shares. What flattening needs to resolve a field the way a page does.
+pub(crate) fn resolved_order(
+    connection: &Connection,
+    registry: Option<&Registry>,
+) -> Result<Vec<values::MountRow>, BridgeError> {
+    let mut order = values::mount_order(connection)?;
+    if let Some(registry) = registry {
+        let shared = registry.shared_fields();
+        for row in &mut order {
+            if let Some(fields) = shared.get(row.namespace.as_str()) {
+                row.shared = fields.to_vec();
+            }
+        }
+    }
+    Ok(order)
+}
+
+/// The value an object shows under `field`: the shared value if a mounted
+/// plugin shares it, else the first mount's private value of that name.
+pub(crate) fn shown(view: &flatten::FlatView<'_>, order: &[values::MountRow], field: &str) -> Option<String> {
+    view.value(field).map(str::to_string).or_else(|| {
+        view.plugin_mounts()
+            .filter_map(|mount| {
+                let rank = order
+                    .iter()
+                    .position(|m| m.namespace == mount.0 && m.instance == mount.1)?;
+                Some((rank, view.plugin_value(mount, field)?))
+            })
+            .min_by_key(|(rank, _)| *rank)
+            .map(|(_, value)| value.to_string())
+    })
 }
 
 /// Fields a filter mentions.

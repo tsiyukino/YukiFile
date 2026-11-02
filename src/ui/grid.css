@@ -118,6 +118,40 @@
   color: var(--display-indigo-fgColor);
 }
 
+/* A grouping's cover: what is inside it, four to a tile. */
+.yk-mosaic {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  width: 100%;
+  height: 100%;
+  background: var(--bgColor-muted);
+}
+
+.yk-mosaic[data-count="1"] {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+.yk-mosaic[data-count="2"] {
+  grid-template-rows: 1fr;
+}
+
+.yk-mosaic[data-count="3"] img:first-child {
+  grid-row: span 2;
+}
+
+.yk-mosaic img,
+.yk-mosaic span {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: cover;
+  display: block;
+  background: var(--bgColor-neutral-muted);
+}
+
 /* What the thing is on disk, drawn quietly in the corner of a placeholder. */
 .yk-cover-kind {
   position: absolute;
@@ -158,6 +192,37 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.yk-card-facts {
+  font-size: var(--text-body-size-small);
+  color: var(--fgColor-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yk-card-terms {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-4);
+  font-size: var(--text-body-size-small);
+  color: var(--fgColor-muted);
+  min-width: 0;
+}
+
+.yk-card-terms span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yk-card-terms svg {
+  flex-shrink: 0;
+}
+
+.yk-grid[data-size="small"] .yk-card-terms {
+  display: none;
 }
 
 /* The way into a grouping: a pill on the cover, a button of its own. */

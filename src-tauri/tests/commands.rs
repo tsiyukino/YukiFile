@@ -3356,3 +3356,51 @@ fn switching_remembers_the_choice_and_refuses_a_folder_that_is_not_there() {
     assert!(offered.iter().any(|row| !row.exists && !row.current));
     assert!(offered.iter().any(|row| row.current));
 }
+
+#[test]
+fn a_summary_can_say_what_an_object_is_and_what_it_fits() {
+    let (library, _dir, [maid, hair, loose]) = shop_library();
+    let rows = object_summaries_with(
+        &library,
+        None,
+        vec![maid, hair, loose],
+        &["category".to_string()],
+        &["avatar".to_string()],
+    )
+    .expect("summaries");
+
+    assert_eq!(rows[0].facets.get("category").map(String::as_str), Some("Clothing"));
+    let fits: Vec<&str> = rows[0].terms.iter().map(|t| t.label.as_str()).collect();
+    assert_eq!(fits, ["Airi", "Manuka"], "by label, alphabetically");
+    assert!(rows[2].facets.is_empty(), "a field the object does not show is left out");
+    assert!(rows[2].terms.is_empty());
+
+    // Asking for nothing costs nothing and says nothing.
+    let plain = object_summaries_in(&library, vec![maid]).expect("plain");
+    assert!(plain[0].facets.is_empty() && plain[0].terms.is_empty());
+}
+
+#[test]
+fn a_grouping_without_a_cover_borrows_four_from_inside_it() {
+    use yukifile::store::edges;
+    let (library, _dir) = library();
+    let shelf = object_with(&library, &[("title", "Clothing")]);
+    let nested = object_with(&library, &[("title", "Sub")]);
+    let mut inside = Vec::new();
+    for i in 0..6 {
+        inside.push(object_with(&library, &[("cover", &format!(".yukifile/covers/{i}.png"))]));
+    }
+    library
+        .with_connection(|connection| {
+            edges::add(connection, shelf, "contains", &edges::Target::Object(nested))?;
+            for id in &inside {
+                edges::add(connection, nested, "contains", &edges::Target::Object(*id))?;
+            }
+            Ok(())
+        })
+        .expect("edges");
+
+    let rows = object_summaries_in(&library, vec![shelf, inside[0]]).expect("summaries");
+    assert_eq!(rows[0].previews.len(), 4, "two levels down, four at most");
+    assert!(rows[1].previews.is_empty(), "a thing with its own cover borrows nothing");
+}

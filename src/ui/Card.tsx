@@ -9,6 +9,7 @@
  */
 
 import {
+  TagIcon,
   FileDirectoryIcon,
   FileIcon,
   FileMediaIcon,
@@ -91,6 +92,22 @@ export function useCoverUrl(api: Api, cover: string | null | undefined): string 
   return url;
 }
 
+/** Up to four covers from inside a grouping, as one tile. */
+function Mosaic({ api, paths }: { readonly api: Api; readonly paths: readonly string[] }): React.JSX.Element {
+  return (
+    <div className="yk-mosaic" data-count={Math.min(paths.length, 4)}>
+      {paths.slice(0, 4).map((path) => (
+        <MosaicTile key={path} api={api} path={path} />
+      ))}
+    </div>
+  );
+}
+
+function MosaicTile({ api, path }: { readonly api: Api; readonly path: string }): React.JSX.Element {
+  const url = useCoverUrl(api, path);
+  return url ? <img src={url} alt="" loading="lazy" decoding="async" /> : <span />;
+}
+
 export interface CardProps {
   readonly api: Api;
   readonly summary: Summary;
@@ -105,16 +122,23 @@ export function Card({ api, summary, current = false, onChoose, onOpen }: CardPr
   const url = useCoverUrl(api, summary.cover);
   const placeholder = placeholderFor(summary);
   const Icon = ICONS[placeholder];
-  const under = pathUnder(summary);
   const name = titleOf(summary);
   const children = summary.children ?? 0;
+  const previews = summary.previews ?? [];
+  // What it is, then what it fits. The path only when neither is known: it
+  // says where a thing is, which is the least useful thing to say about it.
+  const facts = Object.values(summary.facets ?? {}).filter((value) => value !== "");
+  const terms = summary.terms ?? [];
+  const under = facts.length === 0 && terms.length === 0 ? pathUnder(summary) : undefined;
 
   return (
     <li className="yk-card" data-current={current ? "true" : undefined}>
       <button type="button" className="yk-card-main" aria-current={current ? "true" : undefined} onClick={onChoose}>
-        <div className="yk-cover" data-kind={url ? undefined : placeholder}>
+        <div className="yk-cover" data-kind={url || previews.length > 0 ? undefined : placeholder}>
           {url ? (
             <img src={url} alt="" loading="lazy" decoding="async" />
+          ) : previews.length > 0 ? (
+            <Mosaic api={api} paths={previews} />
           ) : (
             <>
               <Icon size={32} />
@@ -126,6 +150,17 @@ export function Card({ api, summary, current = false, onChoose, onOpen }: CardPr
           <div className="yk-card-name" title={name}>
             {name}
           </div>
+          {facts.length > 0 && (
+            <div className="yk-card-facts" title={facts.join(" · ")}>
+              {facts.join(" · ")}
+            </div>
+          )}
+          {terms.length > 0 && (
+            <div className="yk-card-terms" title={terms.map((term) => term.label).join(", ")}>
+              <TagIcon size={12} />
+              <span>{termsLine(terms.map((term) => term.label))}</span>
+            </div>
+          )}
           {under && (
             <div className="yk-card-path" title={under}>
               {under}
@@ -147,6 +182,12 @@ export function Card({ api, summary, current = false, onChoose, onOpen }: CardPr
       )}
     </li>
   );
+}
+
+/** The first few labels and how many more: `Airi, Manuka, Moe +9`. */
+export function termsLine(labels: readonly string[], shown = 3): string {
+  const head = labels.slice(0, shown).join(", ");
+  return labels.length > shown ? `${head} +${labels.length - shown}` : head;
 }
 
 export interface CardGridProps {

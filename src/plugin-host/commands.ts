@@ -170,6 +170,12 @@ export interface Summary {
   readonly cover?: string | null;
   /** How many objects this one contains. */
   readonly children?: number;
+  /** The fields asked for, as the object shows them. */
+  readonly facets?: Readonly<Record<string, string>>;
+  /** Terms in the vocabularies asked for that it points at, by label. */
+  readonly terms?: readonly { readonly vocab: string; readonly id: string; readonly label: string }[];
+  /** For a grouping with no cover of its own, up to four covers from inside it. */
+  readonly previews?: readonly string[];
 }
 
 /**
@@ -447,7 +453,16 @@ export interface Api {
     limit: number,
     within?: ObjectId | null,
   ): Promise<ObjectIds>;
-  objectSummaries(ids: readonly ObjectId[]): Promise<Summary[]>;
+  /**
+   * One row per object: a name, a path, a cover. With `fields` and
+   * `vocabularies`, also what each shows under those fields and the terms in
+   * those vocabularies it points at -- what a card says under its name.
+   */
+  objectSummaries(
+    ids: readonly ObjectId[],
+    fields?: readonly string[],
+    vocabularies?: readonly string[],
+  ): Promise<Summary[]>;
   /**
    * A page of the objects a filter matches, across the whole library rather
    * than one level of it, and how many match in all.
@@ -748,7 +763,8 @@ export function apiFor(invoke: Invoke): Api {
     objectFlat: (id) => call("object.flat", { id }),
     objectIds: (after, limit, within = null) =>
       call("object.ids", { after, limit, within }),
-    objectSummaries: (ids) => call("object.summaries", { ids }),
+    objectSummaries: (ids, fields = [], vocabularies = []) =>
+      call("object.summaries", { ids, fields, vocabularies }),
     objectQuery: (filter, sort, offset, limit) => call("object.query", { filter, sort, offset, limit }),
     objectFacets: (filter, fields, vocabularies) =>
       call("object.facets", { filter, fields, vocabularies }),

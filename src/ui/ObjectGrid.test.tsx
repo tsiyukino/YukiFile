@@ -126,6 +126,50 @@ describe("a grid of what the library holds", () => {
   });
 });
 
+describe("what a card says", () => {
+  test("what it is and what it fits, in place of where it sits", async () => {
+    const rows = [
+      row("1", {
+        facets: { category: "Clothing", vendor: "SilverSpace" },
+        terms: ["Airi", "Chiffon", "Manuka", "Moe", "Shinano"].map((label) => ({ vocab: "avatar", id: label.toLowerCase(), label })),
+      }),
+    ];
+    const { api } = gridApi(rows);
+    const summaries = vi.spyOn(api, "objectSummaries");
+    render(
+      <ObjectGrid
+        api={api}
+        narrowing={NOTHING}
+        onNarrow={() => {}}
+        trail={[]}
+        onTrail={() => {}}
+        sort="name"
+        onSort={() => {}}
+        size="medium"
+        onSize={() => {}}
+        labels={new Map()}
+        onChoose={() => {}}
+        generation={0}
+        detail={{ fields: ["category", "vendor"], vocabularies: ["avatar"] }}
+      />,
+    );
+    expect(await screen.findByText("Clothing · SilverSpace")).toBeDefined();
+    expect(screen.getByText("Airi, Chiffon, Manuka +2")).toBeDefined();
+    expect(screen.queryByText("folder/1.txt")).toBeNull();
+    expect(summaries).toHaveBeenCalledWith(["1"], ["category", "vendor"], ["avatar"]);
+  });
+
+  test("a grouping with no cover shows covers from inside it", async () => {
+    show(gridApi([row("1", { path: null, kind: null, children: 9, previews: ["a.png", "b.png"] })]).api);
+    await waitFor(() => expect(document.querySelectorAll(".yk-mosaic img")).toHaveLength(2));
+  });
+
+  test("a card with nothing known about it still says where it is", async () => {
+    show(gridApi([row("1")]).api);
+    expect(await screen.findByText("folder/1.txt")).toBeDefined();
+  });
+});
+
 describe("narrowing", () => {
   test("with nothing chosen the grid browses the top of the tree", async () => {
     const { api, objectQuery } = gridApi([row("1")]);

@@ -160,9 +160,11 @@ export interface TermPageProps {
   readonly onSelect: (id: ObjectId) => void;
   /** Show everything pointing at the term in the grid, with its filters. */
   readonly onShowInGrid?: ((term: TermRef) => void) | undefined;
+  /** What cards say under their names. */
+  readonly detail?: { readonly fields: readonly string[]; readonly vocabularies: readonly string[] } | undefined;
 }
 
-export function TermPage({ api, term, generation, onSelect, onShowInGrid }: TermPageProps): React.JSX.Element {
+export function TermPage({ api, term, generation, onSelect, onShowInGrid, detail }: TermPageProps): React.JSX.Element {
   const [label, setLabel] = useState<string | undefined>(undefined);
   const [pointers, setPointers] = useState<Pointer[]>([]);
   const [names, setNames] = useState<Summary[]>([]);
@@ -177,7 +179,9 @@ export function TermPage({ api, term, generation, onSelect, onShowInGrid }: Term
     const read = async (): Promise<void> => {
       const [terms, found] = await Promise.all([api.termList(term.vocab), api.termObjects(term.vocab, term.id)]);
       const ids = objectsPointing(found);
-      const summaries = ids.length > 0 ? await api.objectSummaries(ids) : [];
+      // On a term's own page, its vocabulary would say the same term on
+      // every card; the fields still say what each thing is.
+      const summaries = ids.length > 0 ? await api.objectSummaries(ids, detail?.fields ?? [], []) : [];
       if (!current) return;
       setLabel(terms.find((candidate) => candidate.id === term.id)?.label);
       setPointers(found);

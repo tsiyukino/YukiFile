@@ -447,14 +447,35 @@ pub fn object_summaries_in(
     library: &Library,
     ids: Vec<i64>,
 ) -> Result<Vec<SummaryView>, BridgeError> {
+    object_summaries_with(library, None, ids, &[], &[])
+}
+
+/// Summaries that also say what each object is and what it points at.
+///
+/// `fields` are read the way a page shows them (`bridge::query`), and the
+/// terms are those in `vocabularies` the object points at, by label. A card
+/// that says `Clothing · SilverSpace` and `Manuka, Airi +11` under its name
+/// answers "what is this, and what does it fit" without being opened, which
+/// is the question a grid of a thousand products exists to answer.
+pub fn object_summaries_with(
+    library: &Library,
+    registry: Option<&Registry>,
+    ids: Vec<i64>,
+    fields: &[String],
+    vocabularies: &[String],
+) -> Result<Vec<SummaryView>, BridgeError> {
     library.with_connection(|connection| {
         let store = values::Values::new();
         let located = crate::store::paths::first_of_each(connection, &ids)?;
         let children = crate::store::edges::contained_counts(connection, &ids)?;
-        let order: Vec<String> = values::mount_order(connection)?
-            .into_iter()
+        let resolved = crate::bridge::query::resolved_order(connection, registry)?;
+        let mounts = values::mounts(&resolved);
+        let order: Vec<String> = resolved
+            .iter()
             .map(|m| format!("{}#{}", m.namespace, m.instance))
             .collect();
+        let mut labels: std::collections::HashMap<(String, String), String> =
+            std::collections::HashMap::new();
 
         let mut summaries = Vec::with_capacity(ids.len());
         for id in ids {
@@ -480,12 +501,92 @@ pub fn object_summaries_in(
                     .map(str::to_string)
             });
 
+            let mut facets = BTreeMap::new();
+            if !fields.is_empty() {
+                let view = flatten::flatten(&rows, &mounts);
+                for field in fields {
+                    if let Some(value) = crate::bridge::query::shown(&view, &resolved, field) {
+                        facets.insert(field.clone(), value);
+                    }
+                }
+            }
+
+            let mut terms = Vec::new();
+            if !vocabularies.is_empty() {
+                for edge in edges::from(connection, id, None)? {
+                    let edges::Target::Term { vocab, id: term } = edge.target else { continue };
+                    if !vocabularies.contains(&vocab) {
+                        continue;
+                    }
+                    let key = (vocab.clone(), term.clone());
+                    let label = match labels.get(&key) {
+                        Some(label) => label.clone(),
+                        None => {
+                            let label = crate::store::vocab::term(connection, &vocab, &term)?
+                                .map(|found| found.label)
+                                .unwrap_or_else(|| term.clone());
+                            labels.insert(key, label.clone());
+                            label
+                        }
+                    };
+                    if !terms.iter().any(|t: &TermLabelView| t.vocab == vocab && t.id == term) {
+                        terms.push(TermLabelView { vocab, id: term, label });
+                    }
+                }
+                terms.sort_by(|a, b| a.label.to_lowercase().cmp(&b.label.to_lowercase()));
+            }
+
             let children = children.get(&id).copied().unwrap_or(0);
-            summaries.push(SummaryView { id, name, path, kind, cover, children });
+            let previews = if cover.is_none() && children > 0 {
+                previews_inside(connection, &store, id, &order)?
+            } else {
+                Vec::new()
+            };
+            summaries.push(SummaryView { id, name, path, kind, cover, children, facets, terms, previews });
         }
 
         Ok(summaries)
     })
+}
+
+/// Up to four covers from what a grouping holds, for a card that has none of
+/// its own.
+///
+/// A category folder is the first thing a person sees and the one card with
+/// nothing to show; four of the covers inside it say what the shelf holds.
+/// Breadth first and bounded: two levels down and sixty objects looked at at
+/// most, so a grouping of thousands costs the same as one of ten.
+fn previews_inside(
+    connection: &rusqlite::Connection,
+    store: &values::Values,
+    grouping: i64,
+    order: &[String],
+) -> Result<Vec<String>, BridgeError> {
+    const WANTED: usize = 4;
+    const LOOKED: usize = 60;
+    let mut found = Vec::new();
+    let mut looked = 0;
+    let mut level = vec![grouping];
+    for _ in 0..2 {
+        let mut next = Vec::new();
+        for parent in level {
+            for child in values::contained_by(connection, parent)? {
+                if found.len() >= WANTED || looked >= LOOKED {
+                    return Ok(found);
+                }
+                looked += 1;
+                let rows = store
+                    .rows(connection, child)
+                    .map_err(|error| BridgeError::Storage(error.to_string()))?;
+                match card_field(&rows, "cover", order) {
+                    Some(cover) => found.push(cover),
+                    None => next.push(child),
+                }
+            }
+        }
+        level = next;
+    }
+    Ok(found)
 }
 
 /// A field as a card shows it: the bare value, else the first mounted
@@ -525,6 +626,26 @@ pub struct SummaryView {
     /// How many objects this one contains. A card offers to open only what
     /// has something inside.
     pub children: i64,
+    /// The fields asked for, as the object shows them. Absent ones are left
+    /// out.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub facets: BTreeMap<String, String>,
+    /// Terms in the vocabularies asked for that the object points at, by
+    /// label, alphabetically.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub terms: Vec<TermLabelView>,
+    /// For a grouping with no cover of its own, up to four covers from what
+    /// it holds.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub previews: Vec<String>,
+}
+
+/// A term a summary points at.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct TermLabelView {
+    pub vocab: String,
+    pub id: String,
+    pub label: String,
 }
 
 
@@ -1007,10 +1128,19 @@ pub fn mount_order(library: State<'_, Library>) -> Result<Vec<MountView>, Bridge
 #[tauri::command]
 pub fn object_summaries(
     library: State<'_, Library>,
+    registry: State<'_, Registry>,
     ids: Vec<String>,
+    fields: Option<Vec<String>>,
+    vocabularies: Option<Vec<String>>,
 ) -> Result<Vec<SummaryView>, BridgeError> {
     let parsed = ids.iter().map(|id| parse_id(id)).collect::<Result<Vec<_>, _>>()?;
-    object_summaries_in(&library, parsed)
+    object_summaries_with(
+        &library,
+        Some(&registry),
+        parsed,
+        &fields.unwrap_or_default(),
+        &vocabularies.unwrap_or_default(),
+    )
 }
 
 

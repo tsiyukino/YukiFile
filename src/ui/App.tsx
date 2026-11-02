@@ -68,7 +68,7 @@ import { AddObject } from "./AddObject.js";
 import { CARD_SIZE, type CardSize } from "./Card.js";
 import { DiskBrowser } from "./DiskBrowser.js";
 import { FilterSidebar } from "./FilterSidebar.js";
-import { NOTHING, onlyField, onlyTerm, withText, type Narrowing } from "./filters.js";
+import { facetsOf, NOTHING, onlyField, onlyTerm, withText, type Narrowing } from "./filters.js";
 import { ForgetButton } from "./Forget.js";
 import { dialogs, invoke } from "./invoke.js";
 import { LibraryMenu, type Report } from "./LibraryMenu.js";
@@ -297,6 +297,9 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
     setChosen(undefined);
     setView("library");
   };
+
+  // What a card says under its name: whatever the plugins filter by.
+  const detail = facetsOf(context.plugins);
 
   const chooseSize = (next: CardSize): void => {
     setSize(next);
@@ -539,6 +542,7 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
                   onChoose={open}
                   current={last}
                   generation={generation}
+                  detail={detail}
                 />
               )}
 
@@ -573,6 +577,7 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
                     term={term}
                     generation={generation}
                     onSelect={open}
+                    detail={detail}
                     onShowInGrid={(shown) => {
                       setTrail([]);
                       narrow(onlyTerm(shown.vocab, shown.id));
