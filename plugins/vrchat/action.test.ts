@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
+import type { FlatObject } from "../../src/plugin-host/commands.js";
 import type { LibraryActionProps } from "../../src/plugin-host/panel.js";
 import { fetchAllListings, runLibraryAction } from "./action.js";
 
@@ -19,7 +20,7 @@ function world() {
   };
   const api = {
     objectQuery: vi.fn(async () => ({ ids: ["1", "2", "3"], total: 3 })),
-    objectFlat: vi.fn(async (id: string) => ({
+    objectFlat: vi.fn(async (id: string): Promise<FlatObject> => ({
       id,
       // Object 2 was fetched before: the shop's cover is among its sources.
       shared: id === "2" ? { cover: [{ value: ".yukifile/covers/done.png", from: "booth#1" }] } : {},
@@ -80,6 +81,23 @@ describe("fetching every listing", () => {
     await fetchAllListings(api as unknown as LibraryActionProps["api"], async () => undefined, progress);
     expect(progress).toHaveBeenCalledWith(0, 1);
     expect(progress).toHaveBeenLastCalledWith(1, 1);
+  });
+
+  test("a listing by another shop than the object says is left alone, and named", async () => {
+    const api = world();
+    api.objectFlat.mockImplementation(async (id: string) => ({
+      id,
+      shared: id === "1" ? { title: [{ value: "Lace Swimsuit", from: null }], vendor: [{ value: "Qrochairo Store", from: "vrchat#1" }] } : {},
+      regions: [{ property: "booth", instance: 1, fields: id === "1" ? { item_id: "1564788" } : {} }],
+      skipped: [],
+      carries: ["booth#1"],
+      locations: [{ path: `Clothing/${id}`, kind: "folder", size: null }],
+    }));
+    const result = await fetchAllListings(api as unknown as LibraryActionProps["api"], async () => undefined);
+    expect(api.importPropose).not.toHaveBeenCalled();
+    expect(api.coverFetch).not.toHaveBeenCalled();
+    expect(result.summary).toContain("1 left alone because the shop differs from the vendor");
+    expect(result.summary).toContain("Lace Swimsuit (Pirouette, not Qrochairo Store)");
   });
 
   test("is one of the plugin's library actions", async () => {

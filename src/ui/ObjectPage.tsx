@@ -310,6 +310,7 @@ export function ObjectPage({
               onChanged={onChanged}
               facets={facets}
               onField={onField}
+              onClearAll={writable ? clearerFor(region, object, app) : undefined}
               onSet={
                 writable
                   ? async (name, value) => {
@@ -451,6 +452,41 @@ function Pointers({
       )}
     </>
   );
+}
+
+/**
+ * Clear what one property instance says about an object, or nothing to do.
+ *
+ * Its own fields, and every shared field it is a source of: a Booth fetch
+ * writes the title, price, url, vendor and cover under `booth#1`, and those
+ * live among the shared sources rather than in the region. Values a person
+ * typed (bare) and other sources' values are not touched.
+ */
+export function pathsSaidBy(region: Region, object: FlatObject): string[] {
+  const from = `${region.property}#${region.instance}`;
+  const paths = Object.keys(region.fields).map((name) => `${from}/${name}`);
+  for (const [field, sources] of Object.entries(object.shared)) {
+    if (sources.some((source) => source.from === from)) paths.push(`${from}/${field}`);
+  }
+  return paths;
+}
+
+/**
+ * The region's Clear, when it has anything to clear. The region re-reads after.
+ *
+ * The property is recorded as chosen first. An object that carried `booth`
+ * only because a fetch wrote under it would otherwise stop carrying it, and
+ * the section a person needs to type the right listing number into would go
+ * with the wrong values. Clearing what a source said is not saying the
+ * object is not that kind of thing.
+ */
+function clearerFor(region: Region, object: FlatObject, app: AppApi): (() => Promise<void>) | undefined {
+  const paths = pathsSaidBy(region, object);
+  if (paths.length === 0) return undefined;
+  return async () => {
+    if (region.instance === 1) await app.objectPropertyAdd(object.id, region.property);
+    for (const path of paths) await app.objectValueSet(object.id, path, "");
+  };
 }
 
 /**

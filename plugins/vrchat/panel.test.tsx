@@ -76,3 +76,41 @@ describe("the Booth panel", () => {
     expect(screen.getByText(/¥800/)).toBeDefined();
   });
 });
+
+describe("the Booth panel, as the store really holds a listing", () => {
+  // Title, price, url and vendor are shared: they arrive among the object's
+  // sources, attributed to booth#1, not in the region's own fields.
+  function stored(vendorFromFiles?: string) {
+    return {
+      objectFlat: async () => ({
+        id: "1",
+        shared: {
+          title: [{ value: "Lace Swimsuit", from: "booth#1" }],
+          price: [{ value: "500", from: "booth#1" }],
+          url: [{ value: "https://booth.pm/ja/items/4377098", from: "booth#1" }],
+          vendor: [
+            { value: "黒鳥ケモノ工房", from: "booth#1" },
+            ...(vendorFromFiles ? [{ value: vendorFromFiles, from: "vrchat#1" }] : []),
+          ],
+        },
+        regions: [{ property: "booth", instance: 1, fields: { item_id: "4377098" } }],
+        skipped: [],
+        carries: ["booth#1"],
+        locations: [],
+      }),
+    } as unknown as Api;
+  }
+
+  test("shows the listing rather than saying none is recorded", async () => {
+    render(<BoothPanel api={stored()} objectId="1" property="booth" instance={1} />);
+    const link = await screen.findByRole("link", { name: "Lace Swimsuit" });
+    expect(link.getAttribute("href")).toBe("https://booth.pm/ja/items/4377098");
+    expect(screen.getByText(/黒鳥ケモノ工房 · ¥500 · #4377098/)).toBeDefined();
+    expect(screen.queryByText("No listing recorded.")).toBeNull();
+  });
+
+  test("warns when the shop is not the vendor the files name", async () => {
+    render(<BoothPanel api={stored("Qrochairo Store")} objectId="1" property="booth" instance={1} />);
+    expect(await screen.findByText(/This listing is by 黒鳥ケモノ工房, but this object says Qrochairo Store/)).toBeDefined();
+  });
+});

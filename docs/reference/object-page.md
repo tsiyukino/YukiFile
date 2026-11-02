@@ -41,6 +41,14 @@ reads as one table.
 **The regions**, one bordered section per property instance, headed by the
 property's name: its private fields as rows, then its plugin's panels.
 
+Each region with anything in it has **Clear** in its header: after asking, it
+clears every value that property instance wrote on the object, its own fields
+and its shares of the common ones (a Booth fetch writes the title, price,
+vendor and cover among the shared sources). What a person typed and what
+other sources say stay. The property is recorded as chosen first, so the
+section stays to take a corrected listing number. This is how a wrong fetch is
+undone.
+
 **What it is, what it points at, where it sits**, closed by default: the
 property, edge and location editors. It is how a wrong edge gets fixed, not
 what anybody opens a product to read.

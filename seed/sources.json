@@ -222,24 +222,27 @@
  ".MIYOYUGI/Clothes/Lace Swimsuit": {
   "title": "Sport Swimsuit & Lace Swimsuit & Casual Wear",
   "vendor": "Qrochairo Store",
-  "url": "https://booth.pm/ja/items/1564788",
+  "url": "https://booth.pm/ja/items/4377098",
   "price": 400,
-  "status": "confirmed"
+  "status": "confirmed-by-owner",
+  "correction": "listing corrected by the owner 2026-11-02: 1564788 is another shop's item the files mention"
  },
  ".MIYOYUGI/Clothes/Casual wear": {
   "title": "Sport Swimsuit & Lace Swimsuit & Casual Wear",
   "vendor": "Qrochairo Store",
-  "url": "https://booth.pm/ja/items/1564788",
+  "url": "https://booth.pm/ja/items/4564988",
   "price": 400,
-  "status": "confirmed",
+  "status": "confirmed-by-owner",
+  "correction": "listing corrected by the owner 2026-11-02: 1564788 is another shop's item the files mention",
   "same_product_as": ".MIYOYUGI/Clothes/Lace Swimsuit"
  },
  ".MIYOYUGI/Clothes/CasualWear": {
   "title": "Sport Swimsuit & Lace Swimsuit & Casual Wear",
   "vendor": "Qrochairo Store",
-  "url": "https://booth.pm/ja/items/1564788",
+  "url": "https://booth.pm/ja/items/4564988",
   "price": 400,
-  "status": "probable",
+  "status": "confirmed-by-owner",
+  "correction": "listing corrected by the owner 2026-11-02: 1564788 is another shop's item the files mention",
   "same_product_as": ".MIYOYUGI/Clothes/Lace Swimsuit",
   "note": "duplicate folder of Casual wear"
  },

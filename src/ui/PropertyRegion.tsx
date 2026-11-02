@@ -12,7 +12,7 @@
  */
 
 import { InlineMessage } from "@primer/react/experimental";
-import { Button, Heading, Link, Stack, Text } from "@primer/react";
+import { Button, ConfirmationDialog, Heading, Link, Stack, Text } from "@primer/react";
 import { useState } from "react";
 
 import type { Api, ObjectId, Region } from "../plugin-host/commands.js";
@@ -66,6 +66,12 @@ export interface PropertyRegionProps {
   readonly facets?: readonly string[] | undefined;
   /** A facet value was followed. */
   readonly onField?: ((name: string, value: string) => void) | undefined;
+  /**
+   * Clear everything this property instance says about the object, its own
+   * fields and its shares of the common ones. Absent when it says nothing or
+   * the page cannot write.
+   */
+  readonly onClearAll?: (() => Promise<void>) | undefined;
 }
 
 export function PropertyRegion({
@@ -79,7 +85,9 @@ export function PropertyRegion({
   onChanged,
   facets,
   onField,
+  onClearAll,
 }: PropertyRegionProps): React.JSX.Element {
+  const [clearing, setClearing] = useState(false);
   const fields = Object.entries(region.fields);
   const [running, setRunning] = useState<string | undefined>(undefined);
   const [said, setSaid] = useState<string | undefined>(undefined);
@@ -114,6 +122,30 @@ export function PropertyRegion({
         <Heading as="h2" variant="small">
           {regionTitle(region, instancesOfProperty)}
         </Heading>
+        {onClearAll && (
+          <Button size="small" variant="invisible" onClick={() => setClearing(true)}>
+            Clear
+          </Button>
+        )}
+        {clearing && onClearAll && (
+          <ConfirmationDialog
+            title={`Clear what ${regionTitle(region, instancesOfProperty)} says?`}
+            confirmButtonContent="Clear"
+            confirmButtonType="danger"
+            onClose={(gesture) => {
+              setClearing(false);
+              if (gesture === "confirm") {
+                onClearAll()
+                  .then(() => onChanged?.())
+                  .catch((error: unknown) => setSaid(error instanceof Error ? error.message : String(error)));
+              }
+            }}
+          >
+            Every value {regionTitle(region, instancesOfProperty)} recorded on this object is cleared: its own fields,
+            and the title, price, picture or anything else it supplied. What a person typed, and what other sources
+            say, stay. This is how a wrong fetch is undone.
+          </ConfirmationDialog>
+        )}
         {actions && actions.length > 0 && (
           <Stack direction="horizontal" gap="condensed" align="center" wrap="wrap">
             {said && <Text size="small" className="yk-muted">{said}</Text>}

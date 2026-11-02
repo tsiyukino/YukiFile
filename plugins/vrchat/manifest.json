@@ -8,7 +8,7 @@
     "panels": { "vrchat": "./panel", "booth": "./booth-panel" },
     "actions": { "booth": ["fetch listing"] },
     "action_module": "./actions",
-    "hosts": ["booth.pm", "*.booth.pm"],
+    "hosts": ["booth.pm", "*.booth.pm", "booth.pximg.net"],
     "facets": ["category", "vendor"],
     "library_actions": ["scan products", "fetch booth listings"],
     "automatic_actions": ["fetch booth listings"],

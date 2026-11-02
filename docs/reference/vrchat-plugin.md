@@ -120,8 +120,14 @@ refused with its reason rather than dropped.
 **VRChat**: category and vendor on one line, the identification status when
 there is one, and the avatars grouped by edge kind with their labels from the
 vocabulary. **Booth**: the listing as a link, titled the way the shop titles
-it, and the price. Nothing is fetched; `docs.yml` says the network happens
-when a person presses a button.
+it, the shop, the price and the number, or a line saying it is not fetched
+yet. Title, price, url, vendor and cover are shared fields, so they are read
+from the object's sources attributed to this region (`listingValues`) as well
+as its own fields; reading only the region once made the panel say "No
+listing recorded." on every product that had one. When the shop is not the
+vendor the files or a person gave, the panel says so and that the listing
+number may be wrong. Nothing is fetched; `docs.yml` says the network happens
+when a person decides.
 
 ## Fetch listing
 
@@ -132,11 +138,25 @@ the region names — `item_id`, or the number out of `url` — at
 shop's name and the first image out of what comes back (`booth.ts`, tolerant
 by design: a field the shop moves costs the field, not the fetch), has the
 core store the picture as a cover, and proposes the lot under `booth#1`
-through `import.propose`. A title a person typed is not overwritten; it waits
-in a change set.
+through `import.propose`, with the listing's page as `url`. A value already
+there that differs waits in a change set.
 
-The press is what lends the plugin the network, for `booth.pm` and
-`*.booth.pm` as the manifest names them. Nothing on the page reaches outside
+The picture is tried at its original size first, since a cover is kept at up
+to 512 pixels, then at the 300-pixel size Booth serves for cards. A picture
+that will not come is said in the result, with the reason. It was once
+swallowed: Booth's pictures are on `booth.pximg.net`, which the manifest did
+not name, so every fetch was refused its picture and reported success.
+
+**The shop is checked against the vendor.** A listing number found in a
+package's files can be the number of something the package credits; the seed
+filed two Qrochairo Store outfits under another shop's item that way
+(corrected in `seed/`). When the listing's shop is not the vendor the files or
+a person gave, ignoring case, spaces and punctuation, the result says to check
+the number; a press on one object still proposes the values, and the run over
+the whole library leaves that product alone and names it.
+
+The press is what lends the plugin the network, for `booth.pm`, `*.booth.pm`
+and `booth.pximg.net` as the manifest names them. Nothing on the page reaches outside
 until the button is pressed. The matching VRCAL does — scoring a filename
 against candidates — is a later rule; this one only has to be right about a
 listing whose number is already known.
@@ -148,7 +168,8 @@ listing whose number is already known.
 fetched yet: each `booth` region with an `item_id` and no `cover` of its own.
 One request at a time with a second between them, so the seed's 72 listings
 are 72 polite requests rather than a burst. A listing that fails or says
-nothing new is counted and passed over.
+nothing new is counted and passed over, and one whose shop is not the
+object's vendor is left alone and named in the result.
 
 `cover` is one of the plugin's shared fields, so the shop's picture is a
 source of the object's cover like the person's own and the application's

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 
 import type { Api, AppApi, FlatObject } from "../plugin-host/commands.js";
@@ -10,6 +10,7 @@ import {
   instanceCounts,
   ObjectPage,
   panelsIn,
+  pathsSaidBy,
   sizeSuffix,
 } from "./ObjectPage.js";
 
@@ -731,5 +732,57 @@ describe("ways out of a page", () => {
     expect(await screen.findByText("listing fetched")).toBeDefined();
     expect(runObjectAction).toHaveBeenCalledWith(expect.objectContaining({ objectId: "42", property: "booth", instance: 1 }));
     expect(onChanged).toHaveBeenCalled();
+  });
+});
+
+describe("undoing what a source said", () => {
+  const fetched = flat({
+    id: "42",
+    shared: {
+      title: [
+        { value: "mine", from: null },
+        { value: "another shop's title", from: "booth#1" },
+      ],
+      vendor: [
+        { value: "黒鳥ケモノ工房", from: "booth#1" },
+        { value: "Qrochairo Store", from: "vrchat#1" },
+      ],
+    },
+    regions: [{ property: "booth", instance: 1, fields: { item_id: "1564788" } }],
+  });
+
+  test("names its own fields and its shares of the common ones, and nothing a person typed", () => {
+    expect(pathsSaidBy(fetched.regions[0]!, fetched).sort()).toEqual(["booth#1/item_id", "booth#1/title", "booth#1/vendor"]);
+  });
+
+  test("clears them after asking", async () => {
+    const objectValueSet = vi.fn(async () => "replaced");
+    const objectPropertyAdd = vi.fn(async () => undefined);
+    const onChanged = vi.fn();
+    const linked = {
+      objectEdges: async () => [],
+      termList: async () => [],
+      fileUrl: async (path: string) => `asset://${path}`,
+    } as unknown as Api;
+    render(
+      <ObjectPage
+        api={linked}
+        app={{ objectValueSet, objectPropertyAdd } as unknown as AppApi}
+        object={fetched}
+        plugins={[]}
+        loaded={[]}
+        mounts={boothMount}
+        onChanged={onChanged}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Clear" }));
+    await waitFor(() => expect(objectValueSet).toHaveBeenCalledTimes(3));
+    expect(objectValueSet).toHaveBeenCalledWith("42", "booth#1/vendor", "");
+    expect(objectValueSet).not.toHaveBeenCalledWith("42", "title", "");
+    // Still a Booth product, so the section stays to take the right number.
+    expect(objectPropertyAdd).toHaveBeenCalledWith("42", "booth");
+    await waitFor(() => expect(onChanged).toHaveBeenCalled());
   });
 });
