@@ -13,7 +13,7 @@ forty textures belonging to its parent — and this is where they give it.
 | file | does |
 |------|------|
 | `src/ui/disk.ts` | the comparison: a walked level against the recorded paths |
-| `src/ui/DiskBrowser.tsx` | the pane: one directory at a time, marked |
+| `src/ui/DiskBrowser.tsx` | the Disk view: one directory at a time, marked |
 | `src/ui/add.ts` | what was chosen and typed, as the object to create |
 | `src/ui/AddObject.tsx` | the page: pick what it is, answer each plugin, add |
 | `src/ui/Forget.tsx` | the counterpart, with a question in front of it |
@@ -31,18 +31,21 @@ are fetched together rather than the listing first and the marks after: a list
 that draws unmarked and marks itself a moment later is one where somebody can
 press "add" on a recorded row in between.
 
-A row says one of two things beside its name. **recorded**, when the library
-holds an object there; otherwise a size, since a size is what tells a stub from
+The page heading carries a breadcrumb trail from the library root, a line of
+counts, **Back** when inside a folder, and **Hide recorded**.
+
+A row says one of two things beside its name. **recorded**, as a green label,
+when the library holds an object there; otherwise a size, since a size is what tells a stub from
 the real file. A new folder says nothing, because it has no size until it is
 walked.
 
 Clicking a recorded row **opens its object**. Clicking a new one **offers to
 add it**. The browser is also a way of finding an object by where it sits,
-which the object list cannot do once a plugin has grouped things differently
-from the disk.
+which the grid cannot do once a plugin has grouped things differently from
+the disk.
 
 The chevron on a folder opens it, and opening is not choosing — the same rule
-the object list keeps. A person looking inside a folder has not asked to add
+the grid keeps. A person looking inside a folder has not asked to add
 it.
 
 **Hide recorded** filters the rows and leaves the count alone: "12 entries, 9
@@ -117,6 +120,6 @@ failure in whichever test ran last.
 
 ## After either
 
-The shell bumps its generation and re-reads the library. The object list holds
-the new object; the browser marks its row; and the page shows what was just
+The shell bumps its generation and re-reads the library. The grid holds the
+new object; the browser marks its row; and the page shows what was just
 made, since the next thing a person does after adding something is look at it.

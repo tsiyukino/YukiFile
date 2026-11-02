@@ -25,13 +25,14 @@
  * cannot do once a plugin has grouped things differently from the disk.
  */
 
-import { ActionList, Button, Checkbox, FormControl, Spinner, Stack, Text } from "@primer/react";
-import { ChevronRightIcon, FileDirectoryIcon, FileIcon } from "@primer/octicons-react";
+import { ActionList, Breadcrumbs, Button, Checkbox, FormControl, Label, Spinner, Stack, Text } from "@primer/react";
+import { ArrowLeftIcon, ChevronRightIcon, FileDirectoryIcon, FileIcon } from "@primer/octicons-react";
 import { useEffect, useState } from "react";
 
 import type { Api, ObjectId, PathAt } from "../plugin-host/commands.js";
 import { pathOf, rowsFor, showing, type DiskRow } from "./disk.js";
 import { sizeInWords } from "./ObjectPage.js";
+import { PageHead } from "./PageHead.js";
 import { describe } from "./problem.js";
 
 export interface DiskBrowserProps {
@@ -100,22 +101,47 @@ export function DiskBrowser({ api, generation, onSelect, onAdd }: DiskBrowserPro
 
   return (
     <Stack gap="condensed">
-      {trail.length > 0 && (
-        <Stack direction="horizontal" gap="condensed" align="center">
-          <Button onClick={() => setTrail((held) => held.slice(0, -1))}>Back</Button>
-          <Text size="small">{trail[trail.length - 1]}</Text>
-        </Stack>
-      )}
-
-      <Stack direction="horizontal" gap="normal" align="center" justify="space-between">
-        <Text size="small" weight="semibold">
-          {rows.length} {rows.length === 1 ? "entry" : "entries"}, {recorded} recorded
-        </Text>
+      <PageHead
+        title="Disk"
+        above={
+          <Breadcrumbs>
+            <Breadcrumbs.Item
+              href="#"
+              selected={trail.length === 0}
+              onClick={(event: React.MouseEvent) => {
+                event.preventDefault();
+                setTrail([]);
+              }}
+            >
+              Library root
+            </Breadcrumbs.Item>
+            {trail.map((step, index) => (
+              <Breadcrumbs.Item
+                key={`${index}:${step}`}
+                href="#"
+                selected={index === trail.length - 1}
+                onClick={(event: React.MouseEvent) => {
+                  event.preventDefault();
+                  setTrail((held) => held.slice(0, index + 1));
+                }}
+              >
+                {step}
+              </Breadcrumbs.Item>
+            ))}
+          </Breadcrumbs>
+        }
+        detail={`${rows.length} ${rows.length === 1 ? "entry" : "entries"}, ${recorded} recorded`}
+      >
+        {trail.length > 0 && (
+          <Button leadingVisual={ArrowLeftIcon} onClick={() => setTrail((held) => held.slice(0, -1))}>
+            Back
+          </Button>
+        )}
         <FormControl>
           <Checkbox checked={hideKnown} onChange={(event) => setHideKnown(event.target.checked)} />
           <FormControl.Label>Hide recorded</FormControl.Label>
         </FormControl>
-      </Stack>
+      </PageHead>
 
       <ActionList>
         {shown.map((row) => (
@@ -124,7 +150,9 @@ export function DiskBrowser({ api, generation, onSelect, onAdd }: DiskBrowserPro
               {row.kind === "folder" ? <FileDirectoryIcon /> : <FileIcon />}
             </ActionList.LeadingVisual>
             {row.name}
-            <ActionList.Description>{descriptionOf(row)}</ActionList.Description>
+            <ActionList.Description>
+              {row.known ? <Label variant="success">{descriptionOf(row)}</Label> : descriptionOf(row)}
+            </ActionList.Description>
             {row.kind === "folder" && (
               <ActionList.TrailingAction
                 label="Open"

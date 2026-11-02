@@ -12,11 +12,15 @@
  * page in time; this is the framework's, and it shows the model.
  */
 
-import { ActionList, FormControl, Heading, Select, Spinner, Stack, Text } from "@primer/react";
+import { ActionList, Button, FormControl, Heading, Select, Spinner, Stack, Text, TextInput } from "@primer/react";
+import { FilterIcon, SearchIcon } from "@primer/octicons-react";
 import { Blankslate } from "@primer/react/experimental";
 import { useEffect, useState } from "react";
 
 import type { Api, ObjectId, Pointer, Summary, Term } from "../plugin-host/commands.js";
+import { CardGrid } from "./Card.js";
+import { headingFor } from "./filters.js";
+import { PageHead } from "./PageHead.js";
 import { describe } from "./problem.js";
 import { byKind, countWording, objectsPointing } from "./vocabulary.js";
 
@@ -41,6 +45,7 @@ export function TermList({ api, generation, selected, onSelect }: TermListProps)
   const [terms, setTerms] = useState<Term[]>([]);
   const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState<string | undefined>(undefined);
+  const [typed, setTyped] = useState("");
 
   useEffect(() => {
     let current = true;
@@ -108,11 +113,28 @@ export function TermList({ api, generation, selected, onSelect }: TermListProps)
         </Select>
       </FormControl>
 
+      <TextInput
+        size="small"
+        block
+        leadingVisual={SearchIcon}
+        placeholder={`Filter ${vocab ?? "terms"}`}
+        aria-label="Filter terms"
+        value={typed}
+        onChange={(event) => setTyped(event.target.value)}
+      />
+
       {loading ? (
         <Spinner size="small" aria-label="Reading the vocabulary" />
       ) : (
-        <ActionList selectionVariant="single">
-          {terms.map((term) => (
+        <ActionList selectionVariant="single" role="listbox" aria-label={vocab ?? "Terms"} variant="inset">
+          {terms
+            .filter((term) => {
+              // A label and its id both: an avatar is typed in whichever
+              // script the person thinks of it in.
+              const needle = typed.trim().toLowerCase();
+              return needle === "" || term.label.toLowerCase().includes(needle) || term.id.includes(needle);
+            })
+            .map((term) => (
             <ActionList.Item
               key={term.id}
               selected={selected?.vocab === term.vocab && selected.id === term.id}
@@ -136,9 +158,11 @@ export interface TermPageProps {
   readonly generation: number;
   /** An object in the list was chosen: open it. */
   readonly onSelect: (id: ObjectId) => void;
+  /** Show everything pointing at the term in the grid, with its filters. */
+  readonly onShowInGrid?: ((term: TermRef) => void) | undefined;
 }
 
-export function TermPage({ api, term, generation, onSelect }: TermPageProps): React.JSX.Element {
+export function TermPage({ api, term, generation, onSelect, onShowInGrid }: TermPageProps): React.JSX.Element {
   const [label, setLabel] = useState<string | undefined>(undefined);
   const [pointers, setPointers] = useState<Pointer[]>([]);
   const [names, setNames] = useState<Summary[]>([]);
@@ -189,30 +213,32 @@ export function TermPage({ api, term, generation, onSelect }: TermPageProps): Re
   }
 
   return (
-    <Stack gap="normal" padding="normal">
-      <Stack gap="none">
-        <Heading as="h1">{label}</Heading>
-        <Text size="small">
-          {term.vocab}: {term.id}
-        </Text>
-        <Text size="small">{countWording(pointers)}</Text>
-      </Stack>
+    <div>
+      <PageHead
+        title={label}
+        detail={
+          <>
+            {headingFor(term.vocab)} · <span className="yk-mono">{term.id}</span> · <span>{countWording(pointers)}</span>
+          </>
+        }
+      >
+        {onShowInGrid && pointers.length > 0 && (
+          <Button leadingVisual={FilterIcon} onClick={() => onShowInGrid(term)}>
+            Show in the grid
+          </Button>
+        )}
+      </PageHead>
 
-      {byKind(pointers, names).map((group) => (
-        <Stack key={group.kind} gap="condensed">
-          <Heading as="h2">{group.kind}</Heading>
-          <ActionList>
-            {group.objects.map((object) => (
-              <ActionList.Item key={object.id} onSelect={() => onSelect(object.id)}>
-                {object.name ?? "Untitled"}
-                {object.path && object.path !== object.name && (
-                  <ActionList.Description variant="block">{object.path}</ActionList.Description>
-                )}
-              </ActionList.Item>
-            ))}
-          </ActionList>
-        </Stack>
-      ))}
-    </Stack>
+      <Stack gap="spacious">
+        {byKind(pointers, names).map((group) => (
+          <Stack key={group.kind} gap="condensed">
+            <Heading as="h2" variant="small">
+              {group.kind}
+            </Heading>
+            <CardGrid api={api} rows={group.objects} size="small" label={group.kind} onChoose={(row) => onSelect(row.id)} />
+          </Stack>
+        ))}
+      </Stack>
+    </div>
   );
 }

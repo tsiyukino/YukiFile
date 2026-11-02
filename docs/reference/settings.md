@@ -32,7 +32,11 @@ does, which is the reach the allowlist exists to refuse.
 
 ## The page
 
-`Settings.tsx`, reached from the gear beside the pane's segmented control.
+`Settings.tsx`, reached from the gear at the right of the header. Each part
+is a boxed section under one page heading: appearance, plugins, mount order,
+other settings. The mount order is a numbered list with arrows to move a row,
+and the shell's own keys, `theme` and `grid.card_size`, are left out of
+**Other settings** since each has a control of its own.
 
 **Appearance.** The theme: follow the system, light, or dark. Stored under
 `theme` and applied at once; following the system clears the key rather than

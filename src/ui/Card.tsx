@@ -25,6 +25,9 @@ import { pathUnder, placeholderFor, titleOf, type Placeholder } from "./grid.js"
 /** How large the cards are drawn. */
 export type CardSize = "small" | "medium" | "large";
 
+/** The library setting the card size is kept under, beside `theme`. */
+export const CARD_SIZE = "grid.card_size";
+
 /** The icon a placeholder draws. */
 const ICONS: Record<Placeholder, React.ComponentType<{ size?: number }>> = {
   folder: FileDirectoryIcon,

@@ -24,7 +24,7 @@
  * and `newObjectFrom` makes sure it does.
  */
 
-import { Button, Checkbox, CheckboxGroup, FormControl, Heading, Stack, Text } from "@primer/react";
+import { Button, Checkbox, CheckboxGroup, FormControl, Stack, Text } from "@primer/react";
 import { InlineMessage } from "@primer/react/experimental";
 import { useState } from "react";
 
@@ -35,6 +35,7 @@ import { choosable, formsFor } from "../plugin-host/picker.js";
 import type { Contribution, Mount } from "../plugin-host/slots.js";
 import type { Manifest } from "../plugin-host/types.js";
 import { nameOf, newObjectFrom, wording, type Collected } from "./add.js";
+import { PageHead } from "./PageHead.js";
 import { describe } from "./problem.js";
 
 export interface AddObjectProps {
@@ -98,18 +99,20 @@ export function AddObject({
   };
 
   const heading = (
-    <Stack gap="none">
-      <Heading as="h2">Add {name}</Heading>
-      <Text size="small">
-        {at.path}
-        {at.kind === "folder" ? "/" : ""}
-      </Text>
-    </Stack>
+    <PageHead
+      title={`Add ${name}`}
+      detail={
+        <span className="yk-mono">
+          {at.path}
+          {at.kind === "folder" ? "/" : ""}
+        </span>
+      }
+    />
   );
 
   if (step === 0) {
     return (
-      <Stack gap="normal" padding="normal">
+      <Stack gap="normal">
         {heading}
 
         {choices.length === 0 ? (
@@ -152,12 +155,12 @@ export function AddObject({
   // `step` is within 1..forms.length here, so the lookup cannot miss; the
   // fallback only satisfies the index type.
   const contribution = forms[step - 1] ?? forms[0];
-  if (!contribution) return <Stack padding="normal">{heading}</Stack>;
+  if (!contribution) return <Stack>{heading}</Stack>;
 
   const Form = formFor(contribution, loaded);
 
   return (
-    <Stack gap="normal" padding="normal">
+    <Stack gap="normal">
       {heading}
       <Text size="small" weight="semibold">
         {contribution.property} · step {step} of {forms.length}

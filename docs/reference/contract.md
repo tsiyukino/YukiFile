@@ -62,6 +62,16 @@ spurious changes.
 A grouping has no path to match on, so it carries `id` instead — a second
 import updates the grouping rather than making another.
 
+### A path is a claim, not a measurement
+
+Importing records each path as a location of its object. A location the
+library already holds keeps its size, time and hash: a document cannot measure
+a file, and a scanning plugin imports every product on every run, so writing
+the path over again used to wipe the hashes a rescan proves moves with.
+Leaving a path out of `folders` is the default rather than a statement that it
+is a file, so a known folder stays a folder; listing a known file under
+`folders` makes it one.
+
 ### Reasons
 
 `reason` is required on anything a machine suggested and absent from a plain

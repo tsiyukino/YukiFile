@@ -118,9 +118,9 @@ pub fn import_at(
                 } else {
                     crate::scan::walk::Kind::File
                 };
-                crate::store::paths::record(
-                    connection, object, path, kind, None, None, None,
-                )?;
+                // A claim, not a measurement: a location already recorded
+                // keeps its size, time and hash.
+                crate::store::paths::claim(connection, object, path, kind)?;
             }
         }
 
@@ -481,6 +481,46 @@ mod tests {
         let doc = document(vec![folder]);
 
         import_now(&connection, &mut values, &doc, "import");
+
+        let kind: String = connection
+            .query_row("SELECT kind FROM object_paths", [], |row| row.get(0))
+            .expect("one location");
+        assert_eq!(kind, "folder");
+    }
+
+    #[test]
+    fn importing_a_known_location_again_keeps_what_was_observed() {
+        // A scanning plugin imports every product on every run. Re-recording
+        // each location wiped the size and hash a rescan proves moves with,
+        // and a path the document left out of its folders became a file.
+        let (connection, mut values) = library();
+        let mut folder = record("Clothing", &[("title", "clothes")]);
+        folder.folders.push("Clothing".to_string());
+        import_now(&connection, &mut values, &document(vec![folder]), "first");
+        connection
+            .execute("UPDATE object_paths SET size = 42, hash = 'abc'", [])
+            .expect("observe");
+
+        let silent = record("Clothing", &[("title", "clothes")]);
+        import_now(&connection, &mut values, &document(vec![silent]), "again");
+
+        let (kind, size, hash): (String, Option<i64>, Option<String>) = connection
+            .query_row("SELECT kind, size, hash FROM object_paths", [], |row| {
+                Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+            })
+            .expect("one location");
+        assert_eq!(kind, "folder", "leaving a path out of folders is not saying it is a file");
+        assert_eq!(size, Some(42));
+        assert_eq!(hash.as_deref(), Some("abc"));
+    }
+
+    #[test]
+    fn a_document_can_say_a_known_path_is_a_folder_after_all() {
+        let (connection, mut values) = library();
+        import_now(&connection, &mut values, &document(vec![record("Clothing", &[("title", "c")])]), "first");
+        let mut folder = record("Clothing", &[("title", "c")]);
+        folder.folders.push("Clothing".to_string());
+        import_now(&connection, &mut values, &document(vec![folder]), "again");
 
         let kind: String = connection
             .query_row("SELECT kind FROM object_paths", [], |row| row.get(0))

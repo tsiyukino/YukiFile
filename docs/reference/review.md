@@ -24,7 +24,7 @@ goes.
 | file | does |
 |------|------|
 | `src/ui/changeset.ts` | grouping by object, an entry in words, the counts |
-| `src/ui/Review.tsx` | `ReviewList`, the pane; `ReviewPage`, the set |
+| `src/ui/Review.tsx` | `ReviewList`, in the sidebar; `ReviewPage`, the set |
 | `src-tauri/src/bridge/changes.rs` | the six commands, see [changes.md](changes.md) |
 
 The pure module carries what is worth checking without a DOM: that entries are
@@ -32,20 +32,25 @@ grouped by the object they touch in the order the core gives them, that
 clearing a field is said rather than drawn as an arrow to nothing, and that the
 counts a person reads add up.
 
-## The pane
+## The sidebar
 
 Every open set, oldest first, as a row: its label and one line of counts —
 "3 additions and 1 modification, 3 accepted". The counts ride along from the
 core because a list of labels is a click to find out, and a line of counts is a
-decision. The segment's own label carries the number of sets, so a scan that
-left something to decide is noticed from anywhere.
+decision. The Review item in the sidebar carries the number of sets, and a
+**Review** button with the count appears in the header while any wait, so a
+scan that left something to decide is noticed from anywhere.
 
 ## The page
 
-Entries grouped under the object they touch, named the way the object list
-names things — the title, or the filename. Each entry is a checkbox with the
-field and a sentence: *would set "x"*, *would replace "mine" with "theirs"*,
-*would clear "mine"*. A reason, when the proposal carried one, sits under it.
+A page heading with the set's label and counts, and the bulk actions and
+**Apply** on the right. Then one box per object, like one file in a pull
+request: the object's name in the box's header with how many of its entries
+are accepted, and each entry as a row. A row is a checkbox, the field's stored
+path, and the change as a diff: the old value struck on red, the new on green.
+The sentence a screen reader hears says it in words: *would set "x"*, *would
+replace "mine" with "theirs"*, *would clear "mine"*. A reason, when the
+proposal carried one, sits under it.
 
 **A modification starts unticked; an addition starts ticked.** That is the
 core's default and the screen only shows it. Pressing Apply without reading
@@ -102,6 +107,6 @@ library's sources will come in once they are written as a document.
 
 ## After applying
 
-The shell bumps its generation and re-reads the library. The pane shows what
-is still waiting, the page returns to the object, and the object list and the
-disk browser pick up whatever the set wrote.
+The shell bumps its generation and re-reads the library. The sidebar shows
+what is still waiting, and the grid and the disk browser pick up whatever the
+set wrote.

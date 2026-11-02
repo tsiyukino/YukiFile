@@ -52,6 +52,25 @@ pub fn record(
     Ok(())
 }
 
+/// Record a location a document claims, without forgetting what was observed.
+///
+/// An import names paths; it does not measure them. Re-recording a known
+/// location through [`record`] would set its size, time and hash to nothing,
+/// and a scanning plugin imports every product on every run, so each scan
+/// wiped the hashes a rescan proves moves with. A document that leaves a path
+/// out of its folders has not said it is a file either -- that is only the
+/// default -- so an existing row keeps its kind, and only a positive claim
+/// that it is a folder changes it.
+pub fn claim(connection: &Connection, object: i64, path: &str, kind: Kind) -> rusqlite::Result<()> {
+    connection.execute(
+        "INSERT INTO object_paths (object_id, path, kind) VALUES (?1, ?2, ?3)
+         ON CONFLICT (object_id, path) DO UPDATE SET kind = excluded.kind
+         WHERE excluded.kind = 'folder'",
+        params![object, path, kind_name(kind)],
+    )?;
+    Ok(())
+}
+
 /// Move a path from wherever it was to a new spelling.
 ///
 /// The object keeps its identity, which is the whole point of detecting a move

@@ -19,13 +19,14 @@
  * beside the entry it is about rather than as a line at the bottom.
  */
 
-import { ActionList, Button, Checkbox, FormControl, Heading, Spinner, Stack, Text } from "@primer/react";
+import { ActionList, Button, Checkbox, Heading, Spinner, Text, VisuallyHidden } from "@primer/react";
 import { Blankslate, InlineMessage } from "@primer/react/experimental";
 import { useEffect, useState } from "react";
 
 import type { Api, AppApi, ChangeEntry, ChangeSetSummary } from "../plugin-host/commands.js";
 import { describe, staleDetail, type Stale } from "./problem.js";
 import { byObject, countsOf, decided, objectsOf, recount, wording, type ObjectChanges } from "./changeset.js";
+import { PageHead } from "./PageHead.js";
 
 // --- the pane: every set waiting -----------------------------------------
 
@@ -192,13 +193,8 @@ export function ReviewPage({ api, app, set, onApplied }: ReviewPageProps): React
   }
 
   return (
-    <Stack gap="normal" padding="normal">
-      <Stack gap="none">
-        <Heading as="h2">{summary.label}</Heading>
-        <Text size="small">{countsOf(summary)}</Text>
-      </Stack>
-
-      <Stack direction="horizontal" gap="condensed" wrap="wrap">
+    <div>
+      <PageHead title={summary.label} detail={countsOf(summary)}>
         <Button disabled={working} onClick={() => bulk(() => app.changesAcceptAdditions(set))}>
           Accept additions
         </Button>
@@ -211,40 +207,59 @@ export function ReviewPage({ api, app, set, onApplied }: ReviewPageProps): React
         <Button variant="primary" disabled={working} onClick={apply}>
           Apply {summary.accepted} of {entries.length}
         </Button>
-      </Stack>
+      </PageHead>
 
       {problem && !stale && <InlineMessage variant="critical">{problem}</InlineMessage>}
 
-      {groups.map((group) => (
-        <Stack key={group.object} gap="condensed">
-          <Heading as="h3">
-            {group.name ?? <Text weight="light">Untitled</Text>}
-          </Heading>
-          {group.entries.map((entry) => (
-            <Stack key={entry.id} gap="none">
-              <FormControl disabled={working}>
-                <Checkbox
-                  checked={entry.accepted}
-                  onChange={(event) => decide(entry.id, event.target.checked)}
-                />
-                <FormControl.Label>
-                  {entry.field} <Text weight="light">{wording(entry)}</Text>
-                </FormControl.Label>
-                {entry.reason && <FormControl.Caption>{entry.reason}</FormControl.Caption>}
-              </FormControl>
-              {stale && stale.object === entry.object && stale.field === entry.field && (
-                // Beside the entry it is about. A line at the bottom saying
-                // "a field moved" sends the person hunting for which.
-                <InlineMessage variant="warning">{problem}</InlineMessage>
-              )}
-            </Stack>
-          ))}
-        </Stack>
-      ))}
+      <div className="yk-sections">
+        {groups.map((group) => (
+          // One box per object, like one file in a pull request: its name in
+          // the header, its changes as rows, each with its own decision.
+          <section key={group.object} className="yk-region">
+            <header className="yk-region-head">
+              <Heading as="h3" variant="small">
+                {group.name ?? <Text weight="light">Untitled</Text>}
+              </Heading>
+              <Text size="small" className="yk-muted">
+                {group.entries.filter((entry) => entry.accepted).length} of {group.entries.length} accepted
+              </Text>
+            </header>
+            <div className="yk-region-body">
+              {group.entries.map((entry) => (
+                <div key={entry.id} className="yk-change">
+                  <Checkbox
+                    id={`change-${entry.id}`}
+                    checked={entry.accepted}
+                    disabled={working}
+                    onChange={(event) => decide(entry.id, event.target.checked)}
+                  />
+                  <div>
+                    <label htmlFor={`change-${entry.id}`} className="yk-change-field">
+                      {entry.field}
+                      <VisuallyHidden> {wording(entry)}</VisuallyHidden>
+                    </label>
+                    <div className="yk-diff" aria-hidden="true">
+                      {entry.old !== null && <del className="yk-diff-old">{entry.old}</del>}
+                      {entry.new !== null && <ins className="yk-diff-new">{entry.new}</ins>}
+                      {entry.new === null && entry.old === null && <span className="yk-muted">empty, left empty</span>}
+                    </div>
+                    {entry.reason && <div className="yk-change-reason">{entry.reason}</div>}
+                    {stale && stale.object === entry.object && stale.field === entry.field && (
+                      // Beside the entry it is about. A line at the bottom
+                      // saying "a field moved" sends the person hunting.
+                      <InlineMessage variant="warning">{problem}</InlineMessage>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
 
       {entries.length === 0 && (
         <Text>This set proposes nothing. Applying it closes it.</Text>
       )}
-    </Stack>
+    </div>
   );
 }

@@ -65,7 +65,7 @@ import { loadAll, type Loaded } from "../plugin-host/loader.js";
 import type { Mount } from "../plugin-host/slots.js";
 import type { Manifest } from "../plugin-host/types.js";
 import { AddObject } from "./AddObject.js";
-import type { CardSize } from "./Card.js";
+import { CARD_SIZE, type CardSize } from "./Card.js";
 import { DiskBrowser } from "./DiskBrowser.js";
 import { FilterSidebar } from "./FilterSidebar.js";
 import { NOTHING, onlyField, onlyTerm, withText, type Narrowing } from "./filters.js";
@@ -112,8 +112,6 @@ export interface AppProps {
   readonly onTheme?: ((preference: ThemePreference) => void) | undefined;
 }
 
-/** The setting the card size is kept under, beside the theme. */
-export const CARD_SIZE = "grid.card_size";
 
 function sizeFrom(stored: string | null): CardSize {
   return stored === "small" || stored === "large" ? stored : "medium";
@@ -575,7 +573,17 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
 
               {view === "terms" &&
                 (term ? (
-                  <TermPage key={`${term.vocab}:${term.id}`} api={api} term={term} generation={generation} onSelect={open} />
+                  <TermPage
+                    key={`${term.vocab}:${term.id}`}
+                    api={api}
+                    term={term}
+                    generation={generation}
+                    onSelect={open}
+                    onShowInGrid={(shown) => {
+                      setTrail([]);
+                      narrow(onlyTerm(shown.vocab, shown.id));
+                    }}
+                  />
                 ) : (
                   <Placeholder
                     heading="Choose a term"

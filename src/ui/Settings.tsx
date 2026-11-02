@@ -14,11 +14,14 @@
  * the window is opened again.
  */
 
-import { ActionList, Button, Checkbox, FormControl, Heading, Select, Spinner, Stack, Text, TextInput } from "@primer/react";
+import { Button, Checkbox, FormControl, Heading, IconButton, Select, Spinner, Stack, Text, TextInput } from "@primer/react";
+import { ArrowDownIcon, ArrowUpIcon } from "@primer/octicons-react";
 import { InlineMessage } from "@primer/react/experimental";
 import { useEffect, useState } from "react";
 
 import type { Api, AppApi, LibraryInfo, MountRow, SettingRow } from "../plugin-host/commands.js";
+import { CARD_SIZE } from "./Card.js";
+import { PageHead } from "./PageHead.js";
 import { describe } from "./problem.js";
 import { parsePreference, type ThemePreference } from "./theme.js";
 
@@ -99,16 +102,13 @@ export function Settings({ api, app, generation, onTheme, onChanged }: SettingsP
   };
 
   return (
-    <Stack gap="normal" padding="normal">
-      <Stack gap="none">
-        <Heading as="h2">Settings</Heading>
-        <Text size="small">{info.root}</Text>
-      </Stack>
+    <div>
+      <PageHead title="Settings" detail={<span className="yk-mono">{info.root}</span>} />
 
       {problem && <InlineMessage variant="critical">{problem}</InlineMessage>}
 
-      <Stack gap="condensed">
-        <Heading as="h3">Appearance</Heading>
+      <div className="yk-sections">
+      <Section title="Appearance">
         <FormControl>
           <FormControl.Label>Theme</FormControl.Label>
           <Select
@@ -130,10 +130,9 @@ export function Settings({ api, app, generation, onTheme, onChanged }: SettingsP
             <Select.Option value="dark">Dark</Select.Option>
           </Select>
         </FormControl>
-      </Stack>
+      </Section>
 
-      <Stack gap="condensed">
-        <Heading as="h3">Plugins</Heading>
+      <Section title="Plugins">
         <Text size="small">
           {info.chosen
             ? "This library runs the plugins ticked below."
@@ -190,52 +189,57 @@ export function Settings({ api, app, generation, onTheme, onChanged }: SettingsP
             Run everything installed
           </Button>
         </Stack>
-      </Stack>
+      </Section>
 
-      <Stack gap="condensed">
-        <Heading as="h3">Mount order</Heading>
+      <Section title="Mount order">
         <Text size="small">
           The one library-wide rule: which source a page shows first when two plugins name the same field.
         </Text>
         {mounts.length === 0 && <Text size="small">Nothing is mounted yet.</Text>}
         {mounts.length > 0 && (
-          <ActionList>
+          // Plain rows, not list items: a list item is itself a button, and
+          // the arrows inside it would be buttons inside a button.
+          <ol className="yk-order">
             {mounts.map((mount, index) => (
-              <ActionList.Item key={`${mount.namespace}#${mount.instance}`} onSelect={() => undefined}>
-                {mount.namespace}
-                {mount.instance !== 1 && ` #${mount.instance}`}
-                <ActionList.TrailingVisual>
-                  <Stack direction="horizontal" gap="condensed">
-                    <Button size="small" disabled={working || index === 0} onClick={() => move(index, -1)} aria-label={`Move ${mount.namespace} up`}>
-                      ↑
-                    </Button>
-                    <Button
-                      size="small"
-                      disabled={working || index === mounts.length - 1}
-                      onClick={() => move(index, 1)}
-                      aria-label={`Move ${mount.namespace} down`}
-                    >
-                      ↓
-                    </Button>
-                  </Stack>
-                </ActionList.TrailingVisual>
-              </ActionList.Item>
+              <li key={`${mount.namespace}#${mount.instance}`} className="yk-order-row">
+                <span className="yk-order-place">{index + 1}</span>
+                <span className="yk-order-name">
+                  {mount.namespace}
+                  {mount.instance !== 1 && ` #${mount.instance}`}
+                </span>
+                <IconButton
+                  icon={ArrowUpIcon}
+                  size="small"
+                  variant="invisible"
+                  disabled={working || index === 0}
+                  onClick={() => move(index, -1)}
+                  aria-label={`Move ${mount.namespace} up`}
+                />
+                <IconButton
+                  icon={ArrowDownIcon}
+                  size="small"
+                  variant="invisible"
+                  disabled={working || index === mounts.length - 1}
+                  onClick={() => move(index, 1)}
+                  aria-label={`Move ${mount.namespace} down`}
+                />
+              </li>
             ))}
-          </ActionList>
+          </ol>
         )}
-      </Stack>
+      </Section>
 
-      <Stack gap="condensed">
-        <Heading as="h3">Other settings</Heading>
+      <Section title="Other settings">
         <Text size="small">
           What plugins asked the library to remember. A plugin reads its own keys; `vrchat.grouping_depth` is how
           deep the VRChat scan&apos;s groupings go.
         </Text>
         {settings
-          .filter((row) => row.key !== "theme")
+          // The shell's own, each with a control of its own elsewhere.
+          .filter((row) => row.key !== "theme" && row.key !== CARD_SIZE)
           .map((row) => (
             <Stack key={row.key} direction="horizontal" gap="condensed" align="center">
-              <Text size="small">
+              <Text size="small" className="yk-mono">
                 {row.key} = {row.value}
               </Text>
               <Button
@@ -274,7 +278,22 @@ export function Settings({ api, app, generation, onTheme, onChanged }: SettingsP
             Set
           </Button>
         </Stack>
-      </Stack>
-    </Stack>
+      </Section>
+      </div>
+    </div>
+  );
+}
+
+/** One boxed part of the page, titled. */
+function Section({ title, children }: { readonly title: string; readonly children: React.ReactNode }): React.JSX.Element {
+  return (
+    <section className="yk-region">
+      <header className="yk-region-head">
+        <Heading as="h2" variant="small">
+          {title}
+        </Heading>
+      </header>
+      <div className="yk-region-body">{children}</div>
+    </section>
   );
 }
