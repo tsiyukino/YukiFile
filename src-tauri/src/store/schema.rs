@@ -25,6 +25,7 @@ const MIGRATIONS: &[Migration] = &[
     Migration { version: 3, sql: V3 },
     Migration { version: 4, sql: V4 },
     Migration { version: 5, sql: V5 },
+    Migration { version: 6, sql: V6 },
 ];
 
 /// The version this build expects.
@@ -291,6 +292,45 @@ CREATE INDEX history_by_object ON history (object_id, ts);
 "#;
 
 
+
+/// Mount every property instance that values are already stored under.
+///
+/// Importing a document wrote `vrchat#1/category` and `booth#1/title` without
+/// mounting `vrchat#1` or `booth#1`, so on a library filled by import those
+/// values were stored and never shown: flattening skips an unmounted
+/// namespace as routine. Import mounts what it writes now; this repairs the
+/// libraries filled before it did.
+///
+/// Appended after whatever is mounted, in the order the values were first
+/// written, so a library that did order its mounts keeps that order. The
+/// reserved namespaces are left alone: `@pin` and `@import` never mount, and
+/// `fs` is the core's.
+const V6: &str = r#"
+INSERT OR IGNORE INTO mounts (position, namespace, instance)
+SELECT (SELECT COALESCE(MAX(position), -1) FROM mounts) + ROW_NUMBER() OVER (ORDER BY first_seen),
+       namespace, instance
+FROM (
+    SELECT namespace, instance, MIN(seen) AS first_seen
+    FROM (
+        SELECT substr(field_path, 1, instr(field_path, '#') - 1) AS namespace,
+               CAST(substr(field_path,
+                           instr(field_path, '#') + 1,
+                           instr(field_path, '/') - instr(field_path, '#') - 1) AS INTEGER) AS instance,
+               rowid AS seen
+        FROM values_
+        WHERE field_path NOT LIKE '@%'
+          AND instr(field_path, '#') > 1
+          AND instr(field_path, '/') > instr(field_path, '#') + 1
+    ) AS parsed
+    WHERE parsed.namespace <> 'fs'
+      AND parsed.instance > 0
+      AND NOT EXISTS (
+          SELECT 1 FROM mounts AS m
+          WHERE m.namespace = parsed.namespace AND m.instance = parsed.instance
+      )
+    GROUP BY parsed.namespace, parsed.instance
+);
+"#;
 
 #[cfg(test)]
 mod tests {
@@ -1060,6 +1100,52 @@ mod tests {
             .expect("rows");
 
         assert_eq!(left, ["title"], "the marker survived, or a real value did not");
+    }
+
+    #[test]
+    fn values_stored_under_an_unmounted_namespace_get_mounted() {
+        // A library filled by import held `vrchat#1/category` with nothing
+        // mounting `vrchat#1`, so every such value was stored and never shown.
+        let mut connection = Connection::open_in_memory().expect("open");
+        for migration in MIGRATIONS.iter().filter(|m| m.version <= 5) {
+            let transaction = connection.transaction().expect("begin");
+            apply(&transaction, migration).expect("apply");
+            transaction.commit().expect("commit");
+        }
+        connection
+            .execute_batch(
+                "INSERT INTO objects (id) VALUES (1), (2);
+                 INSERT INTO mounts (position, namespace, instance) VALUES (0, 'folder', 1), (1, 'booth', 1);
+                 INSERT INTO values_ (object_id, field_path, value) VALUES
+                    (1, 'vrchat#1/category', 'Hair'),
+                    (1, 'booth#1/title', 'already mounted'),
+                    (1, 'title', 'bare'),
+                    (1, '@pin/title', 'booth#1'),
+                    (2, 'booth#2/title', 'a second shop listing'),
+                    (2, 'vrchat#1/vendor', 'same instance twice');",
+            )
+            .expect("old library");
+
+        migrate(&mut connection).expect("migrate");
+
+        let mounted: Vec<(String, u32)> = connection
+            .prepare("SELECT namespace, instance FROM mounts ORDER BY position")
+            .expect("prepare")
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .expect("query")
+            .collect::<rusqlite::Result<_>>()
+            .expect("rows");
+
+        assert_eq!(
+            mounted,
+            [
+                ("folder".to_string(), 1),
+                ("booth".to_string(), 1),
+                ("vrchat".to_string(), 1),
+                ("booth".to_string(), 2),
+            ],
+            "existing order kept, new mounts appended in the order first written, reserved left out"
+        );
     }
 
     #[test]

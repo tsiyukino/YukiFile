@@ -219,6 +219,34 @@ fn kind_name(kind: Kind) -> &'static str {
     }
 }
 
+/// Every location in the library, grouped by object, each object's sorted by
+/// path as [`located`] sorts one object's.
+pub fn all_located(
+    connection: &Connection,
+) -> rusqlite::Result<std::collections::HashMap<i64, Vec<Known>>> {
+    let mut statement = connection.prepare(
+        "SELECT object_id, path, kind, size, mtime, hash FROM object_paths
+         ORDER BY object_id, path",
+    )?;
+    let rows = statement.query_map([], |row| {
+        let kind: String = row.get(2)?;
+        Ok(Known {
+            object: row.get(0)?,
+            path: row.get(1)?,
+            kind: if kind == "folder" { Kind::Folder } else { Kind::File },
+            size: row.get::<_, Option<i64>>(3)?.map(|s| s as u64),
+            mtime: row.get(4)?,
+            hash: row.get(5)?,
+        })
+    })?;
+    let mut grouped: std::collections::HashMap<i64, Vec<Known>> = std::collections::HashMap::new();
+    for row in rows {
+        let known = row?;
+        grouped.entry(known.object).or_default().push(known);
+    }
+    Ok(grouped)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

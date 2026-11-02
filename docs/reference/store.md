@@ -269,6 +269,17 @@ schema while changing it. Layer 3 adds the change set tables as v2. Each
 migration runs in its own transaction, so a failure leaves the database at the
 last version that fully applied.
 
+V6 changes no table. It mounts every property instance that values are already
+stored under and nothing mounts, appended after the existing order in the
+order the values were first written; the reserved namespaces stay unmounted.
+An import used to write `vrchat#1/category` without mounting `vrchat#1`, and a
+value under an unmounted namespace is stored and never shown.
+
+The bulk readers `values::all_object_ids`, `values::all_rows`,
+`paths::all_located`, `carried::all` and `edges::all_to_terms` read the whole
+library in one query each, for the sidebar's filter (`bridge.md`,
+*bridge::query*).
+
 ### Tables
 
 | table          | holds                                                        |

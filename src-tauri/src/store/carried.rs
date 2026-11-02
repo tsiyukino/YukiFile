@@ -149,6 +149,26 @@ pub fn of_object(connection: &Connection, object: i64) -> rusqlite::Result<Vec<(
     rows.collect()
 }
 
+/// What every object carries by decision, grouped by object.
+pub fn all(
+    connection: &Connection,
+) -> rusqlite::Result<std::collections::HashMap<i64, Vec<(String, u32)>>> {
+    let mut statement = connection.prepare(
+        "SELECT object_id, namespace, instance FROM object_properties
+         ORDER BY object_id, namespace, instance",
+    )?;
+    let mut grouped: std::collections::HashMap<i64, Vec<(String, u32)>> =
+        std::collections::HashMap::new();
+    let rows = statement.query_map([], |row| {
+        Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?, row.get::<_, u32>(2)?))
+    })?;
+    for row in rows {
+        let (object, namespace, instance) = row?;
+        grouped.entry(object).or_default().push((namespace, instance));
+    }
+    Ok(grouped)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

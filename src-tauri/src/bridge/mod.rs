@@ -30,6 +30,7 @@ pub mod changes;
 pub mod covers;
 pub mod commands;
 pub mod objects;
+pub mod query;
 pub mod rescan;
 pub mod settings;
 pub mod transfer;
@@ -64,6 +65,8 @@ macro_rules! register_commands {
             $crate::bridge::commands::object_flat,
             $crate::bridge::commands::object_ids,
             $crate::bridge::commands::object_summaries,
+            $crate::bridge::query::object_query,
+            $crate::bridge::query::object_facets,
             $crate::bridge::commands::plugin_list,
             $crate::bridge::commands::mount_order,
             $crate::bridge::commands::object_edges,

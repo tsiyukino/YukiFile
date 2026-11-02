@@ -170,6 +170,51 @@ export interface Summary {
   readonly cover?: string | null;
 }
 
+/**
+ * What to narrow the library to. Every part is optional.
+ *
+ * Within one group the choices are alternatives (two categories show things
+ * in either); across groups they all apply (a category and an avatar show
+ * things that are both). A field value of `null` matches objects showing
+ * nothing under that field.
+ */
+export interface Filter {
+  readonly text?: string;
+  readonly properties?: readonly string[];
+  readonly fields?: readonly { readonly field: string; readonly value: string | null }[];
+  readonly terms?: readonly { readonly vocab: string; readonly term: string }[];
+}
+
+/** How matches are ordered: by name, newest first, or oldest first. */
+export type Sort = "name" | "newest" | "oldest";
+
+/** A page of matches and how many match in all. */
+export interface QueryPage {
+  readonly ids: ObjectId[];
+  readonly total: number;
+}
+
+/**
+ * What there is to choose in each sidebar group, counted against a filter.
+ *
+ * A group's counts set its own choices aside, so they say what choosing
+ * another value there would add.
+ */
+export interface Facets {
+  readonly total: number;
+  readonly properties: readonly { readonly property: string; readonly count: number }[];
+  readonly fields: readonly {
+    readonly field: string;
+    /** Most common first; `null`, the objects showing nothing, last. */
+    readonly values: readonly { readonly value: string | null; readonly count: number }[];
+  }[];
+  readonly vocabularies: readonly {
+    readonly vocab: string;
+    /** Only terms something points at, most pointed at first. */
+    readonly terms: readonly { readonly id: string; readonly label: string; readonly count: number }[];
+  }[];
+}
+
 /** One entry on disk. */
 export interface Entry {
   /** Relative to the walk root, with `/` separators on every platform. */
@@ -386,6 +431,13 @@ export interface Api {
     within?: ObjectId | null,
   ): Promise<ObjectIds>;
   objectSummaries(ids: readonly ObjectId[]): Promise<Summary[]>;
+  /**
+   * A page of the objects a filter matches, across the whole library rather
+   * than one level of it, and how many match in all.
+   */
+  objectQuery(filter: Filter, sort: Sort, offset: number, limit: number): Promise<QueryPage>;
+  /** Counts for the sidebar: properties, the fields named, the vocabularies named. */
+  objectFacets(filter: Filter, fields: readonly string[], vocabularies: readonly string[]): Promise<Facets>;
   pluginList(): Promise<Manifest[]>;
   mountOrder(): Promise<MountRow[]>;
   objectEdges(id: ObjectId): Promise<Edge[]>;
@@ -668,6 +720,9 @@ export function apiFor(invoke: Invoke): Api {
     objectIds: (after, limit, within = null) =>
       call("object.ids", { after, limit, within }),
     objectSummaries: (ids) => call("object.summaries", { ids }),
+    objectQuery: (filter, sort, offset, limit) => call("object.query", { filter, sort, offset, limit }),
+    objectFacets: (filter, fields, vocabularies) =>
+      call("object.facets", { filter, fields, vocabularies }),
     pluginList: () => call("plugin.list", {}),
     mountOrder: () => call("mount.order", {}),
     objectEdges: (id) => call("object.edges", { id }),

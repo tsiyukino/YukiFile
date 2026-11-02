@@ -67,6 +67,12 @@ export interface Contributes {
   /** Hosts this plugin's actions may reach: `booth.pm`, `*.booth.pm`. */
   readonly hosts?: readonly string[];
 
+  /**
+   * Fields worth filtering the library by: `category`, `vendor`. The sidebar
+   * lists each one's values with a count.
+   */
+  readonly facets?: readonly string[];
+
   /** Property to the full-screen viewer module. */
   readonly viewers?: Readonly<Record<string, string>>;
 

@@ -129,33 +129,9 @@ pub fn object_flat_in(
             })
             .collect();
 
-        // What the object carries comes from three places: what a person
-        // decided it is, what its locations observably bring, and what values
-        // already mention. The first is the only one that survives an empty
-        // form -- choosing a type and filling nothing in used to leave an
-        // object carrying nothing, so the decision vanished along with its
-        // panels and viewers.
         let rules = rules_from(registry);
-        let mut carries: std::collections::BTreeSet<String> = view
-            .plugin_mounts()
-            .map(|(namespace, instance)| format!("{namespace}#{instance}"))
-            .collect();
-
-        for known in &located {
-            let entry = crate::scan::walk::Entry {
-                path: known.path.clone(),
-                kind: known.kind,
-                size: known.size,
-                mtime: known.mtime,
-            };
-            for property in rules.properties(&entry) {
-                carries.insert(format!("{property}#1"));
-            }
-        }
-
-        for (namespace, instance) in crate::store::carried::of_object(connection, id)? {
-            carries.insert(format!("{namespace}#{instance}"));
-        }
+        let decided = crate::store::carried::of_object(connection, id)?;
+        let carries = carries_of(&view, &located, &rules, &decided);
 
         let pins = rows
             .iter()
@@ -173,6 +149,45 @@ pub fn object_flat_in(
             ..as_flat_view(id, &view)
         })
     })
+}
+
+/// What an object carries.
+///
+/// Three places: what a person decided it is, what its locations observably
+/// bring, and what values already mention. The first is the only one that
+/// survives an empty form -- choosing a type and filling nothing in used to
+/// leave an object carrying nothing, so the decision vanished along with its
+/// panels and viewers.
+///
+/// Shared with the sidebar's filter, so "carries vrchat" means the same thing
+/// on an object's page and in a count beside the word.
+pub(crate) fn carries_of(
+    view: &flatten::FlatView<'_>,
+    located: &[crate::scan::reconcile::Known],
+    rules: &Rules,
+    decided: &[(String, u32)],
+) -> std::collections::BTreeSet<String> {
+    let mut carries: std::collections::BTreeSet<String> = view
+        .plugin_mounts()
+        .map(|(namespace, instance)| format!("{namespace}#{instance}"))
+        .collect();
+
+    for known in located {
+        let entry = crate::scan::walk::Entry {
+            path: known.path.clone(),
+            kind: known.kind,
+            size: known.size,
+            mtime: known.mtime,
+        };
+        for property in rules.properties(&entry) {
+            carries.insert(format!("{property}#1"));
+        }
+    }
+
+    for (namespace, instance) in decided {
+        carries.insert(format!("{namespace}#{instance}"));
+    }
+    carries
 }
 
 /// Turn a resolved view into what crosses the boundary.
@@ -390,7 +405,7 @@ pub fn library_scan_in(
 }
 
 /// The file-type rules the loaded plugins declare.
-fn rules_from(registry: Option<&Registry>) -> Rules {
+pub(crate) fn rules_from(registry: Option<&Registry>) -> Rules {
     let mut rules = Rules::new();
     let Some(registry) = registry else { return rules };
 
@@ -450,8 +465,8 @@ pub fn object_summaries_in(
             let rows = store
                 .rows(connection, id)
                 .map_err(|error| BridgeError::Storage(error.to_string()))?;
-            let title = field_for_card(&rows, "title", &order);
-            let cover = field_for_card(&rows, "cover", &order);
+            let title = card_field(&rows, "title", &order);
+            let cover = card_field(&rows, "cover", &order);
 
             let (path, kind) = match located.get(&id) {
                 Some((path, kind)) => (Some(path.clone()), Some(kind.clone())),
@@ -474,7 +489,7 @@ pub fn object_summaries_in(
 /// A field as a card shows it: the bare value, else the first mounted
 /// plugin's, in mount order; a plugin's value under a mount the library does
 /// not list comes last.
-fn field_for_card(rows: &[crate::store::flatten::StoredValue], field: &str, order: &[String]) -> Option<String> {
+pub(crate) fn card_field(rows: &[crate::store::flatten::StoredValue], field: &str, order: &[String]) -> Option<String> {
     if let Some(bare) = rows.iter().find(|r| r.path == field) {
         return Some(bare.value.clone());
     }
@@ -874,6 +889,20 @@ pub fn import_propose_in_with(
             // Whatever the imported paths observably are. A `.pdf` that is not
             // mounted has no viewer, because slot arbitration runs over mount
             // order and an unmounted property is not in it.
+            // And whatever the document writes under. A value under an
+            // unmounted namespace is stored and never shown, which is what a
+            // whole seed import of `vrchat#1/category` turned out to be.
+            for record in &parsed.objects {
+                for written in record.values.keys() {
+                    let Ok(path) = crate::store::path::ValuePath::parse(written) else { continue };
+                    if let (Some(namespace), Some(instance)) = (path.namespace, path.instance) {
+                        if !crate::store::path::is_reserved(namespace) {
+                            values::mount(transaction, namespace, instance)?;
+                        }
+                    }
+                }
+            }
+
             let rules = rules_from(registry);
             for record in &parsed.objects {
                 for path in &record.paths {
@@ -1003,8 +1032,8 @@ pub fn object_summaries(
 /// restarts. That is a real limit rather than a detail, and it is written
 /// here instead of being left for somebody to discover.
 #[tauri::command]
-pub fn file_url(
-    app: tauri::AppHandle,
+pub fn file_url<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     library: State<'_, Library>,
     path: String,
 ) -> Result<String, BridgeError> {

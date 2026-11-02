@@ -98,6 +98,16 @@ pub struct Contributes {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub hosts: Vec<String>,
 
+    /// Fields worth filtering the library by: `category`, `vendor`.
+    ///
+    /// The sidebar lists each one's values with a count, and choosing a value
+    /// narrows the grid. The core counts what objects hold; which fields mean
+    /// something to a person browsing is this plugin's knowledge, so the
+    /// plugin names them. A field with a thousand distinct values is a bad
+    /// facet, and only the plugin knows which fields are like that.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub facets: Vec<String>,
+
     /// Property to the full-screen viewer module.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub viewers: BTreeMap<String, String>,
@@ -311,6 +321,15 @@ impl Manifest {
             }
         }
 
+        for field in &self.contributes.facets {
+            // A bare field name: the sidebar asks for the value an object
+            // shows under it, wherever that value came from. A path would tie
+            // the facet to one namespace and one instance.
+            if field.is_empty() || field.contains(['/', '#', '@', ' ']) {
+                return Err(ManifestError::Malformed(format!("{field:?} is not a field name")));
+            }
+        }
+
         for (slot, modules) in [
             ("panel", &self.contributes.panels),
             ("viewer", &self.contributes.viewers),
@@ -465,5 +484,23 @@ mod tests {
             manifest.check(),
             Err(ManifestError::ExtensionInSpecifier { slot: "viewer", .. })
         ));
+    }
+
+    #[test]
+    fn a_facet_is_a_bare_field_name() {
+        // A path would pin the facet to one namespace and one instance, and
+        // the sidebar asks for the value an object shows, wherever it came
+        // from.
+        let mut manifest = Manifest { id: "test.plugin".into(), ..Default::default() };
+        manifest.contributes.facets = vec!["category".into()];
+        assert!(manifest.check().is_ok());
+
+        for bad in ["", "vrchat#1/category", "@pin/category", "two words"] {
+            manifest.contributes.facets = vec![bad.into()];
+            assert!(
+                matches!(manifest.check(), Err(ManifestError::Malformed(_))),
+                "{bad:?} was accepted"
+            );
+        }
     }
 }

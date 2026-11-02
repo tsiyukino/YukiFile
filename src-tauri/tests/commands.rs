@@ -3116,3 +3116,173 @@ fn a_summary_names_an_object_by_a_shops_title_when_nobody_typed_one() {
     assert_eq!(rows[1].name.as_deref(), Some("mine"), "a person's own value wins");
     assert_eq!(rows[2].name.as_deref(), Some("earlier mount"), "mount order ranks the plugins");
 }
+
+// --- query and facets -------------------------------------------------------
+
+/// A small shop library: three products, two categories, one left unsorted,
+/// two avatars.
+fn shop_library() -> (Library, Dir, [i64; 3]) {
+    use yukifile::store::{edges, vocab};
+    let (library, dir) = library();
+    mount(&library, "vrchat", 1, 0);
+    mount(&library, "booth", 1, 1);
+    let maid = object_with(&library, &[("booth#1/title", "Cross Maid"), ("vrchat#1/category", "Clothing")]);
+    let hair = object_with(&library, &[("title", "Twin Tails"), ("vrchat#1/category", "Hair")]);
+    let loose = object_with(&library, &[("booth#1/title", "Loose Thing")]);
+    library
+        .with_connection(|connection| {
+            vocab::put_term(connection, "avatar", "airi", "Airi")?;
+            vocab::put_term(connection, "avatar", "manuka", "Manuka")?;
+            let to = |id: &str| edges::Target::Term { vocab: "avatar".into(), id: id.into() };
+            edges::add(connection, maid, "supports", &to("airi"))?;
+            edges::add(connection, maid, "supports", &to("manuka"))?;
+            edges::add(connection, hair, "supports", &to("airi"))?;
+            connection.execute(
+                "INSERT INTO object_paths (object_id, path, kind) VALUES (?1, 'Hair/twin_tails.unitypackage', 'file')",
+                [hair],
+            )?;
+            Ok(())
+        })
+        .expect("terms");
+    (library, dir, [maid, hair, loose])
+}
+
+fn filter(json: &str) -> yukifile::bridge::query::Filter {
+    serde_json::from_str(json).expect("filter")
+}
+
+#[test]
+fn an_empty_filter_matches_everything_sorted_by_name() {
+    use yukifile::bridge::query::{object_query_in, Sort};
+    let (library, _dir, [maid, hair, loose]) = shop_library();
+    let page = object_query_in(&library, None, filter("{}"), Sort::Name, 0, 50).expect("query");
+    assert_eq!(page.total, 3);
+    assert_eq!(page.ids, [maid, loose, hair], "by the name a card shows");
+}
+
+#[test]
+fn a_category_narrows_to_what_shows_it_and_null_finds_the_unsorted() {
+    use yukifile::bridge::query::{object_query_in, Sort};
+    let (library, _dir, [maid, hair, loose]) = shop_library();
+
+    let clothing = r#"{"fields":[{"field":"category","value":"Clothing"}]}"#;
+    let page = object_query_in(&library, None, filter(clothing), Sort::Name, 0, 50).expect("query");
+    assert_eq!(page.ids, [maid]);
+
+    let either = r#"{"fields":[{"field":"category","value":"Clothing"},{"field":"category","value":"Hair"}]}"#;
+    let page = object_query_in(&library, None, filter(either), Sort::Oldest, 0, 50).expect("query");
+    assert_eq!(page.ids, [maid, hair]);
+
+    let unsorted = r#"{"fields":[{"field":"category","value":null}]}"#;
+    let page = object_query_in(&library, None, filter(unsorted), Sort::Name, 0, 50).expect("query");
+    assert_eq!(page.ids, [loose]);
+}
+
+#[test]
+fn text_matches_values_paths_and_the_names_of_terms_pointed_at() {
+    use yukifile::bridge::query::{object_query_in, Sort};
+    let (library, _dir, [maid, hair, _loose]) = shop_library();
+
+    let by_title = object_query_in(&library, None, filter(r#"{"text":"cross MAID"}"#), Sort::Name, 0, 50).expect("q");
+    assert_eq!(by_title.ids, [maid]);
+
+    let by_path = object_query_in(&library, None, filter(r#"{"text":"twin_tails"}"#), Sort::Name, 0, 50).expect("q");
+    assert_eq!(by_path.ids, [hair]);
+
+    let by_term = object_query_in(&library, None, filter(r#"{"text":"manuka"}"#), Sort::Name, 0, 50).expect("q");
+    assert_eq!(by_term.ids, [maid]);
+}
+
+#[test]
+fn a_term_and_a_category_must_both_hold() {
+    use yukifile::bridge::query::{object_query_in, Sort};
+    let (library, _dir, [_maid, hair, _loose]) = shop_library();
+    let both = r#"{"fields":[{"field":"category","value":"Hair"}],"terms":[{"vocab":"avatar","term":"airi"}]}"#;
+    let page = object_query_in(&library, None, filter(both), Sort::Name, 0, 50).expect("query");
+    assert_eq!(page.ids, [hair]);
+}
+
+#[test]
+fn query_pages_by_offset_and_reports_the_whole_count() {
+    use yukifile::bridge::query::{object_query_in, Sort};
+    let (library, _dir, [_maid, _hair, loose]) = shop_library();
+    let page = object_query_in(&library, None, filter("{}"), Sort::Name, 1, 1).expect("query");
+    assert_eq!(page.total, 3);
+    assert_eq!(page.ids, [loose]);
+}
+
+#[test]
+fn facets_count_each_group_with_its_own_choice_set_aside() {
+    use yukifile::bridge::query::object_facets_in;
+    let (library, _dir, _ids) = shop_library();
+
+    let chosen = r#"{"fields":[{"field":"category","value":"Hair"}]}"#;
+    let facets = object_facets_in(
+        &library,
+        None,
+        filter(chosen),
+        vec!["category".into()],
+        vec!["avatar".into()],
+    )
+    .expect("facets");
+
+    assert_eq!(facets.total, 1);
+
+    // The category group ignores the category choice: every value is still
+    // offered, with what choosing it would show.
+    let category: Vec<(Option<&str>, i64)> = facets.fields[0]
+        .values
+        .iter()
+        .map(|v| (v.value.as_deref(), v.count))
+        .collect();
+    assert_eq!(category, [(Some("Clothing"), 1), (Some("Hair"), 1), (None, 1)]);
+
+    // The avatar group honours it: only the hair product counts.
+    let avatars: Vec<(&str, &str, i64)> = facets.vocabularies[0]
+        .terms
+        .iter()
+        .map(|t| (t.id.as_str(), t.label.as_str(), t.count))
+        .collect();
+    assert_eq!(avatars, [("airi", "Airi", 1)]);
+}
+
+#[test]
+fn a_shared_field_is_filtered_by_the_value_that_wins() {
+    use yukifile::bridge::query::{object_query_in, Sort};
+    let (library, _dir) = library();
+    mount(&library, "booth", 1, 0);
+    let registry = registry_sharing("booth", &["vendor"]);
+    let mine = object_with(&library, &[("vendor", "Mine"), ("booth#1/vendor", "Shop")]);
+    let shop = object_with(&library, &[("booth#1/vendor", "Shop")]);
+
+    let wanted = r#"{"fields":[{"field":"vendor","value":"Shop"}]}"#;
+    let page = object_query_in(&library, Some(&registry), filter(wanted), Sort::Oldest, 0, 50).expect("q");
+    assert_eq!(page.ids, [shop], "the person's own vendor outranks the shop's");
+    let _ = mine;
+}
+
+#[test]
+fn importing_mounts_what_it_writes_under_so_the_values_show() {
+    // A seed import wrote `vrchat#1/category` on 173 objects and mounted
+    // nothing, so every one of those values was stored and never shown.
+    let (library, _dir) = library();
+    let document = r#"{
+        "version": 1,
+        "objects": [
+            { "paths": ["Hair/twin.zip"], "values": { "vrchat#1/category": "Hair", "@pin/title": "booth#1" } }
+        ]
+    }"#;
+    import_propose_in(&library, "test".into(), document.into()).expect("import");
+
+    let mounted: Vec<String> = mount_order_in(&library)
+        .expect("order")
+        .into_iter()
+        .map(|m| format!("{}#{}", m.namespace, m.instance))
+        .collect();
+    assert!(mounted.contains(&"vrchat#1".to_string()), "{mounted:?}");
+    assert!(!mounted.iter().any(|m| m.starts_with('@')), "a pin is not a property: {mounted:?}");
+
+    let id = object_ids_in(&library, None, 10).expect("ids").ids[0];
+    let flat = object_flat_in(&library, None, id).expect("flat");
+    assert!(flat.carries.contains(&"vrchat#1".to_string()), "{:?}", flat.carries);
+}

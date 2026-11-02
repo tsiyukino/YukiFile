@@ -88,6 +88,16 @@ pub const ALLOWED: &[Command] = &[
         reason: "a list needs a name and a path per row, not one read per row",
     },
     Command {
+        name: "object.query",
+        effect: Effect::Read,
+        reason: "a sidebar narrows the library by property, field value, term and text",
+    },
+    Command {
+        name: "object.facets",
+        effect: Effect::Read,
+        reason: "a sidebar shows what there is to choose, with how many of each",
+    },
+    Command {
         name: "object.edges",
         effect: Effect::Read,
         reason: "a panel shows what an object requires or supports",

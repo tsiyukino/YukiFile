@@ -66,6 +66,14 @@ refused rather than allowed to shadow something it does not know exists.
 `file_types` maps an extension to the factual properties it brings, which is
 how the core holds the matching and none of the extensions.
 
+### `facets` names what the sidebar counts
+
+Bare field names: `["category", "vendor"]`. The sidebar lists each one's
+values with a count and narrows the grid to what is chosen. The core counts;
+which fields mean something to a person browsing is the plugin's knowledge,
+and a field with a thousand distinct values makes a poor facet in a way only
+the plugin knows. A path, a pin or a name with a space is refused.
+
 ### Module specifiers name no extension
 
 `"./panel"`, never `"./panel.js"`. Which extension a module carries on disk --

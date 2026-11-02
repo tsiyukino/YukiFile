@@ -312,6 +312,47 @@ holds it is a plugin's `contains` edge, so a product moved into another
 category stays under the old one in the Library pane until the plugin's scan
 runs again, and the shell says so.
 
+## bridge::query
+
+`object_query_in(library, registry, filter, sort, offset, limit)` and
+`object_facets_in(library, registry, filter, fields, vocabularies)`, both on
+the plugin allowlist as `object.query` and `object.facets`. What the grid's
+sidebar narrows the library with, and the counts it draws beside each choice.
+
+A filter has text, properties, field values and terms. Text is words that must
+all appear, ignoring case, in an object's values, its locations or the labels
+of the terms it points at, so typing `manuka` finds what supports Manuka.
+Within a group the choices are alternatives, across groups they all apply. A
+field value of `null` matches objects showing nothing under the field, which
+is how a person finds what still needs sorting.
+
+A field means the value the object page would show under that name: a pinned
+source, the person's own value, else the first mount's. For a field no mounted
+plugin shares, the first mount in mount order holding a private value of that
+name. A facet tied to a namespaced path would tie the sidebar to one plugin's
+instance numbering.
+
+Which fields get counted is the plugins' call: a manifest's `facets` names
+them. A group's counts are computed with that group's own choices set aside,
+so the number beside an unticked category says what ticking it would add.
+
+Both read the library in five queries and filter in memory. A filter has to
+see every object before it can say how many match; the seed library is 173
+objects, and ten times that is still milliseconds. Paging is by offset, unlike
+`object.ids`: a sort by name has no cursor an id could be.
+
+Results are flat. The tree a plugin's `contains` edges build is the grid's
+view when nothing is filtered; once something is, a match three groupings
+deep is as much a match as one at the top.
+
+### Import mounts what it writes
+
+`import.propose` mounts every namespace the document's values are written
+under, as `object.value.set` always did. Before it did, a seed import stored
+`vrchat#1/category` on every product with nothing mounting `vrchat#1`, and
+flattening skips an unmounted namespace as routine: the values were there and
+never shown. Migration V6 mounts what existing libraries already store.
+
 ## bridge::library
 
 `Library::new(root, connection)` · `resolve(path)` · `with_connection` ·

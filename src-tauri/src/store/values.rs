@@ -542,6 +542,38 @@ fn is_unique_violation(error: &rusqlite::Error) -> bool {
     )
 }
 
+/// Every object id, lowest first.
+///
+/// For a caller that filters the whole library in one pass. Listing pages use
+/// [`object_ids_where`]; this exists because a filter has to look at every
+/// object before it can say how many match.
+pub fn all_object_ids(connection: &Connection) -> rusqlite::Result<Vec<i64>> {
+    let mut statement = connection.prepare("SELECT id FROM objects ORDER BY id")?;
+    let ids = statement.query_map([], |row| row.get(0))?.collect();
+    ids
+}
+
+/// Every stored value in the library, grouped by object.
+///
+/// One query rather than one per object: filtering a library of a thousand
+/// objects one `rows` call at a time is a thousand trips through the
+/// connection lock for an answer the person is waiting on while typing.
+pub fn all_rows(
+    connection: &Connection,
+) -> rusqlite::Result<std::collections::HashMap<i64, Vec<StoredValue>>> {
+    let mut statement = connection.prepare("SELECT object_id, field_path, value FROM values_")?;
+    let mut grouped: std::collections::HashMap<i64, Vec<StoredValue>> =
+        std::collections::HashMap::new();
+    let rows = statement.query_map([], |row| {
+        Ok((row.get::<_, i64>(0)?, StoredValue { path: row.get(1)?, value: row.get(2)? }))
+    })?;
+    for row in rows {
+        let (object, value) = row?;
+        grouped.entry(object).or_default().push(value);
+    }
+    Ok(grouped)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

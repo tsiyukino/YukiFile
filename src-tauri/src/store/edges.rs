@@ -195,6 +195,19 @@ fn read_edge(row: &rusqlite::Row<'_>) -> rusqlite::Result<Edge> {
     Ok(Edge { src: row.get(0)?, kind: row.get(1)?, target })
 }
 
+/// Every edge that points at a vocabulary term, as (source, vocab, term).
+///
+/// What a filter by term needs for the whole library at once. The kind is
+/// left out: "supports Airi" and "owned Airi" both answer "has to do with
+/// Airi", which is the question a sidebar asks.
+pub fn all_to_terms(connection: &Connection) -> rusqlite::Result<Vec<(i64, String, String)>> {
+    let mut statement = connection.prepare(
+        "SELECT DISTINCT src, dst_vocab, dst_term FROM edges WHERE dst_vocab IS NOT NULL",
+    )?;
+    let rows = statement.query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?.collect();
+    rows
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
