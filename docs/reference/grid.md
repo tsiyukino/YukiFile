@@ -86,6 +86,28 @@ own page.
 The last object opened is outlined when the grid comes back, so the eye finds
 its place.
 
+## Choosing many
+
+Each card has a box on its cover, shown on hover. Ticking it, or Ctrl- or
+Cmd-clicking a card, chooses it; Shift chooses everything between the last
+card toggled and this one. Once anything is chosen a plain click chooses too,
+as in a photo library, and **Select all N** beside the count takes every
+match of the current view, not only the loaded pages. The selection is the
+shell's, so it survives paging, other filters and opened objects; Escape or
+**Clear selection** lets go of it.
+
+While anything is chosen a bar floats at the bottom of the grid (`Bulk.tsx`):
+
+- **Set {field}…** for each field a plugin filters by: the values already in
+  use to pick from, or a new one, or **Clear**.
+- **Add {vocabulary}…** and **Remove {vocabulary}…**: a term to point every
+  chosen object at, or stop pointing at, with the kind of link (`supports` by
+  default).
+
+Each is one command over every chosen object, all or nothing (`bridge.md`,
+*bridge::bulk*), and the banner says how many it changed and how many were
+already so.
+
 ## Finding covers
 
 **Find covers…** in the Library menu looks through every object that has no

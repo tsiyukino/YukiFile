@@ -290,3 +290,54 @@
   justify-content: center;
   padding: var(--base-size-24) 0 var(--base-size-8);
 }
+
+/* Choosing many: a box on the cover, shown on hover and while choosing. */
+.yk-card-check {
+  position: absolute;
+  top: var(--base-size-8);
+  left: var(--base-size-8);
+  width: var(--base-size-24);
+  height: var(--base-size-24);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: var(--borderRadius-medium);
+  border: 1px solid var(--borderColor-default);
+  background: var(--bgColor-default);
+  color: var(--fgColor-onEmphasis);
+  cursor: pointer;
+  box-shadow: var(--shadow-resting-small);
+  opacity: 0;
+  transition: opacity 80ms ease;
+}
+
+.yk-card:hover .yk-card-check,
+.yk-card-check:focus-visible,
+.yk-card[data-selecting="true"] .yk-card-check {
+  opacity: 1;
+}
+
+.yk-card-check:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 2px;
+}
+
+.yk-card[data-selected="true"] .yk-card-check {
+  background: var(--bgColor-accent-emphasis);
+  border-color: var(--borderColor-accent-emphasis);
+}
+
+.yk-card[data-selected="true"] .yk-cover {
+  border-color: var(--borderColor-accent-emphasis);
+  box-shadow: 0 0 0 3px var(--borderColor-accent-emphasis);
+}
+
+.yk-card[data-selected="true"] .yk-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--bgColor-accent-muted);
+  opacity: 0.35;
+  pointer-events: none;
+}

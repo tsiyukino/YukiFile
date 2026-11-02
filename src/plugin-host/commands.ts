@@ -384,6 +384,14 @@ export type EdgeTarget =
   | { readonly target: "object"; readonly id: ObjectId }
   | { readonly target: "term"; readonly vocab: string; readonly term: string };
 
+/** What a change to many objects did. */
+export interface Bulk {
+  /** Objects it made a difference to. */
+  readonly changed: number;
+  /** Objects that already were as asked. */
+  readonly unchanged: number;
+}
+
 /** One edge leaving an object: `supports → avatar:manuka`. */
 export type Edge = { readonly kind: string } & EdgeTarget;
 
@@ -632,6 +640,16 @@ export interface AppApi {
   objectPropertyRemove(id: ObjectId, property: string): Promise<void>;
   /** Point an object at a term or another object. The target has to exist. */
   objectEdgeAdd(id: ObjectId, kind: string, target: EdgeTarget): Promise<void>;
+  /**
+   * Set one field on many objects in one transaction. A field a plugin keeps
+   * to itself is written where its plugin keeps it; a shared one bare. An
+   * empty value clears it.
+   */
+  objectsFieldSet(ids: readonly ObjectId[], field: string, value: string): Promise<Bulk>;
+  /** Point many objects at one target, in one transaction. */
+  objectsEdgeAdd(ids: readonly ObjectId[], kind: string, target: EdgeTarget): Promise<Bulk>;
+  /** Take that back for many objects. */
+  objectsEdgeRemove(ids: readonly ObjectId[], kind: string, target: EdgeTarget): Promise<Bulk>;
   /** Stop pointing. Removing an edge that is not there is not an error. */
   objectEdgeRemove(id: ObjectId, kind: string, target: EdgeTarget): Promise<void>;
   /** Give an object another place it sits. The path has to be there and free. */
@@ -720,6 +738,12 @@ export function appApiFor(invoke: Invoke): AppApi {
       invoke(handlerName("object.property.add"), { id, property }) as Promise<void>,
     objectPropertyRemove: (id, property) =>
       invoke(handlerName("object.property.remove"), { id, property }) as Promise<void>,
+    objectsFieldSet: (ids, field, value) =>
+      invoke(handlerName("objects.field.set"), { ids, field, value }) as Promise<Bulk>,
+    objectsEdgeAdd: (ids, kind, target) =>
+      invoke(handlerName("objects.edge.add"), { ids, kind, target }) as Promise<Bulk>,
+    objectsEdgeRemove: (ids, kind, target) =>
+      invoke(handlerName("objects.edge.remove"), { ids, kind, target }) as Promise<Bulk>,
     objectEdgeAdd: (id, kind, target) =>
       invoke(handlerName("object.edge.add"), { id, kind, target }) as Promise<void>,
     objectEdgeRemove: (id, kind, target) =>

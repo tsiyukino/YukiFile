@@ -26,6 +26,7 @@
 //! the bridge's benefit, because the shape a plugin is told is not the shape
 //! the schema holds, and the two have separate reasons to change.
 
+pub mod bulk;
 pub mod changes;
 pub mod covers;
 pub mod commands;
@@ -90,6 +91,9 @@ macro_rules! register_commands {
             $crate::bridge::objects::object_path_add,
             $crate::bridge::objects::object_path_remove,
             $crate::bridge::objects::object_path_move,
+            $crate::bridge::bulk::objects_field_set,
+            $crate::bridge::bulk::objects_edge_add,
+            $crate::bridge::bulk::objects_edge_remove,
             $crate::bridge::rescan::library_reconcile,
             $crate::bridge::covers::cover_set,
             $crate::bridge::network::http_get,

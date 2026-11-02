@@ -9,6 +9,7 @@
  */
 
 import {
+  CheckIcon,
   TagIcon,
   FileDirectoryIcon,
   FileIcon,
@@ -116,9 +117,24 @@ export interface CardProps {
   readonly onChoose: () => void;
   /** What it contains was asked for. Absent when it contains nothing. */
   readonly onOpen?: (() => void) | undefined;
+  /** Whether it is among the chosen many. */
+  readonly selected?: boolean;
+  /** Whether anything is: a plain click then toggles rather than opens. */
+  readonly selecting?: boolean;
+  /** Toggle it, with the click, so Shift can mean a range. Absent, no box. */
+  readonly onToggle?: ((event: React.MouseEvent) => void) | undefined;
 }
 
-export function Card({ api, summary, current = false, onChoose, onOpen }: CardProps): React.JSX.Element {
+export function Card({
+  api,
+  summary,
+  current = false,
+  onChoose,
+  onOpen,
+  selected = false,
+  selecting = false,
+  onToggle,
+}: CardProps): React.JSX.Element {
   const url = useCoverUrl(api, summary.cover);
   const placeholder = placeholderFor(summary);
   const Icon = ICONS[placeholder];
@@ -132,8 +148,23 @@ export function Card({ api, summary, current = false, onChoose, onOpen }: CardPr
   const under = facts.length === 0 && terms.length === 0 ? pathUnder(summary) : undefined;
 
   return (
-    <li className="yk-card" data-current={current ? "true" : undefined}>
-      <button type="button" className="yk-card-main" aria-current={current ? "true" : undefined} onClick={onChoose}>
+    <li
+      className="yk-card"
+      data-current={current ? "true" : undefined}
+      data-selected={selected ? "true" : undefined}
+      data-selecting={selecting ? "true" : undefined}
+    >
+      <button
+        type="button"
+        className="yk-card-main"
+        aria-current={current ? "true" : undefined}
+        onClick={(event) => {
+          // While anything is chosen a click adds to the choice, as in a
+          // photo library; Ctrl, Cmd and Shift choose without opening.
+          if (onToggle && (selecting || event.ctrlKey || event.metaKey || event.shiftKey)) onToggle(event);
+          else onChoose();
+        }}
+      >
         <div className="yk-cover" data-kind={url || previews.length > 0 ? undefined : placeholder}>
           {url ? (
             <img src={url} alt="" loading="lazy" decoding="async" />
@@ -168,6 +199,18 @@ export function Card({ api, summary, current = false, onChoose, onOpen }: CardPr
           )}
         </div>
       </button>
+      {onToggle && (
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={selected}
+          aria-label={`Select ${name}`}
+          className="yk-card-check"
+          onClick={onToggle}
+        >
+          {selected && <CheckIcon size={14} />}
+        </button>
+      )}
       {onOpen && (
         <button
           type="button"
@@ -193,6 +236,9 @@ export function termsLine(labels: readonly string[], shown = 3): string {
 export interface CardGridProps {
   readonly api: Api;
   readonly rows: readonly Summary[];
+  /** The chosen many, when the grid offers choosing. */
+  readonly selected?: ReadonlySet<ObjectId> | undefined;
+  readonly onToggle?: ((summary: Summary, index: number, event: React.MouseEvent) => void) | undefined;
   readonly size?: CardSize;
   readonly current?: ObjectId | undefined;
   readonly onChoose: (summary: Summary) => void;
@@ -202,10 +248,21 @@ export interface CardGridProps {
 }
 
 /** A grid of cards. */
-export function CardGrid({ api, rows, size = "medium", current, onChoose, onOpen, label }: CardGridProps): React.JSX.Element {
+export function CardGrid({
+  api,
+  rows,
+  size = "medium",
+  current,
+  onChoose,
+  onOpen,
+  label,
+  selected,
+  onToggle,
+}: CardGridProps): React.JSX.Element {
+  const selecting = (selected?.size ?? 0) > 0;
   return (
     <ul className="yk-grid" data-size={size} aria-label={label}>
-      {rows.map((row) => (
+      {rows.map((row, index) => (
         <Card
           key={row.id}
           api={api}
@@ -213,6 +270,9 @@ export function CardGrid({ api, rows, size = "medium", current, onChoose, onOpen
           current={row.id === current}
           onChoose={() => onChoose(row)}
           onOpen={onOpen && (row.children ?? 0) > 0 ? () => onOpen(row) : undefined}
+          selected={selected?.has(row.id) ?? false}
+          selecting={selecting}
+          onToggle={onToggle ? (event) => onToggle(row, index, event) : undefined}
         />
       ))}
     </ul>

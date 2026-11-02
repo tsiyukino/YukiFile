@@ -391,7 +391,7 @@ pub fn object_path_remove_in(library: &Library, id: i64, path: &str) -> Result<(
 }
 
 /// A target that exists, or a refusal naming what does not.
-fn resolve_target(connection: &rusqlite::Connection, target: &TargetAt) -> Result<Target, BridgeError> {
+pub(crate) fn resolve_target(connection: &rusqlite::Connection, target: &TargetAt) -> Result<Target, BridgeError> {
     match target {
         TargetAt::Object { id } => {
             let dst = crate::bridge::commands::parse_id(id)?;
@@ -411,7 +411,7 @@ fn resolve_target(connection: &rusqlite::Connection, target: &TargetAt) -> Resul
 
 /// `NoSuchObject` for an id with no row, so every edit says the same thing
 /// about a missing object rather than each failing in its own way.
-fn require_object(connection: &rusqlite::Connection, id: i64) -> Result<(), BridgeError> {
+pub(crate) fn require_object(connection: &rusqlite::Connection, id: i64) -> Result<(), BridgeError> {
     let found: Option<i64> = connection
         .query_row("SELECT id FROM objects WHERE id = ?1", [id], |row| row.get(0))
         .ok();
@@ -419,7 +419,7 @@ fn require_object(connection: &rusqlite::Connection, id: i64) -> Result<(), Brid
 }
 
 /// A write error in the bridge's terms.
-fn write_error(error: values::WriteError, id: i64) -> BridgeError {
+pub(crate) fn write_error(error: values::WriteError, id: i64) -> BridgeError {
     match error {
         values::WriteError::NoSuchObject(_) => BridgeError::NoSuchObject(id.to_string()),
         values::WriteError::BadPath(error) => BridgeError::BadRequest(error.to_string()),

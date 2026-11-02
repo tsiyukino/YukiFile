@@ -259,6 +259,21 @@ pub const APP_ONLY: &[Command] = &[
         reason: "a location that was never this object's, or is no longer",
     },
     Command {
+        name: "objects.field.set",
+        effect: Effect::Write,
+        reason: "a person sorting many objects at once sets one field on all of them",
+    },
+    Command {
+        name: "objects.edge.add",
+        effect: Effect::Write,
+        reason: "a person says many objects point at the same thing, at once",
+    },
+    Command {
+        name: "objects.edge.remove",
+        effect: Effect::Write,
+        reason: "and takes it back for all of them",
+    },
+    Command {
         name: "setting.all",
         effect: Effect::Write,
         reason: "the settings page lists what the library decided",

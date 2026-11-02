@@ -73,6 +73,9 @@ export interface ObjectGridProps {
   readonly generation: number;
   /** What cards say under their names: these fields and these vocabularies. */
   readonly detail?: Detail | undefined;
+  /** The chosen many. Absent, the grid offers no choosing. */
+  readonly selected?: ReadonlySet<ObjectId> | undefined;
+  readonly onSelected?: ((next: ReadonlySet<ObjectId>) => void) | undefined;
 }
 
 /** The fields and vocabularies a card shows. */
@@ -82,8 +85,24 @@ export interface Detail {
 }
 
 export function ObjectGrid(props: ObjectGridProps): React.JSX.Element {
-  const { api, narrowing, onNarrow, trail, onTrail, sort, onSort, size, onSize, labels, onChoose, current, generation, detail } =
-    props;
+  const {
+    api,
+    narrowing,
+    onNarrow,
+    trail,
+    onTrail,
+    sort,
+    onSort,
+    size,
+    onSize,
+    labels,
+    onChoose,
+    current,
+    generation,
+    detail,
+    selected,
+    onSelected,
+  } = props;
 
   const [rows, setRows] = useState<Summary[]>([]);
   const [total, setTotal] = useState(0);
@@ -159,6 +178,37 @@ export function ObjectGrid(props: ObjectGridProps): React.JSX.Element {
 
   const enter = (summary: Summary): void => onTrail([...trail, { id: summary.id, name: titleOf(summary) }]);
 
+  // Shift chooses everything between the last card toggled and this one, as
+  // a file manager does; the others toggle one.
+  const anchor = useRef<number | undefined>(undefined);
+  const toggle = (summary: Summary, index: number, event: React.MouseEvent): void => {
+    if (!selected || !onSelected) return;
+    const next = new Set(selected);
+    const from = anchor.current;
+    if (event.shiftKey && from !== undefined && from < rows.length) {
+      const [low, high] = from < index ? [from, index] : [index, from];
+      for (const row of rows.slice(low, high + 1)) next.add(row.id);
+    } else if (next.has(summary.id)) {
+      next.delete(summary.id);
+    } else {
+      next.add(summary.id);
+    }
+    anchor.current = index;
+    onSelected(next);
+  };
+
+  // Every match, not only the loaded pages: selecting "all forty-two
+  // Clothing" should not depend on how far a person scrolled.
+  const [selectingAll, setSelectingAll] = useState(false);
+  const selectAll = (): void => {
+    if (!selected || !onSelected) return;
+    setSelectingAll(true);
+    allIds(api, filter)
+      .then((ids) => onSelected(new Set([...selected, ...ids])))
+      .catch((error: unknown) => setProblem(describe(error)))
+      .finally(() => setSelectingAll(false));
+  };
+
   // A grouping with no location is nothing but what it holds, so choosing
   // it goes in. Anything with a place on disk is a thing with a page.
   const choose = (summary: Summary): void => {
@@ -209,6 +259,12 @@ export function ObjectGrid(props: ObjectGridProps): React.JSX.Element {
             {total} {total === 1 ? "object" : "objects"}
           </span>
         </div>
+
+        {selected && onSelected && selected.size > 0 && (
+          <Button size="small" variant="invisible" disabled={selectingAll} onClick={selectAll}>
+            {selectingAll ? "Selecting…" : `Select all ${total}`}
+          </Button>
+        )}
 
         {!narrowed && here && (
           <IconButton
@@ -286,6 +342,8 @@ export function ObjectGrid(props: ObjectGridProps): React.JSX.Element {
           label={narrowed ? "Results" : (here?.name ?? "Library")}
           onChoose={choose}
           onOpen={narrowed ? undefined : enter}
+          selected={selected}
+          onToggle={selected && onSelected ? toggle : undefined}
         />
       )}
 
@@ -302,6 +360,16 @@ export function ObjectGrid(props: ObjectGridProps): React.JSX.Element {
       )}
     </div>
   );
+}
+
+/** Every id a filter matches, a page of five hundred at a time. */
+async function allIds(api: Api, filter: Parameters<Api["objectQuery"]>[0]): Promise<ObjectId[]> {
+  const ids: ObjectId[] = [];
+  for (let offset = 0; ; offset += 500) {
+    const found = await api.objectQuery(filter, "oldest", offset, 500);
+    ids.push(...found.ids);
+    if (found.ids.length === 0 || ids.length >= found.total) return ids;
+  }
 }
 
 /** One page of cards, with how many match in all. */

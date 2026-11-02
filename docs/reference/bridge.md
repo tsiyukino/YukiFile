@@ -358,6 +358,24 @@ under, as `object.value.set` always did. Before it did, a seed import stored
 flattening skips an unmounted namespace as routine: the values were there and
 never shown. Migration V6 mounts what existing libraries already store.
 
+## bridge::bulk
+
+`objects_field_set_in(library, registry, ids, field, value)`,
+`objects_edge_add_in(library, ids, kind, target)` and
+`objects_edge_remove_in`, on `APP_ONLY` as `objects.field.set`,
+`objects.edge.add` and `objects.edge.remove`. One change to many objects, in
+one transaction: all of them or none, reported as how many it changed and how
+many already were so.
+
+Where a field is written is decided per object (`path_for`). A field some
+plugin shares is written bare, the person's own value. A field a plugin keeps
+to itself, as the VRChat plugin keeps `category`, is written where the object
+already holds it, else under the first property of the plugin naming it as a
+facet, instance one: `vrchat#1/category`. Either way the object then shows the
+value the grid's filter looks for. Value changes are recorded as one history
+batch, so the change reads back as one thing a person did. A term target has
+to exist, as for one object.
+
 ## bridge::library
 
 `Library::new(root, connection)` · `resolve(path)` · `with_connection` ·

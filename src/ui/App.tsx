@@ -66,6 +66,7 @@ import type { Mount } from "../plugin-host/slots.js";
 import type { Manifest } from "../plugin-host/types.js";
 import { AddObject } from "./AddObject.js";
 import { runSwitchedOn, type Running } from "./automatic.js";
+import { SelectionBar } from "./Bulk.js";
 import { CARD_SIZE, type CardSize } from "./Card.js";
 import { DiskBrowser } from "./DiskBrowser.js";
 import { FilterSidebar } from "./FilterSidebar.js";
@@ -151,6 +152,10 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
   const [sort, setSort] = useState<Sort>("name");
   const [size, setSize] = useState<CardSize>("medium");
   const [labels, setLabels] = useState<ReadonlyMap<string, string>>(new Map());
+  // The cards chosen for a change to many at once. Kept across pages,
+  // filters and opened objects, so a selection can be gathered from several
+  // searches; Escape or Clear lets go of it.
+  const [selected, setSelected] = useState<ReadonlySet<ObjectId>>(new Set());
 
   // Something on disk a person is in the middle of making an object of.
   const [adding, setAdding] = useState<PathAt | undefined>(undefined);
@@ -274,6 +279,10 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
       if (event.key === "/" && !typing(event.target) && !event.metaKey && !event.ctrlKey) {
         event.preventDefault();
         search.current?.focus();
+      }
+      // Escape lets go of a selection, unless a dialog or a field has it.
+      if (event.key === "Escape" && !typing(event.target) && !document.querySelector("[role=dialog]")) {
+        setSelected((held) => (held.size === 0 ? held : new Set()));
       }
     };
     window.addEventListener("keydown", onKey);
@@ -593,6 +602,23 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
                   current={last}
                   generation={generation}
                   detail={detail}
+                  selected={selected}
+                  onSelected={setSelected}
+                />
+              )}
+
+              {view === "library" && selected.size > 0 && (
+                <SelectionBar
+                  api={api}
+                  app={app}
+                  selected={selected}
+                  detail={detail}
+                  onClear={() => setSelected(new Set())}
+                  onDone={(done) => {
+                    setReport(done);
+                    setSelected(new Set());
+                    refresh();
+                  }}
                 />
               )}
 

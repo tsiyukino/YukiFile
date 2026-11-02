@@ -39,6 +39,11 @@ function treeApi() {
   return { api, objectQuery };
 }
 
+interface Choosing {
+  selected: ReadonlySet<string>;
+  onSelected: (next: ReadonlySet<string>) => void;
+}
+
 interface Shown {
   narrowing?: Narrowing;
   trail?: readonly Crumb[];
@@ -48,6 +53,7 @@ interface Shown {
   onSort?: (sort: Sort) => void;
   onSize?: (size: CardSize) => void;
   current?: string;
+  choosing?: Choosing;
 }
 
 function show(api: Api, over: Shown = {}) {
@@ -66,6 +72,8 @@ function show(api: Api, over: Shown = {}) {
       onChoose={over.onChoose ?? (() => {})}
       current={over.current}
       generation={0}
+      selected={over.choosing?.selected}
+      onSelected={over.choosing?.onSelected}
     />,
   );
 }
@@ -255,5 +263,53 @@ describe("walking down the tree", () => {
     expect(objectQuery.mock.calls[0]?.[0]).toEqual({ within: "1" });
     fireEvent.click(screen.getByText("Library"));
     expect(onTrail).toHaveBeenCalledWith([]);
+  });
+});
+
+describe("choosing many", () => {
+  const rows = [row("1"), row("2"), row("3"), row("4")];
+
+  test("Ctrl or Cmd on a card chooses it instead of opening it", async () => {
+    const onSelected = vi.fn();
+    const onChoose = vi.fn();
+    show(gridApi(rows).api, { onChoose, choosing: { selected: new Set(), onSelected } });
+    fireEvent.click(await screen.findByText("object 2"), { ctrlKey: true });
+    expect(onChoose).not.toHaveBeenCalled();
+    expect([...(onSelected.mock.calls[0]?.[0] as Set<string>)]).toEqual(["2"]);
+  });
+
+  test("once anything is chosen, a plain click chooses too, and the box says so", async () => {
+    const onSelected = vi.fn();
+    const onChoose = vi.fn();
+    show(gridApi(rows).api, { onChoose, choosing: { selected: new Set(["1"]), onSelected } });
+    fireEvent.click(await screen.findByText("object 3"));
+    expect(onChoose).not.toHaveBeenCalled();
+    expect([...(onSelected.mock.calls[0]?.[0] as Set<string>)].sort()).toEqual(["1", "3"]);
+    expect(screen.getByRole("checkbox", { name: "Select object 1" }).getAttribute("aria-checked")).toBe("true");
+    expect(document.querySelector("button button")).toBeNull();
+  });
+
+  test("Shift chooses the range since the last one", async () => {
+    let held: ReadonlySet<string> = new Set();
+    const onSelected = vi.fn((next: ReadonlySet<string>) => {
+      held = next;
+    });
+    const view = show(gridApi(rows).api, { choosing: { selected: held, onSelected } });
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Select object 1" }));
+    view.unmount();
+    show(gridApi(rows).api, { choosing: { selected: held, onSelected } });
+    // A fresh grid has no anchor: a Shift click there chooses one.
+    fireEvent.click(await screen.findByRole("checkbox", { name: "Select object 2" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select object 4" }), { shiftKey: true });
+    expect([...held].sort()).toEqual(["1", "2", "3", "4"]);
+  });
+
+  test("select all takes every match, not only the loaded page", async () => {
+    const many = Array.from({ length: PAGE + 5 }, (_, i) => row(String(i + 1)));
+    const onSelected = vi.fn();
+    show(gridApi(many).api, { choosing: { selected: new Set(["1"]), onSelected } });
+    fireEvent.click(await screen.findByText(`Select all ${PAGE + 5}`));
+    await waitFor(() => expect(onSelected).toHaveBeenCalled());
+    expect((onSelected.mock.calls[0]?.[0] as Set<string>).size).toBe(PAGE + 5);
   });
 });

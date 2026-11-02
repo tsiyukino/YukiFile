@@ -3450,3 +3450,86 @@ fn a_plugin_may_not_call_a_property_found() {
     let manifest = Manifest::parse(r#"{"id":"sneaky","contributes":{"properties":["found"]}}"#);
     assert!(manifest.is_err() || manifest.expect("parsed").check().is_err());
 }
+
+// --- many at once -------------------------------------------------------------
+
+fn sorting_registry() -> yukifile::plugin::registry::Registry {
+    use yukifile::plugin::manifest::Manifest;
+    use yukifile::plugin::registry::Registry;
+    let json = r#"{"id":"example.vrc","contributes":{"properties":["vrchat","booth"],
+        "shared":["vendor"],"facets":["category","vendor"]}}"#;
+    Registry::load(vec![Manifest::parse(json).expect("manifest")]).expect("registry")
+}
+
+#[test]
+fn a_private_facet_is_written_where_its_plugin_keeps_it_and_a_shared_one_bare() {
+    use yukifile::bridge::bulk::objects_field_set_in;
+    let (library, _dir) = library();
+    let registry = sorting_registry();
+    let fresh = object_with(&library, &[]);
+    let elsewhere = object_with(&library, &[("booth#2/category", "Old")]);
+
+    let view = objects_field_set_in(&library, Some(&registry), &[fresh, elsewhere], "category", "Hair").expect("set");
+    assert_eq!(view.changed, 2);
+    let rows = |id| object_get_in(&library, id).expect("get").values;
+    assert!(rows(fresh).iter().any(|v| v.path == "vrchat#1/category" && v.value == "Hair"));
+    assert!(
+        rows(elsewhere).iter().any(|v| v.path == "booth#2/category" && v.value == "Hair"),
+        "where the object already keeps it"
+    );
+
+    objects_field_set_in(&library, Some(&registry), &[fresh], "vendor", "Mine").expect("vendor");
+    assert!(rows(fresh).iter().any(|v| v.path == "vendor" && v.value == "Mine"));
+
+    // Shown the way a page shows it, so the grid's filter finds it.
+    use yukifile::bridge::query::{object_query_in, Sort};
+    let page = object_query_in(
+        &library,
+        Some(&registry),
+        filter(r#"{"fields":[{"field":"category","value":"Hair"}]}"#),
+        Sort::Name,
+        0,
+        50,
+    )
+    .expect("query");
+    assert_eq!(page.total, 2);
+}
+
+#[test]
+fn a_bulk_set_is_all_or_nothing_and_says_what_was_already_so() {
+    use yukifile::bridge::bulk::objects_field_set_in;
+    let (library, _dir) = library();
+    let registry = sorting_registry();
+    let a = object_with(&library, &[("vrchat#1/category", "Hair")]);
+    let b = object_with(&library, &[]);
+
+    let view = objects_field_set_in(&library, Some(&registry), &[a, b], "category", "Hair").expect("set");
+    assert_eq!((view.changed, view.unchanged), (1, 1));
+
+    let failed = objects_field_set_in(&library, Some(&registry), &[a, 99_999], "category", "Clothing");
+    assert!(matches!(failed, Err(BridgeError::NoSuchObject(_))));
+    let still = object_get_in(&library, a).expect("get").values;
+    assert!(still.iter().any(|v| v.path == "vrchat#1/category" && v.value == "Hair"), "nothing half written");
+}
+
+#[test]
+fn many_objects_point_at_a_term_at_once_and_stop_at_once() {
+    use yukifile::bridge::bulk::{objects_edge_add_in, objects_edge_remove_in};
+    use yukifile::bridge::objects::TargetAt;
+    let (library, _dir, [maid, hair, loose]) = shop_library();
+    let manuka = || TargetAt::Term { vocab: "avatar".into(), term: "manuka".into() };
+
+    let added = objects_edge_add_in(&library, &[maid, hair, loose], "supports", manuka()).expect("add");
+    assert_eq!((added.changed, added.unchanged), (2, 1), "the maid supported Manuka already");
+
+    let removed = objects_edge_remove_in(&library, &[hair, loose], "supports", manuka()).expect("remove");
+    assert_eq!(removed.changed, 2);
+
+    let missing = objects_edge_add_in(
+        &library,
+        &[maid],
+        "supports",
+        TargetAt::Term { vocab: "avatar".into(), term: "nobody".into() },
+    );
+    assert!(matches!(missing, Err(BridgeError::BadRequest(_))));
+}
