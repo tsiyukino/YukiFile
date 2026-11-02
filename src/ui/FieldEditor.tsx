@@ -16,26 +16,39 @@
  * than none.
  */
 
-import { Button, FormControl, IconButton, Stack, Text, TextInput } from "@primer/react";
+import { Button, FormControl, IconButton, Stack, TextInput } from "@primer/react";
 import { InlineMessage } from "@primer/react/experimental";
-import { PencilIcon } from "@primer/octicons-react";
+import { PencilIcon, PlusIcon } from "@primer/octicons-react";
 import { useState } from "react";
 
 import { describe } from "./problem.js";
 
 export interface FieldEditorProps {
   readonly label: string;
+  /**
+   * How the value reads when it is not being edited, when plain text is not
+   * enough: a shared field draws its sources, a facet value is a link.
+   */
+  readonly display?: React.ReactNode;
   /** What is displayed. Undefined for an empty field. */
   readonly shown: string | undefined;
   /** The person's own value for the field, if they wrote one. */
   readonly own: string | undefined;
   /** Write the value. Empty clears. */
   readonly onSave: (value: string) => Promise<void>;
+  /** Open in the editing state, as when a pencil elsewhere opened it. */
+  readonly startOpen?: boolean;
+  /** Editing ended, saved or not. */
+  readonly onClose?: () => void;
 }
 
-export function FieldEditor({ label, shown, own, onSave }: FieldEditorProps): React.JSX.Element {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
+export function FieldEditor({ label, display, shown, own, onSave, startOpen = false, onClose }: FieldEditorProps): React.JSX.Element {
+  const [editing, setEditingState] = useState(startOpen);
+  const [draft, setDraft] = useState(startOpen ? (shown ?? "") : "");
+  const setEditing = (next: boolean): void => {
+    setEditingState(next);
+    if (!next) onClose?.();
+  };
   const [working, setWorking] = useState(false);
   const [problem, setProblem] = useState<string | undefined>(undefined);
 
@@ -55,11 +68,15 @@ export function FieldEditor({ label, shown, own, onSave }: FieldEditorProps): Re
   };
 
   if (!editing) {
+    // A row: the name, the value, and a pencil. Rows stack into the field
+    // list on the object page and line up, because every row is the same
+    // three columns.
     return (
-      <Stack direction="horizontal" gap="condensed" align="center">
-        <Text size="small">
-          {label}: {shown ?? <Text weight="light">empty</Text>}
-        </Text>
+      <div className="yk-field">
+        <span className="yk-field-label">{label}</span>
+        <span className="yk-field-value">
+          {display ?? shown ?? <span className="yk-muted">empty</span>}
+        </span>
         <IconButton
           icon={PencilIcon}
           aria-label={`Edit ${label}`}
@@ -67,12 +84,12 @@ export function FieldEditor({ label, shown, own, onSave }: FieldEditorProps): Re
           variant="invisible"
           onClick={begin}
         />
-      </Stack>
+      </div>
     );
   }
 
   return (
-    <Stack gap="condensed">
+    <Stack gap="condensed" className="yk-field-editing">
       <FormControl>
         <FormControl.Label>{label}</FormControl.Label>
         <TextInput
@@ -82,6 +99,9 @@ export function FieldEditor({ label, shown, own, onSave }: FieldEditorProps): Re
             if (event.key === "Enter") save(draft);
             if (event.key === "Escape") setEditing(false);
           }}
+          // Opened by a click on the pencil: the box is where the person is
+          // about to type.
+          autoFocus
           block
         />
       </FormControl>
@@ -126,9 +146,11 @@ export function NewField({ onAdd, isName }: NewFieldProps): React.JSX.Element {
 
   if (!open) {
     return (
-      <Button size="small" onClick={() => setOpen(true)}>
-        Add field
-      </Button>
+      <div>
+        <Button size="small" variant="invisible" leadingVisual={PlusIcon} onClick={() => setOpen(true)}>
+          Add field
+        </Button>
+      </div>
     );
   }
 

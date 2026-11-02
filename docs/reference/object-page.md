@@ -15,9 +15,42 @@ Three answers arrive from three places, and the page decides none of them:
 | `slots.panelsFor` | which panels belong to it, in mount order |
 | `loader.loadAll` | which of those modules actually came back |
 
-The page's own job is the small part: headline first, then the remaining shared
-fields, then one region per property instance in the order the object gives
-them — which is mount order, sorted in the bridge and not re-derived here.
+The page's own job is layout, and the regions come in the order the object
+gives them, which is mount order, sorted in the bridge and not re-derived here.
+
+## The layout
+
+**The head** is what a person opened the page to see. The cover sits on the
+left in a square frame, the same frame with or without a picture, tinted like
+the grid's card when empty. Beside it:
+
+- the title as the heading, with a pencil;
+- a label for each property the object carries;
+- the actions plugins offer on it, as buttons, with what the last one said;
+- the shared fields, one row each: name, value, pencil;
+- the terms it points at, one row per kind and vocabulary (`supports avatar`),
+  each term a token;
+- how many objects it holds, when it holds any;
+- each location, with its size.
+
+Rows are the same three columns everywhere on the page, so a page of fields
+reads as one table.
+
+**The viewer**, if a plugin has one for something the object carries.
+
+**The regions**, one bordered section per property instance, headed by the
+property's name: its private fields as rows, then its plugin's panels.
+
+**What it is, what it points at, where it sits**, closed by default: the
+property, edge and location editors. It is how a wrong edge gets fixed, not
+what anybody opens a product to read.
+
+### Links back to the grid
+
+A term token and a facet value (a field some plugin names in `facets`) are
+links. Following one closes the page and narrows the grid to everything
+sharing it: every product that fits Manuka, the rest of the `Clothing`
+shelf. A field nobody filters by stays text.
 
 ## Sources, not winners, made visible
 
@@ -129,7 +162,8 @@ the message sits beside the box.
 
 ### Is a, points at, sits at
 
-Three lists under the regions, each with a remove per row and one small form.
+Three lists in the closed section under the regions, each with a remove per
+row and one small form.
 
 **Is a** offers removal only for semantic properties — the ones a person could
 have chosen. `pdf` on a `.pdf` is attached by what the file is, and detaching

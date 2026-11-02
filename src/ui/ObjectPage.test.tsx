@@ -150,7 +150,9 @@ describe("regions", () => {
       />,
     );
 
-    expect(screen.getByText("item_id: 8264237")).toBeDefined();
+    // A row: the name and the value side by side.
+    const row = screen.getByText("8264237").closest(".yk-field");
+    expect(row?.textContent).toContain("item_id");
   });
 
   test("regions are drawn in the order the object gives them", () => {
@@ -547,7 +549,9 @@ describe("a property with nothing written under it", () => {
       />,
     );
 
-    expect(screen.getByText("item_id: 8264237")).toBeDefined();
+    // A row: the name and the value side by side.
+    const row = screen.getByText("8264237").closest(".yk-field");
+    expect(row?.textContent).toContain("item_id");
   });
 
   test("regions follow the order the object carries them in", () => {
@@ -662,5 +666,70 @@ describe("editing, when the page has something to write with", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(app.objectValueSet).toHaveBeenCalledWith("42", "booth#2/price", "3000"));
+  });
+});
+
+describe("ways out of a page", () => {
+  const linked = {
+    objectEdges: async () => [
+      { kind: "supports", target: "term", vocab: "avatar", term: "manuka" },
+      { kind: "contains", target: "object", id: "7" },
+    ],
+    termList: async () => [{ vocab: "avatar", id: "manuka", label: "Manuka" }],
+    fileUrl: async (path: string) => `asset://${path}`,
+  } as unknown as Api;
+
+  const vrchat: Manifest = { id: "vrc", contributes: { properties: ["vrchat"], facets: ["category"] } };
+
+  test("a term the object points at is a link to everything else pointing at it", async () => {
+    const onTerm = vi.fn();
+    render(<ObjectPage api={linked} object={flat()} plugins={[]} loaded={[]} mounts={[]} onTerm={onTerm} />);
+    fireEvent.click(await screen.findByText("Manuka"));
+    expect(onTerm).toHaveBeenCalledWith("avatar", "manuka");
+    expect(screen.getByText("supports avatar")).toBeDefined();
+    // What it holds is the grid's to show; the page counts it.
+    expect(screen.getByText("1 object")).toBeDefined();
+  });
+
+  test("a facet value in a region is a link to everything else showing it", async () => {
+    const onField = vi.fn();
+    render(
+      <ObjectPage
+        api={linked}
+        object={flat({ regions: [{ property: "vrchat", instance: 1, fields: { category: "Hair", status: "confirmed" } }] })}
+        plugins={[vrchat]}
+        loaded={[]}
+        mounts={[{ namespace: "vrchat", instance: 1 }]}
+        onField={onField}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Hair" }));
+    expect(onField).toHaveBeenCalledWith("category", "Hair");
+    // A field no plugin filters by stays text.
+    expect(screen.queryByRole("button", { name: "confirmed" })).toBeNull();
+  });
+
+  test("a plugin's action is offered at the top of the page and says what it did", async () => {
+    const runObjectAction = vi.fn(async () => ({ summary: "listing fetched", changed: true }));
+    const shop: Manifest = {
+      id: "shop.booth",
+      contributes: { properties: ["booth"], actions: { booth: ["fetch listing"] }, action_module: "./actions" },
+    };
+    const onChanged = vi.fn();
+    render(
+      <ObjectPage
+        api={linked}
+        app={{ objectValueSet: vi.fn() } as unknown as AppApi}
+        object={flat({ id: "42", regions: [{ property: "booth", instance: 1, fields: {} }] })}
+        plugins={[shop]}
+        loaded={[loadedWith("shop.booth", "./actions", { runObjectAction })]}
+        mounts={boothMount}
+        onChanged={onChanged}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Fetch listing" }));
+    expect(await screen.findByText("listing fetched")).toBeDefined();
+    expect(runObjectAction).toHaveBeenCalledWith(expect.objectContaining({ objectId: "42", property: "booth", instance: 1 }));
+    expect(onChanged).toHaveBeenCalled();
   });
 });

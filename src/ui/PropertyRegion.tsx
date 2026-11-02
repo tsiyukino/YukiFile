@@ -12,7 +12,7 @@
  */
 
 import { InlineMessage } from "@primer/react/experimental";
-import { Button, Heading, Stack, Text } from "@primer/react";
+import { Button, Heading, Link, Stack, Text } from "@primer/react";
 import { useState } from "react";
 
 import type { Api, ObjectId, Region } from "../plugin-host/commands.js";
@@ -24,6 +24,9 @@ import { FieldEditor, NewField } from "./FieldEditor.js";
 export interface ResolvedAction {
   readonly plugin: string;
   readonly action: string;
+  /** The region it was offered in. */
+  readonly property?: string;
+  readonly instance?: number;
   /** Run it. Resolves to one line and whether the library changed. */
   readonly run: () => Promise<{ summary: string; changed: boolean }>;
 }
@@ -56,6 +59,13 @@ export interface PropertyRegionProps {
   readonly actions?: readonly ResolvedAction[] | undefined;
   /** An action said the library changed; whoever owns it should re-read. */
   readonly onChanged?: (() => void) | undefined;
+  /**
+   * Fields the sidebar filters by. Their values are drawn as links that
+   * narrow the grid to everything sharing the value.
+   */
+  readonly facets?: readonly string[] | undefined;
+  /** A facet value was followed. */
+  readonly onField?: ((name: string, value: string) => void) | undefined;
 }
 
 export function PropertyRegion({
@@ -67,6 +77,8 @@ export function PropertyRegion({
   onSet,
   actions,
   onChanged,
+  facets,
+  onField,
 }: PropertyRegionProps): React.JSX.Element {
   const fields = Object.entries(region.fields);
   const [running, setRunning] = useState<string | undefined>(undefined);
@@ -85,68 +97,83 @@ export function PropertyRegion({
       .finally(() => setRunning(undefined));
   };
 
+  // A facet value reads as a link to everything else showing it: the
+  // category on a product page is the quickest way to the rest of the shelf.
+  const display = (name: string, value: string): React.ReactNode =>
+    onField && facets?.includes(name) && value !== "" ? (
+      <Link as="button" onClick={() => onField(name, value)}>
+        {value}
+      </Link>
+    ) : undefined;
+
+  const empty = fields.length === 0 && panels.length === 0 && !onSet;
+
   return (
-    <Stack gap="condensed">
-      <Heading as="h2">{regionTitle(region, instancesOfProperty)}</Heading>
+    <section className="yk-region">
+      <header className="yk-region-head">
+        <Heading as="h2" variant="small">
+          {regionTitle(region, instancesOfProperty)}
+        </Heading>
+        {actions && actions.length > 0 && (
+          <Stack direction="horizontal" gap="condensed" align="center" wrap="wrap">
+            {said && <Text size="small" className="yk-muted">{said}</Text>}
+            {actions.map((action) => (
+              <Button
+                key={`${action.plugin}:${action.action}`}
+                size="small"
+                disabled={running !== undefined}
+                onClick={() => press(action)}
+              >
+                {running === action.action ? `${action.action}…` : action.action}
+              </Button>
+            ))}
+          </Stack>
+        )}
+      </header>
 
-      {actions && actions.length > 0 && (
-        // The press is what lends a plugin the network. Nothing on this page
-        // reaches outside until one of these is pressed.
-        <Stack direction="horizontal" gap="condensed" align="center" wrap="wrap">
-          {actions.map((action) => (
-            <Button
-              key={`${action.plugin}:${action.action}`}
-              size="small"
-              disabled={running !== undefined}
-              onClick={() => press(action)}
-            >
-              {running === action.action ? `${action.action}…` : action.action}
-            </Button>
-          ))}
-          {said && <Text size="small">{said}</Text>}
-        </Stack>
-      )}
+      <div className="yk-region-body">
+        {fields.length > 0 && !onSet && (
+          <div className="yk-fields">
+            {fields.map(([name, value]) => (
+              <div className="yk-field" key={name}>
+                <span className="yk-field-label">{name}</span>
+                <span className="yk-field-value">{display(name, value) ?? value}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
-      {fields.length > 0 && !onSet && (
-        <Stack gap="none">
-          {fields.map(([name, value]) => (
-            <Text key={name} size="small">
-              {name}: {value}
-            </Text>
-          ))}
-        </Stack>
-      )}
+        {onSet && (
+          <div className="yk-fields">
+            {fields.map(([name, value]) => (
+              <FieldEditor
+                key={name}
+                label={name}
+                display={display(name, value)}
+                shown={value}
+                own={value}
+                onSave={(next) => onSet(name, next)}
+              />
+            ))}
+            <NewField isName={isFieldName} onAdd={onSet} />
+          </div>
+        )}
 
-      {onSet && (
-        <Stack gap="condensed">
-          {fields.map(([name, value]) => (
-            // A region's field is the plugin's own, so the value shown is the
-            // value owned: Clear is always on offer.
-            <FieldEditor key={name} label={name} shown={value} own={value} onSave={(next) => onSet(name, next)} />
-          ))}
-          <NewField isName={isFieldName} onAdd={onSet} />
-        </Stack>
-      )}
+        {panels.map(({ plugin, component: Panel }) =>
+          Panel ? (
+            <div className="yk-panel" key={plugin}>
+              <Panel api={api} objectId={objectId} property={region.property} instance={region.instance} />
+            </div>
+          ) : (
+            <InlineMessage key={plugin} variant="warning">
+              {plugin} could not be loaded
+            </InlineMessage>
+          ),
+        )}
 
-      {panels.map(({ plugin, component: Panel }) =>
-        Panel ? (
-          <Panel
-            key={plugin}
-            api={api}
-            objectId={objectId}
-            property={region.property}
-            instance={region.instance}
-          />
-        ) : (
-          // One plugin's panel failing must not take the region with it, let
-          // alone the page. Saying which plugin is missing beats a gap nobody
-          // can explain.
-          <InlineMessage key={plugin} variant="warning">
-            {plugin} could not be loaded
-          </InlineMessage>
-        ),
-      )}
-    </Stack>
+        {empty && <Text size="small" className="yk-muted">Nothing recorded under this yet.</Text>}
+      </div>
+    </section>
   );
 }
 

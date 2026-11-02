@@ -18,6 +18,7 @@
 
 import { ActionList, Button, FormControl, Heading, Select, Stack, Text, TextInput } from "@primer/react";
 import { InlineMessage } from "@primer/react/experimental";
+import { TrashIcon } from "@primer/octicons-react";
 import { useEffect, useState } from "react";
 
 import type {
@@ -52,7 +53,7 @@ export interface ObjectEditorProps {
 
 export function ObjectEditor({ api, app, object, plugins, onChanged }: ObjectEditorProps): React.JSX.Element {
   return (
-    <Stack gap="normal">
+    <Stack gap="spacious">
       <Properties app={app} object={object} plugins={plugins} onChanged={onChanged} />
       <Links api={api} app={app} object={object} plugins={plugins} onChanged={onChanged} />
       <Locations app={app} object={object} onChanged={onChanged} />
@@ -100,18 +101,17 @@ function Properties({
 
   return (
     <Stack gap="condensed">
-      <Heading as="h3">Is a</Heading>
+      <Heading as="h3" variant="small">Is a</Heading>
       {removable.length > 0 && (
         <ActionList>
           {removable.map((property) => (
             <ActionList.Item key={property} onSelect={() => undefined}>
               {property}
               <ActionList.TrailingAction
+                icon={TrashIcon}
                 label={`Remove ${property}`}
                 onClick={() => run(() => app.objectPropertyRemove(object.id, property))}
-              >
-                Remove
-              </ActionList.TrailingAction>
+              />
             </ActionList.Item>
           ))}
         </ActionList>
@@ -218,7 +218,7 @@ function Links({ api, app, object, plugins, onChanged }: ObjectEditorProps): Rea
 
   return (
     <Stack gap="condensed">
-      <Heading as="h3">Points at</Heading>
+      <Heading as="h3" variant="small">Points at</Heading>
       {reading && <InlineMessage variant="warning">{reading}</InlineMessage>}
       {held.length > 0 && (
         // What a grouping holds is what the library pane draws when it is
@@ -238,11 +238,10 @@ function Links({ api, app, object, plugins, onChanged }: ObjectEditorProps): Rea
                 {edge.kind}
                 <ActionList.Description>{targetWording(edge, names, terms)}</ActionList.Description>
                 <ActionList.TrailingAction
+                  icon={TrashIcon}
                   label={`Remove ${edge.kind} ${targetWording(edge, names, terms)}`}
                   onClick={() => run(() => app.objectEdgeRemove(object.id, edge.kind, edge))}
-                >
-                  Remove
-                </ActionList.TrailingAction>
+                />
               </ActionList.Item>
             );
           })}
@@ -315,7 +314,7 @@ function Locations({
 
   return (
     <Stack gap="condensed">
-      <Heading as="h3">Sits at</Heading>
+      <Heading as="h3" variant="small">Sits at</Heading>
       {object.locations.length === 0 && (
         <Text size="small">Nowhere: this is a grouping.</Text>
       )}
@@ -326,11 +325,10 @@ function Locations({
               {location.path}
               {location.kind === "folder" ? "/" : ""}
               <ActionList.TrailingAction
+                icon={TrashIcon}
                 label={`Remove ${location.path}`}
                 onClick={() => run(() => app.objectPathRemove(object.id, location.path))}
-              >
-                Remove
-              </ActionList.TrailingAction>
+              />
             </ActionList.Item>
           ))}
         </ActionList>

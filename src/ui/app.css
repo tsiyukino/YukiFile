@@ -212,3 +212,187 @@ body {
   gap: var(--base-size-8);
   margin-bottom: var(--base-size-16);
 }
+
+/* --- the object page ----------------------------------------------------- */
+
+.yk-object {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-24);
+  max-width: 1120px;
+}
+
+.yk-object-head {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: var(--base-size-24);
+  align-items: start;
+}
+
+.yk-object-side {
+  min-width: 0;
+}
+
+.yk-object-cover {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+}
+
+.yk-object-cover img {
+  object-fit: contain;
+  background: var(--bgColor-muted);
+}
+
+.yk-object-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-12);
+  min-width: 0;
+}
+
+.yk-object-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--base-size-4);
+}
+
+.yk-object-title {
+  margin: 0;
+  font-size: var(--text-title-size-large, 2rem);
+  line-height: 1.25;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.yk-object-labels,
+.yk-object-actions,
+.yk-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--base-size-6);
+  align-items: center;
+}
+
+/* Field rows: the name, the value, a pencil. The same three columns
+   everywhere, so a page of them reads as one table. */
+.yk-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-2);
+}
+
+.yk-field {
+  display: grid;
+  grid-template-columns: 136px minmax(0, 1fr) auto;
+  gap: var(--base-size-12);
+  align-items: center;
+  min-height: var(--base-size-32);
+  padding: var(--base-size-2) 0;
+  border-bottom: 1px solid var(--borderColor-muted);
+}
+
+.yk-field-label {
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+  overflow-wrap: anywhere;
+}
+
+.yk-field-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--text-body-size-medium);
+}
+
+.yk-field-editing {
+  padding: var(--base-size-8) 0;
+}
+
+.yk-mono {
+  font-family: var(--fontStack-monospace, ui-monospace, monospace);
+  font-size: var(--text-body-size-small);
+}
+
+.yk-link {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--fgColor-accent);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.yk-link:hover {
+  text-decoration: underline;
+}
+
+.yk-danger {
+  color: var(--fgColor-danger);
+}
+
+/* One region per property instance: a plugin's own space, bordered. */
+.yk-regions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-16);
+}
+
+.yk-region {
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-default);
+  min-width: 0;
+}
+
+.yk-region-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--base-size-8);
+  padding: var(--base-size-8) var(--base-size-16);
+  border-bottom: 1px solid var(--borderColor-default);
+  background: var(--bgColor-muted);
+  border-radius: var(--borderRadius-medium) var(--borderRadius-medium) 0 0;
+}
+
+.yk-region-head h2 {
+  margin: 0;
+  font-size: var(--text-body-size-medium);
+  font-weight: 600;
+}
+
+.yk-region-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-12);
+  padding: var(--base-size-12) var(--base-size-16) var(--base-size-16);
+  min-width: 0;
+}
+
+.yk-panel {
+  min-width: 0;
+}
+
+.yk-object-more {
+  border-top: 1px solid var(--borderColor-default);
+  padding-top: var(--base-size-12);
+}
+
+.yk-object-more-body {
+  padding: var(--base-size-12) var(--base-size-8);
+}
+
+@media (max-width: 1100px) {
+  .yk-object-head {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .yk-object-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .yk-object-side {
+    max-width: 320px;
+  }
+}

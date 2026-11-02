@@ -8,13 +8,26 @@
  * nothing passes through a plugin; the core reads the bytes and scales them.
  */
 
-import { ActionList, Button, Spinner, Stack, Text } from "@primer/react";
+import { ActionList, Button, Dialog, Spinner, Stack, Text } from "@primer/react";
+import { FileDirectoryIcon, FileIcon, FileMediaIcon, FileZipIcon, ImageIcon, PackageIcon, StackIcon } from "@primer/octicons-react";
 import { InlineMessage } from "@primer/react/experimental";
 import { useEffect, useState } from "react";
 
 import type { Api, AppApi, FlatObject } from "../plugin-host/commands.js";
 import { fromFolder, fromPackage, fromZip, isPackage, isZip, packagesIn, type Choice } from "./covers.js";
+import { placeholderFor, type Placeholder } from "./grid.js";
 import { describe } from "./problem.js";
+
+/** The icon an empty frame draws, matching the grid's cards. */
+const ICONS: Record<Placeholder, React.ComponentType<{ size?: number }>> = {
+  folder: FileDirectoryIcon,
+  package: PackageIcon,
+  archive: FileZipIcon,
+  image: FileMediaIcon,
+  document: FileIcon,
+  file: FileIcon,
+  grouping: StackIcon,
+};
 
 export interface CoverProps {
   readonly api: Api;
@@ -109,22 +122,22 @@ export function Cover({ api, app, object, onChanged }: CoverProps): React.JSX.El
       .finally(() => setWorking(false));
   };
 
-  if (!held && !app) return null;
+  const first = object.locations[0];
+  const placeholder = placeholderFor({ path: first?.path ?? null, kind: first?.kind ?? null });
+  const Icon = ICONS[placeholder];
 
   return (
     <Stack gap="condensed">
-      {url && (
-        <img
-          src={url}
-          alt="Cover"
-          style={{ maxWidth: 256, maxHeight: 256, objectFit: "contain", borderRadius: 6 }}
-        />
-      )}
-      {held && !url && <Text size="small">cover: {held}</Text>}
+      {/* The same frame with or without a picture, so the page does not
+          jump when one arrives, and a grid card and its page look alike. */}
+      <div className="yk-cover yk-object-cover" data-kind={url ? undefined : placeholder}>
+        {url ? <img src={url} alt="Cover" /> : <Icon size={48} />}
+      </div>
+      {held && !url && <Text size="small" className="yk-muted">cover: {held}</Text>}
 
       {app && (
-        <Stack direction="horizontal" gap="condensed">
-          <Button size="small" disabled={working} onClick={open}>
+        <Stack direction="horizontal" gap="condensed" wrap="wrap">
+          <Button size="small" leadingVisual={ImageIcon} disabled={working} onClick={open}>
             {held ? "Change cover" : "Choose cover"}
           </Button>
           {own !== undefined && (
@@ -135,25 +148,33 @@ export function Cover({ api, app, object, onChanged }: CoverProps): React.JSX.El
         </Stack>
       )}
 
-      {problem && <InlineMessage variant="critical">{problem}</InlineMessage>}
+      {problem && !choosing && <InlineMessage variant="critical">{problem}</InlineMessage>}
 
-      {choosing && choices === undefined && <Spinner size="small" aria-label="Looking for pictures" />}
-      {choosing && choices && choices.length === 0 && !problem && (
-        <Text size="small">Nothing here holds a picture the core can read.</Text>
-      )}
-      {choosing && choices && choices.length > 0 && (
-        <ActionList>
-          {choices.map((choice) => (
-            <ActionList.Item key={choice.label} disabled={working} onSelect={() => pick(choice)}>
-              {choice.label}
-            </ActionList.Item>
-          ))}
-        </ActionList>
-      )}
       {choosing && (
-        <Button size="small" onClick={() => setChoosing(false)}>
-          Cancel
-        </Button>
+        <Dialog title="Choose a cover" width="large" onClose={() => setChoosing(false)}>
+          <Stack gap="condensed">
+            <Text size="small" className="yk-muted">
+              Pictures inside this object&apos;s own locations: its folder, its archives, the previews in its packages.
+            </Text>
+            {problem && <InlineMessage variant="critical">{problem}</InlineMessage>}
+            {choices === undefined && <Spinner size="small" aria-label="Looking for pictures" />}
+            {choices && choices.length === 0 && !problem && (
+              <Text size="small">Nothing here holds a picture the core can read.</Text>
+            )}
+            {choices && choices.length > 0 && (
+              <ActionList>
+                {choices.map((choice) => (
+                  <ActionList.Item key={choice.label} disabled={working} onSelect={() => pick(choice)}>
+                    <ActionList.LeadingVisual>
+                      <ImageIcon />
+                    </ActionList.LeadingVisual>
+                    {choice.label}
+                  </ActionList.Item>
+                ))}
+              </ActionList>
+            )}
+          </Stack>
+        </Dialog>
       )}
     </Stack>
   );

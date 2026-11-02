@@ -40,9 +40,13 @@ describe("showing a cover", () => {
     expect(img.getAttribute("src")).toBe("asset://.yukifile/covers/x.png");
   });
 
-  test("nothing held and nothing to write with draws nothing", () => {
+  test("nothing held and nothing to write with draws an empty frame and no buttons", () => {
+    // The frame stays so the page does not jump when a cover arrives, and so
+    // the page and its grid card look alike.
     const { container } = render(<Cover api={world().api} object={object()} />);
-    expect(container.innerHTML).toBe("");
+    expect(container.querySelector(".yk-object-cover")).not.toBeNull();
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("button")).toBeNull();
   });
 });
 

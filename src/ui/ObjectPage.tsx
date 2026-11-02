@@ -11,19 +11,34 @@
  * - `slots.panelsFor` says which panels belong to it, in mount order
  * - `loader.loadAll` says which of those modules actually came back
  *
- * None of that is decided here. The page's own job is small: put the shared
- * fields at the top, then one region per property instance, in the order the
- * library mounts them.
+ * None of that is decided here. The page's own job is layout.
+ *
+ * # The head says what the thing is; the regions say the rest
+ *
+ * The top of the page is what a person opened it to see: the cover, the
+ * name, what kind of thing it is, the shared fields, the terms it points at
+ * (the avatars a product fits), where it sits, and the actions plugins offer
+ * on it. Below that, the viewer if a plugin has one, then one region per
+ * property instance in mount order, each a plugin's own space. Editing what
+ * the object is, what it links to and where it sits is a section of its own
+ * at the bottom, closed until wanted: it is how a wrong edge gets fixed, not
+ * what anybody opens a product to read.
+ *
+ * Terms and facet values are links. Following one goes back to the grid
+ * narrowed to everything sharing it, which is the question a page about one
+ * avatar outfit most often leads to.
  */
 
 import { Blankslate, InlineMessage } from "@primer/react/experimental";
-import { Heading, Spinner, Stack, Text } from "@primer/react";
+import { Button, Heading, IconButton, Label, Spinner, Stack, Text, Token } from "@primer/react";
+import { ChevronDownIcon, ChevronRightIcon, PencilIcon } from "@primer/octicons-react";
+import { useEffect, useState } from "react";
 
 import type {
   Api,
   AppApi,
+  Edge,
   FlatObject,
-  Location,
   Region,
 } from "../plugin-host/commands.js";
 import type { Contribution, Mount } from "../plugin-host/slots.js";
@@ -35,8 +50,10 @@ import type { Manifest } from "../plugin-host/types.js";
 import { Cover } from "./Cover.js";
 import { fieldPath, isFieldName } from "./edit.js";
 import { FieldEditor, NewField } from "./FieldEditor.js";
+import { facetsOf, headingFor } from "./filters.js";
 import { ObjectEditor } from "./ObjectEditor.js";
-import { PropertyRegion, type ResolvedAction, type ResolvedPanel } from "./PropertyRegion.js";
+import { describe } from "./problem.js";
+import { PropertyRegion, regionTitle, type ResolvedAction, type ResolvedPanel } from "./PropertyRegion.js";
 import { SourceList } from "./SourceList.js";
 import { Viewer } from "./Viewer.js";
 
@@ -58,6 +75,10 @@ export interface ObjectPageProps {
   readonly app?: AppApi;
   /** The object changed; whoever owns it should re-read it. */
   readonly onChanged?: () => void;
+  /** A term was followed: show everything pointing at it. */
+  readonly onTerm?: (vocab: string, term: string) => void;
+  /** A facet value was followed: show everything showing it. */
+  readonly onField?: (field: string, value: string) => void;
 }
 
 export function ObjectPage({
@@ -68,10 +89,19 @@ export function ObjectPage({
   mounts,
   app,
   onChanged,
+  onTerm,
+  onField,
 }: ObjectPageProps): React.JSX.Element {
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingMore, setEditingMore] = useState(false);
+  const [running, setRunning] = useState<string | undefined>(undefined);
+  const [said, setSaid] = useState<{ text: string; failed: boolean } | undefined>(undefined);
+
   if (!object) {
     return <Spinner aria-label="Loading the object" />;
   }
+
+  const writable = app !== undefined && onChanged !== undefined;
 
   // What the object carries, not what has fields: a plugin's panel belongs on
   // an object the moment it carries the property, not once the plugin has
@@ -87,20 +117,16 @@ export function ObjectPage({
         !contributions.some((c) => c.property === region.property)),
   );
   const counts = instanceCounts(shown);
+  const facets = facetsOf(plugins).fields;
 
   const headline = object.shared[HEADLINE];
   // `cover` is drawn as a picture by `Cover`, not as a path in a row.
   const otherFields = Object.entries(object.shared).filter(([name]) => name !== HEADLINE && name !== "cover");
 
-  // Writing a shared field writes the bare one, which outranks every source:
-  // that is what a person's own value means, and clearing it hands the field
-  // back to mount order. The editor starts from what is shown, because that
-  // is what they are looking at, and offers Clear only when a bare value is
-  // theirs to take back.
   // A pin is a value under the reserved `@pin` namespace, written like any
   // other edit; the page only has to say which source it names.
   const pinProps = (name: string): { pinned?: string | undefined; onPin?: ((from: string | null) => void) | undefined } =>
-    app && onChanged
+    writable
       ? {
           pinned: object.pins?.[name],
           onPin: (from) => {
@@ -112,115 +138,189 @@ export function ObjectPage({
         }
       : {};
 
-  const editShared = (name: string): React.JSX.Element | null => {
-    if (!app || !onChanged) return null;
-    const sources = object.shared[name] ?? [];
+  // Writing a shared field writes the bare one, which outranks every source:
+  // that is what a person's own value means, and clearing it hands the field
+  // back to mount order. The editor starts from what is shown, because that
+  // is what they are looking at, and offers Clear only when a bare value is
+  // theirs to take back.
+  const sharedRow = (name: string, sources: FlatObject["shared"][string]): React.JSX.Element => {
+    const value = sources[0]?.value;
+    const asLink =
+      onField && facets.includes(name) && value !== undefined && sources.length === 1 ? (
+        <button type="button" className="yk-link" onClick={() => onField(name, value)}>
+          {value}
+        </button>
+      ) : undefined;
+    const display = asLink ?? <SourceList sources={sources} {...pinProps(name)} />;
+    if (!writable) {
+      return (
+        <div className="yk-field" key={name}>
+          <span className="yk-field-label">{name}</span>
+          <span className="yk-field-value">{display}</span>
+        </div>
+      );
+    }
     return (
       <FieldEditor
+        key={name}
         label={name}
-        shown={sources[0]?.value}
+        display={display}
+        shown={value}
         own={sources.find((source) => source.from === null)?.value}
-        onSave={async (value) => {
-          await app.objectValueSet(object.id, name, value);
+        onSave={async (next) => {
+          await app.objectValueSet(object.id, name, next);
           onChanged();
         }}
       />
     );
   };
 
+  // Every action any region offers, in the head where a person looks first.
+  const actions: ResolvedAction[] = writable
+    ? shown.flatMap((region) => actionsIn(region, actionsFor(plugins, object.carries, mounts), plugins, loaded, api, app, object.id))
+    : [];
+
+  const press = (action: ResolvedAction): void => {
+    setRunning(action.action);
+    setSaid(undefined);
+    action
+      .run()
+      .then((outcome) => {
+        setSaid({ text: outcome.summary, failed: false });
+        if (outcome.changed) onChanged?.();
+      })
+      .catch((error: unknown) => setSaid({ text: describe(error), failed: true }))
+      .finally(() => setRunning(undefined));
+  };
+
+  const title = headline ? (
+    <SourceList sources={headline} {...pinProps(HEADLINE)} />
+  ) : (
+    // A scan finds files before anybody names them, so most objects have no
+    // title. The filename is what a person already calls the thing, and
+    // showing "Untitled" over a file that plainly has a name is the page
+    // refusing to read what is in front of it.
+    (fallbackTitle(object) ?? <Text weight="light">Untitled</Text>)
+  );
+
   return (
-    <Stack gap="normal" padding="normal">
-      <Stack gap="none">
-        {headline ? (
-          <Heading as="h1">
-            <SourceList sources={headline} {...pinProps(HEADLINE)} />
-          </Heading>
-        ) : (
-          // A scan finds files before anybody names them, so most objects
-          // have no title. The filename is what a person already calls the
-          // thing, and showing "Untitled" over a file that plainly has a name
-          // is the page refusing to read what is in front of it.
-          <Heading as="h1">
-            {fallbackTitle(object) ?? <Text weight="light">Untitled</Text>}
-          </Heading>
-        )}
-      </Stack>
+    <article className="yk-object">
+      <div className="yk-object-head">
+        <div className="yk-object-side">
+          <Cover api={api} app={app} object={object} onChanged={onChanged} />
+        </div>
 
-      <Cover api={api} app={app} object={object} onChanged={onChanged} />
+        <div className="yk-object-info">
+          {editingTitle && writable ? (
+            <FieldEditor
+              label="title"
+              shown={headline?.[0]?.value ?? fallbackTitle(object)}
+              own={headline?.find((source) => source.from === null)?.value}
+              startOpen
+              onClose={() => setEditingTitle(false)}
+              onSave={async (next) => {
+                await app.objectValueSet(object.id, HEADLINE, next);
+                onChanged();
+              }}
+            />
+          ) : (
+            <div className="yk-object-title-row">
+              <Heading as="h1" className="yk-object-title">
+                {title}
+              </Heading>
+              {writable && (
+                <IconButton
+                  icon={PencilIcon}
+                  aria-label="Edit title"
+                  size="small"
+                  variant="invisible"
+                  onClick={() => setEditingTitle(true)}
+                />
+              )}
+            </div>
+          )}
 
-      {object.locations.length > 0 && (
-        <Stack gap="none">
-          {object.locations.map((location) => (
-            <Text key={location.path} size="small">
-              {location.path}
-              {location.kind === "folder" ? "/" : sizeSuffix(location.size)}
-            </Text>
-          ))}
-        </Stack>
-      )}
+          {shown.length > 0 && (
+            <div className="yk-object-labels" aria-label="What it is">
+              {shown.map((region) => (
+                <Label key={`${region.property}#${region.instance}`} variant="secondary">
+                  {regionTitle(region, counts.get(region.property) ?? 1)}
+                </Label>
+              ))}
+            </div>
+          )}
 
-      {app && onChanged && (
-        <Stack gap="condensed">
-          {editShared(HEADLINE)}
-          {otherFields.map(([name]) => (
-            <Stack key={name} gap="none">
-              {editShared(name)}
-            </Stack>
-          ))}
-          <NewField
-            isName={isFieldName}
-            onAdd={async (name, value) => {
-              await app.objectValueSet(object.id, name, value);
-              onChanged();
-            }}
-          />
-        </Stack>
-      )}
+          {actions.length > 0 && (
+            <div className="yk-object-actions">
+              {actions.map((action) => (
+                <Button
+                  key={`${action.plugin}:${action.action}:${action.property}#${action.instance}`}
+                  size="small"
+                  disabled={running !== undefined}
+                  onClick={() => press(action)}
+                >
+                  {running === action.action ? `${headingFor(action.action)}…` : headingFor(action.action)}
+                </Button>
+              ))}
+              {said && (
+                <Text size="small" className={said.failed ? "yk-danger" : "yk-muted"}>
+                  {said.text}
+                </Text>
+              )}
+            </div>
+          )}
 
-      {otherFields.length > 0 && (
-        <Stack gap="condensed">
-          {otherFields.map(([name, sources]) => (
-            <Stack key={name} gap="none">
-              <Text size="small" weight="semibold">
-                {name}
-              </Text>
-              <SourceList sources={sources} {...pinProps(name)} />
-            </Stack>
-          ))}
-        </Stack>
-      )}
-
-      <Viewer
-        api={api}
-        object={object}
-        plugins={plugins}
-        loaded={loaded}
-        mounts={mounts}
-      />
-
-      {shown.map((region) => (
-        <PropertyRegion
-          key={`${region.property}#${region.instance}`}
-          api={api}
-          objectId={object.id}
-          region={region}
-          instancesOfProperty={counts.get(region.property) ?? 1}
-          panels={panelsIn(region, contributions, loaded)}
-          actions={app && onChanged ? actionsIn(region, actionsFor(plugins, object.carries, mounts), plugins, loaded, api, app, object.id) : undefined}
-          onChanged={onChanged}
-          onSet={
-            app && onChanged
-              ? async (name, value) => {
-                  await app.objectValueSet(object.id, fieldPath(region, name), value);
+          <div className="yk-fields">
+            {otherFields.map(([name, sources]) => sharedRow(name, sources))}
+            <Pointers api={api} object={object} onTerm={onTerm} />
+            {object.locations.map((location) => (
+              <div className="yk-field" key={location.path}>
+                <span className="yk-field-label">location</span>
+                <span className="yk-field-value yk-mono">
+                  {location.path}
+                  {location.kind === "folder" ? "/" : sizeSuffix(location.size)}
+                </span>
+              </div>
+            ))}
+            {writable && (
+              <NewField
+                isName={isFieldName}
+                onAdd={async (name, value) => {
+                  await app.objectValueSet(object.id, name, value);
                   onChanged();
-                }
-              : undefined
-          }
-        />
-      ))}
+                }}
+              />
+            )}
+          </div>
+        </div>
+      </div>
 
-      {app && onChanged && (
-        <ObjectEditor api={api} app={app} object={object} plugins={plugins} onChanged={onChanged} />
+      <Viewer api={api} object={object} plugins={plugins} loaded={loaded} mounts={mounts} />
+
+      {shown.length > 0 && (
+        <div className="yk-regions">
+          {shown.map((region) => (
+            <PropertyRegion
+              key={`${region.property}#${region.instance}`}
+              api={api}
+              objectId={object.id}
+              region={region}
+              instancesOfProperty={counts.get(region.property) ?? 1}
+              panels={panelsIn(region, contributions, loaded)}
+              onChanged={onChanged}
+              facets={facets}
+              onField={onField}
+              onSet={
+                writable
+                  ? async (name, value) => {
+                      await app.objectValueSet(object.id, fieldPath(region, name), value);
+                      onChanged();
+                    }
+                  : undefined
+              }
+            />
+          ))}
+        </div>
       )}
 
       {shown.length === 0 &&
@@ -246,7 +346,110 @@ export function ObjectPage({
           ))}
         </Stack>
       )}
-    </Stack>
+
+      {writable && (
+        <section className="yk-object-more">
+          <button
+            type="button"
+            className="yk-facet-heading"
+            aria-expanded={editingMore}
+            onClick={() => setEditingMore((open) => !open)}
+          >
+            {editingMore ? <ChevronDownIcon size={16} /> : <ChevronRightIcon size={16} />}
+            <span>What it is, what it points at, where it sits</span>
+          </button>
+          {editingMore && (
+            <div className="yk-object-more-body">
+              <ObjectEditor api={api} app={app} object={object} plugins={plugins} onChanged={onChanged} />
+            </div>
+          )}
+        </section>
+      )}
+    </article>
+  );
+}
+
+/**
+ * The terms an object points at, as rows of links.
+ *
+ * One row per kind of edge and vocabulary -- "supports avatar" -- because
+ * "fits Manuka" and "is Manuka's own base" are different facts. Each term is
+ * a token that opens the grid narrowed to it. What the object contains is
+ * the grid's to show, so it is a count here.
+ */
+function Pointers({
+  api,
+  object,
+  onTerm,
+}: {
+  readonly api: Api;
+  readonly object: FlatObject;
+  readonly onTerm?: ((vocab: string, term: string) => void) | undefined;
+}): React.JSX.Element | null {
+  const [edges, setEdges] = useState<Edge[]>([]);
+  const [labels, setLabels] = useState<ReadonlyMap<string, string>>(new Map());
+
+  useEffect(() => {
+    let live = true;
+    const read = async (): Promise<void> => {
+      const found = await api.objectEdges(object.id);
+      const vocabularies = [...new Set(found.flatMap((edge) => (edge.target === "term" ? [edge.vocab] : [])))];
+      const terms = (await Promise.all(vocabularies.map((vocab) => api.termList(vocab)))).flat();
+      if (!live) return;
+      setEdges(found);
+      setLabels(new Map(terms.map((term) => [`${term.vocab}:${term.id}`, term.label])));
+    };
+    // A page without its links is still a page; the editor below says why
+    // they could not be read when someone opens it.
+    read().catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [api, object]);
+
+  const groups = new Map<string, { vocab: string; kind: string; terms: string[] }>();
+  let contains = 0;
+  for (const edge of edges) {
+    if (edge.target === "object") {
+      if (edge.kind === "contains") contains += 1;
+      continue;
+    }
+    const key = `${edge.kind}:${edge.vocab}`;
+    const group = groups.get(key) ?? { vocab: edge.vocab, kind: edge.kind, terms: [] };
+    group.terms.push(edge.term);
+    groups.set(key, group);
+  }
+
+  if (groups.size === 0 && contains === 0) return null;
+
+  return (
+    <>
+      {[...groups.values()].map((group) => (
+        <div className="yk-field" key={`${group.kind}:${group.vocab}`}>
+          <span className="yk-field-label">
+            {group.kind} {group.vocab}
+          </span>
+          <span className="yk-field-value yk-tokens">
+            {group.terms.map((term) => {
+              const label = labels.get(`${group.vocab}:${term}`) ?? term;
+              return onTerm ? (
+                <Token key={term} text={label} as="button" onClick={() => onTerm(group.vocab, term)} />
+              ) : (
+                <Token key={term} text={label} />
+              );
+            })}
+          </span>
+        </div>
+      ))}
+      {contains > 0 && (
+        <div className="yk-field">
+          <span className="yk-field-label">holds</span>
+          <span className="yk-field-value">
+            {contains} {contains === 1 ? "object" : "objects"}
+          </span>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -381,6 +584,8 @@ export function actionsIn(
     resolved.push({
       plugin: contribution.plugin,
       action: contribution.value,
+      property: region.property,
+      instance: region.instance,
       run: () =>
         run({
           api: pressed,

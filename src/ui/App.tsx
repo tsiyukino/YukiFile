@@ -68,7 +68,7 @@ import { AddObject } from "./AddObject.js";
 import type { CardSize } from "./Card.js";
 import { DiskBrowser } from "./DiskBrowser.js";
 import { FilterSidebar } from "./FilterSidebar.js";
-import { NOTHING, withText, type Narrowing } from "./filters.js";
+import { NOTHING, onlyField, onlyTerm, withText, type Narrowing } from "./filters.js";
 import { ForgetButton } from "./Forget.js";
 import { dialogs, invoke } from "./invoke.js";
 import { LibraryMenu, type Report } from "./LibraryMenu.js";
@@ -518,6 +518,14 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
                   loaded={context.loaded}
                   mounts={context.mounts}
                   onChanged={refresh}
+                  onTerm={(vocab, id) => {
+                    setTrail([]);
+                    narrow(onlyTerm(vocab, id));
+                  }}
+                  onField={(field, value) => {
+                    setTrail([]);
+                    narrow(onlyField(field, value));
+                  }}
                 />
               </div>
             )}
