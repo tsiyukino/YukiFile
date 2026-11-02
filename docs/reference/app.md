@@ -61,34 +61,41 @@ that belong here anyway.
 
 ### The shell
 
-A pane on the left and a page on the right.
+A header, a sidebar, and a page.
 
-The page is the thumbnail grid whenever nothing else is on it
-([grid.md](grid.md)). Choosing a card shows that object, with **Back** and
-**Forget** above it. The page can also show the add flow, while something on
-disk is being made into an object; a change set, while one is being reviewed;
-or a term, with everything that points at it ([term-page.md](term-page.md)).
+The header holds what applies everywhere. The search box searches the whole
+library and takes the window to the grid; `/` reaches it from anywhere that
+is not a text field. A **Review** button with a count appears while change
+sets wait. The **Library** menu holds the plugins' library actions (a scan),
+**Rescan disk…** in a dialog, and **Import from file…** and **Export to
+file…** through the operating system's dialogs. What each did is reported in
+a banner above the page. The gear opens settings.
 
-The pane lists the other ways in: what the disk has (`DiskBrowser`), the
-library's vocabularies (`TermList`), or what is waiting to be reviewed
-(`ReviewList`), switched with a segmented control. Its Library segment lists
-only the count, since the grid is the listing, and selecting it is the way back
-to the grid from any page. The Disk pane shows directories as they sit, where
-the grid shows objects as a plugin grouped them; which finds the thing a person
-is thinking of depends on what they remember about it. See
-[disk-browser.md](disk-browser.md). Review carries a count in its label, so a
-scan that left something to decide is noticed without opening it. See
-[review.md](review.md).
+The sidebar switches between four views: the grid, the disk, the
+vocabularies and the change sets. Under the switch it holds what the current
+view needs: the grid's filters ([grid.md](grid.md)), the term list
+([term-page.md](term-page.md)), the sets awaiting review
+([review.md](review.md)). The disk view needs nothing there; its browser is the
+page ([disk-browser.md](disk-browser.md)).
 
-A gear beside the segmented control opens the settings page in place of
-whatever the page was showing ([settings.md](settings.md)).
+Choosing an object anywhere shows its page over the view it came from, with
+**Back** and **Forget** above it. The view is hidden, not unmounted, and its
+scroll position is kept: Back returns to the same grouping, the same filters,
+the same row. Where the grid has walked, how it is sorted, its filters and its
+card size live in the shell for the same reason.
 
-Under the plugins' library actions sit the shell's own **Rescan**, which
-brings locations back in line with the disk and asks about what it could not
-prove (`bridge.md`, *bridge::rescan*), and **Import…** and **Export…**, the
-library in and out of a document through the operating system's dialogs
-(`contract.md`, *Export*). The dialogs are the second thing `invoke.ts`
-supplies, and for the same reason it supplies the first.
+The card size is a library setting, `grid.card_size`, beside `theme`.
+
+### Themes
+
+`main.tsx` imports Primer's primitives: the light and dark theme files and
+the size, space and type scales. Primer's components read every colour from
+those CSS variables; without the files they fall back to the light values
+they were compiled with, which is why the dark theme never appeared before the
+files were imported. The colour mode is set on the document element as well
+as on the provider, so the body and the scrollbars follow it.
+`src/ui/app.css` lays out the shell on the same variables; a raw colour there
+is a theme somebody forgot.
 
 The shell holds two API objects. `api` is built from the allowlist and is what
 every panel, viewer and form is handed. `app` is built from `APP_ONLY` and

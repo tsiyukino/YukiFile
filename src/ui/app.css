@@ -1,0 +1,214 @@
+/*
+ * The shell's layout, on Primer's tokens.
+ *
+ * The theme files are imported in `main.tsx`; every colour here is a
+ * variable from them, so light and dark are the same rules read twice. A raw
+ * colour in this file is a theme somebody forgot.
+ */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+}
+
+.yk-app {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+}
+
+/* --- header ------------------------------------------------------------- */
+
+.yk-header {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-12);
+  padding: var(--base-size-8) var(--base-size-16);
+  border-bottom: 1px solid var(--borderColor-default);
+  background: var(--bgColor-muted);
+  min-width: 0;
+}
+
+.yk-brand {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  width: 232px;
+  flex-shrink: 0;
+}
+
+.yk-brand-name {
+  font-weight: 600;
+  font-size: var(--text-title-size-small, 1rem);
+  line-height: 1.2;
+}
+
+.yk-brand-root {
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small, 0.75rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yk-search {
+  flex: 1 1 auto;
+  max-width: 560px;
+  min-width: 160px;
+}
+
+.yk-header-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  flex-shrink: 0;
+}
+
+/* --- body ---------------------------------------------------------------- */
+
+.yk-body {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.yk-sidebar {
+  overflow-y: auto;
+  border-right: 1px solid var(--borderColor-muted);
+  padding: var(--base-size-8) var(--base-size-8) var(--base-size-24);
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
+}
+
+.yk-main {
+  overflow-y: auto;
+  min-width: 0;
+  position: relative;
+}
+
+.yk-main-inner {
+  padding: var(--base-size-16) var(--base-size-24) var(--base-size-40);
+  max-width: 1600px;
+}
+
+.yk-section-title {
+  font-size: var(--text-body-size-small, 0.75rem);
+  font-weight: 600;
+  color: var(--fgColor-muted);
+  padding: var(--base-size-8) var(--base-size-8) var(--base-size-4);
+  text-transform: none;
+  margin: 0;
+}
+
+.yk-sidebar-divider {
+  border: 0;
+  border-top: 1px solid var(--borderColor-muted);
+  margin: var(--base-size-4) var(--base-size-8);
+}
+
+.yk-muted {
+  color: var(--fgColor-muted);
+}
+
+.yk-banners {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-8);
+  margin-bottom: var(--base-size-16);
+}
+
+.yk-empty {
+  padding: var(--base-size-40) var(--base-size-16);
+}
+
+/* Narrow windows keep the grid usable: the sidebar gives way first. */
+@media (max-width: 900px) {
+  .yk-body {
+    grid-template-columns: 216px minmax(0, 1fr);
+  }
+  .yk-brand {
+    width: auto;
+  }
+  .yk-brand-root {
+    display: none;
+  }
+  .yk-main-inner {
+    padding: var(--base-size-12) var(--base-size-16) var(--base-size-32);
+  }
+}
+
+/* --- the filter sidebar ------------------------------------------------- */
+
+.yk-facet {
+  margin-bottom: var(--base-size-4);
+}
+
+.yk-facet-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-6);
+  width: 100%;
+  padding: var(--base-size-6) var(--base-size-8);
+  border: 0;
+  border-radius: var(--borderRadius-medium);
+  background: none;
+  color: var(--fgColor-default);
+  font: inherit;
+  font-size: var(--text-body-size-medium);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.yk-facet-heading:hover {
+  background: var(--bgColor-neutral-muted);
+}
+
+.yk-facet-heading:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: -2px;
+}
+
+.yk-facet-heading svg {
+  color: var(--fgColor-muted);
+  flex-shrink: 0;
+}
+
+.yk-facet-search {
+  padding: var(--base-size-4) var(--base-size-8);
+}
+
+.yk-facet-count {
+  font-size: var(--text-body-size-small);
+  color: var(--fgColor-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.yk-facet-note {
+  margin: var(--base-size-4) var(--base-size-16);
+  font-size: var(--text-body-size-small);
+}
+
+.yk-facet-more {
+  margin-left: var(--base-size-8);
+}
+
+/* The bar above an object page: the way back, and what can be done to it. */
+.yk-page-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--base-size-8);
+  margin-bottom: var(--base-size-16);
+}

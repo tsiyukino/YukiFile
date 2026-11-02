@@ -1,58 +1,86 @@
 /**
  * The application shell.
  *
- * Gathers what the object page needs and cannot fetch for itself — the plugin
- * manifests, their loaded modules, the library's mount order — then draws a
- * page for whichever object is selected.
+ * Gathers what every page needs and cannot fetch for itself -- the plugin
+ * manifests, their loaded modules, the library's mount order -- and lays the
+ * window out: a header, a sidebar, and the page.
  *
- * All of it is fetched once. The page is a function of those four things, and
- * re-fetching per render would make it a function of the network instead.
+ * # Header, sidebar, page
  *
- * # A grid in the middle, a pane on the left
+ * The header holds what applies everywhere: the search box, the review
+ * count, the Library menu (scans, rescan, import and export) and settings.
+ * The sidebar switches between the four ways into the library -- the grid,
+ * the disk, the vocabularies, what is waiting for review -- and under that
+ * holds whatever the current one needs: the grid's filters, the term list,
+ * the change sets.
  *
- * The content area is the thumbnail grid: what the library holds, as covers.
- * `2026-09-01_ui-primer-not-github-clone.md` says thumbnails are the main
- * view, and now that covers exist to draw they are. Choosing a card replaces
- * the grid with the object's page, and **Back** brings the grid back.
+ * The page is the grid by default. `2026-09-01_ui-primer-not-github-clone.md`
+ * says thumbnails are the main view and the review screens a list; both are
+ * here, on the same tokens.
  *
- * The pane on the left lists the other ways in — what the disk has, the
- * vocabularies, what is waiting for review — and holds the library-wide
- * actions. With the Library segment selected it lists nothing: the grid is
- * the listing, and the segment is the way back to it from any page.
+ * # An object page sits over its view, not instead of it
+ *
+ * Choosing an object hides the view and shows the object; Back shows the view
+ * again exactly as it was -- the same grouping, the same filters, the same
+ * scroll. The view is hidden rather than unmounted for that reason: a grid
+ * that re-read itself on the way back would land a person on the first page
+ * of results having opened something from the fifth.
  */
 
-import { Button, Heading, IconButton, PageLayout, SegmentedControl, Spinner, Stack, Text } from "@primer/react";
-import { GearIcon } from "@primer/octicons-react";
-import { InlineMessage } from "@primer/react/experimental";
-import { useEffect, useState } from "react";
+import {
+  Banner,
+  Button,
+  CounterLabel,
+  Heading,
+  IconButton,
+  NavList,
+  Spinner,
+  Stack,
+  TextInput,
+} from "@primer/react";
+import {
+  ArrowLeftIcon,
+  CheckCircleIcon,
+  FileDirectoryIcon,
+  GearIcon,
+  ImageIcon,
+  SearchIcon,
+  TagIcon,
+  XCircleFillIcon,
+} from "@primer/octicons-react";
+import { Blankslate, InlineMessage } from "@primer/react/experimental";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import {
   apiFor,
   appApiFor,
-  pressedApiFor,
   type Api,
   type AppApi,
   type FlatObject,
   type ObjectId,
   type PathAt,
+  type Sort,
 } from "../plugin-host/commands.js";
 import { loadAll, type Loaded } from "../plugin-host/loader.js";
 import type { Mount } from "../plugin-host/slots.js";
-import { libraryAction } from "../plugin-host/panel.js";
 import type { Manifest } from "../plugin-host/types.js";
 import { AddObject } from "./AddObject.js";
+import type { CardSize } from "./Card.js";
 import { DiskBrowser } from "./DiskBrowser.js";
+import { FilterSidebar } from "./FilterSidebar.js";
+import { NOTHING, withText, type Narrowing } from "./filters.js";
 import { ForgetButton } from "./Forget.js";
 import { dialogs, invoke } from "./invoke.js";
-import { describe } from "./problem.js";
-import { ObjectGrid } from "./ObjectGrid.js";
+import { LibraryMenu, type Report } from "./LibraryMenu.js";
+import { ObjectGrid, type Crumb } from "./ObjectGrid.js";
 import { fallbackTitle, ObjectPage } from "./ObjectPage.js";
-import { Rescan } from "./Rescan.js";
+import { describe } from "./problem.js";
 import { ReviewList, ReviewPage } from "./Review.js";
 import { Settings } from "./Settings.js";
 import type { ThemePreference } from "./theme.js";
 import { TermList, TermPage, type TermRef } from "./Terms.js";
-import { Transfer } from "./Transfer.js";
+
+export { libraryActionsOf } from "./LibraryMenu.js";
 
 /** The API every panel is handed, wired to the real Tauri bridge. */
 export const api: Api = apiFor(invoke);
@@ -65,10 +93,8 @@ export const api: Api = apiFor(invoke);
  */
 export const app: AppApi = appApiFor(invoke);
 
-/** What the left pane is listing. */
-type Pane = "library" | "disk" | "terms" | "review";
-
-const PANES: readonly Pane[] = ["library", "disk", "terms", "review"];
+/** The ways into the library the sidebar switches between. */
+export type View = "library" | "disk" | "terms" | "review" | "settings";
 
 /** What the shell gathers before a page can draw. */
 export interface Context {
@@ -86,9 +112,23 @@ export interface AppProps {
   readonly onTheme?: ((preference: ThemePreference) => void) | undefined;
 }
 
+/** The setting the card size is kept under, beside the theme. */
+export const CARD_SIZE = "grid.card_size";
+
+function sizeFrom(stored: string | null): CardSize {
+  return stored === "small" || stored === "large" ? stored : "medium";
+}
+
+/** True when a key press is being typed into something. */
+function typing(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+}
+
 export function App({ onTheme }: AppProps = {}): React.JSX.Element {
   const [context, setContext] = useState<Context | undefined>(undefined);
   const [problem, setProblem] = useState<string | undefined>(undefined);
+  const [root, setRoot] = useState<string | undefined>(undefined);
 
   // Bumped when the library changes: a scan, an add, a forget. Clearing the
   // context alone left a spinner nothing would ever replace: the effect ran
@@ -96,24 +136,35 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
   // state forever".
   const [generation, setGeneration] = useState(0);
 
-  // Which object the page is showing. Undefined means the grid is up.
+  const [view, setView] = useState<View>("library");
+
+  // The object on the page, over whichever view it was opened from.
   const [chosen, setChosen] = useState<ObjectId | undefined>(undefined);
   const [shown, setShown] = useState<FlatObject | undefined>(undefined);
+  // The last object opened, so the grid can mark where the person was.
+  const [last, setLast] = useState<ObjectId | undefined>(undefined);
 
-  const [pane, setPane] = useState<Pane>("library");
+  // The grid's state, kept here so an object page cannot lose it.
+  const [narrowing, setNarrowing] = useState<Narrowing>(NOTHING);
+  const [typed, setTyped] = useState("");
+  const [trail, setTrail] = useState<readonly Crumb[]>([]);
+  const [sort, setSort] = useState<Sort>("name");
+  const [size, setSize] = useState<CardSize>("medium");
+  const [labels, setLabels] = useState<ReadonlyMap<string, string>>(new Map());
 
-  // Something on disk a person is in the middle of making an object of. While
-  // it is set the page shows the add flow instead of an object.
+  // Something on disk a person is in the middle of making an object of.
   const [adding, setAdding] = useState<PathAt | undefined>(undefined);
-
-  // The change set under review, when the page is showing one.
+  // The change set under review.
   const [reviewing, setReviewing] = useState<number | undefined>(undefined);
-
-  // The term on the page, when it is showing one.
+  // The term on the page.
   const [term, setTerm] = useState<TermRef | undefined>(undefined);
 
-  // The settings page, when it is showing.
-  const [settings, setSettings] = useState(false);
+  const [report, setReport] = useState<Report | undefined>(undefined);
+
+  const main = useRef<HTMLElement>(null);
+  const search = useRef<HTMLInputElement>(null);
+  // Where each view was scrolled to when an object was opened over it.
+  const scrolls = useRef(new Map<View, number>());
 
   useEffect(() => {
     if (!chosen) {
@@ -128,7 +179,8 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
         if (current) setShown(object);
       })
       .catch((error: unknown) => {
-        if (current) setProblem(describe(error));
+        if (current) setReport({ tone: "critical", title: "That object could not be opened", detail: describe(error) });
+        if (current) setChosen(undefined);
       });
 
     return () => {
@@ -143,7 +195,7 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
     setProblem(undefined);
 
     // The old context stays up while the new one is read. Clearing it would
-    // unmount the panes, and a person who just added one file three folders
+    // unmount the views, and a person who just added one file three folders
     // down would find the browser back at the root.
     gather(api)
       .then((next) => {
@@ -158,6 +210,48 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
     };
   }, [generation]);
 
+  // Once: where the library is, and how large the person likes the cards.
+  useEffect(() => {
+    app
+      .libraryInfo()
+      .then((info) => setRoot(info.root))
+      .catch(() => undefined);
+    api
+      .settingGet(CARD_SIZE)
+      .then((stored) => setSize(sizeFrom(stored)))
+      .catch(() => undefined);
+  }, []);
+
+  // Typing settles before it searches: a query per keystroke over a large
+  // library is work thrown away three times out of four.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setNarrowing((held) => (held.text === typed ? held : withText(held, typed)));
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [typed]);
+
+  // "/" finds the search box from anywhere that is not itself a text field.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === "/" && !typing(event.target) && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault();
+        search.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // An object opens at its top; closing it puts the view back where it was.
+  useLayoutEffect(() => {
+    const scroller = main.current;
+    if (!scroller) return;
+    scroller.scrollTop = chosen ? 0 : (scrolls.current.get(view) ?? 0);
+    // Only on opening and closing an object, not on every view change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chosen]);
+
   if (problem) {
     return (
       <Stack padding="normal" gap="condensed">
@@ -168,284 +262,370 @@ export function App({ onTheme }: AppProps = {}): React.JSX.Element {
   }
 
   if (!context) {
-    return <Spinner aria-label="Opening the library" />;
+    return (
+      <div className="yk-app" style={{ placeItems: "center" }}>
+        <Spinner aria-label="Opening the library" />
+      </div>
+    );
   }
 
-  // Back to the grid, whatever the page was showing.
-  const home = (): void => {
-    setAdding(undefined);
-    setReviewing(undefined);
-    setTerm(undefined);
-    setSettings(false);
-    setChosen(undefined);
-  };
-
-  // The library changed under the page: an object was added, forgotten, or a
-  // scan ran. Re-read everything and show the grid as it is now.
-  const changed = (): void => {
-    setChosen(undefined);
-    setGeneration((n) => n + 1);
-  };
-
-  // The object on screen changed but is still the one to look at. Re-read
-  // everything, including it, without leaving it.
   const refresh = (): void => setGeneration((n) => n + 1);
 
-  // Opening an object from any pane: the page shows it, nothing else.
-  const open = (id: ObjectId): void => {
-    home();
-    setChosen(id);
+  // The library changed under the page: an object was added or forgotten, or
+  // a scan ran. Re-read everything; an object that was forgotten closes.
+  const changed = (): void => {
+    setChosen(undefined);
+    refresh();
   };
 
+  /** Show an object over the current view. */
+  const open = (id: ObjectId): void => {
+    if (main.current && !chosen) scrolls.current.set(view, main.current.scrollTop);
+    setChosen(id);
+    setLast(id);
+  };
+
+  const close = (): void => setChosen(undefined);
+
+  const go = (next: View): void => {
+    setChosen(undefined);
+    setView(next);
+  };
+
+  const narrow = (next: Narrowing): void => {
+    setNarrowing(next);
+    setTyped(next.text);
+    setChosen(undefined);
+    setView("library");
+  };
+
+  const chooseSize = (next: CardSize): void => {
+    setSize(next);
+    app.settingSet(CARD_SIZE, next).catch(() => undefined);
+  };
+
+  const libraryName = root ? (root.split(/[\\/]/).filter(Boolean).pop() ?? root) : "Library";
+
   return (
-    <PageLayout>
-      <PageLayout.Pane position="start" width="medium">
-        <Stack gap="condensed">
-          <LibraryActions plugins={context.plugins} loaded={context.loaded} onChanged={changed} />
-          <Rescan app={app} onChanged={refresh} />
-          <Transfer app={app} dialogs={dialogs} onChanged={refresh} />
+    <div className="yk-app">
+      <header className="yk-header">
+        <div className="yk-brand">
+          <span className="yk-brand-name">Yukifile</span>
+          <span className="yk-brand-root" title={root}>
+            {libraryName}
+          </span>
+        </div>
 
-          <Stack direction="horizontal" gap="condensed" align="center">
-            <IconButton
-              icon={GearIcon}
-              aria-label="Settings"
-              size="small"
-              variant={settings ? "primary" : "default"}
-              onClick={() => setSettings((on) => !on)}
-            />
-          </Stack>
-
-          <SegmentedControl
-            aria-label="What the pane lists"
-            fullWidth
-            onChange={(index) => {
-              const next = PANES[index] ?? "library";
-              setPane(next);
-              // The Library segment is the way home: the grid is its listing.
-              if (next === "library") home();
+        <div className="yk-search">
+          <TextInput
+            ref={search}
+            block
+            leadingVisual={SearchIcon}
+            placeholder="Search the library  ( / )"
+            aria-label="Search the library"
+            value={typed}
+            onChange={(event) => {
+              setTyped(event.target.value);
+              // Searching is looking at the grid, wherever the person was.
+              setChosen(undefined);
+              setView("library");
             }}
-          >
-            <SegmentedControl.Button selected={pane === "library"}>Library</SegmentedControl.Button>
-            <SegmentedControl.Button selected={pane === "disk"}>Disk</SegmentedControl.Button>
-            <SegmentedControl.Button selected={pane === "terms"}>Terms</SegmentedControl.Button>
-            <SegmentedControl.Button selected={pane === "review"}>
-              {context.pending > 0 ? `Review (${context.pending})` : "Review"}
-            </SegmentedControl.Button>
-          </SegmentedControl>
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                setTyped("");
+                (event.target as HTMLInputElement).blur();
+              }
+            }}
+            {...(typed !== ""
+              ? {
+                  trailingAction: (
+                    <TextInput.Action aria-label="Clear the search" icon={XCircleFillIcon} onClick={() => setTyped("")} />
+                  ),
+                }
+              : {})}
+          />
+        </div>
 
-          {pane === "library" && (
-            <Text size="small">
-              {context.total} {context.total === 1 ? "object" : "objects"} in the library.
-            </Text>
+        <div className="yk-header-end">
+          {context.pending > 0 && (
+            <Button
+              leadingVisual={CheckCircleIcon}
+              count={context.pending}
+              onClick={() => go("review")}
+            >
+              Review
+            </Button>
           )}
-          {pane === "disk" && (
-            <DiskBrowser
-              api={api}
-              generation={generation}
-              onSelect={open}
-              onAdd={(at) => {
-                home();
-                setAdding(at);
+          <LibraryMenu
+            api={api}
+            app={app}
+            dialogs={dialogs}
+            plugins={context.plugins}
+            loaded={context.loaded}
+            onReport={setReport}
+            onChanged={refresh}
+          />
+          <IconButton
+            icon={GearIcon}
+            aria-label="Settings"
+            variant={view === "settings" ? "primary" : "default"}
+            onClick={() => go(view === "settings" ? "library" : "settings")}
+          />
+        </div>
+      </header>
+
+      <div className="yk-body">
+        <nav className="yk-sidebar" aria-label="Library">
+          <NavList aria-label="Views">
+            <NavList.Item
+              href="#"
+              aria-current={view === "library" ? "page" : false}
+              onClick={(event: React.MouseEvent) => {
+                event.preventDefault();
+                // Library from Library is the way home: out of the object,
+                // back to the top of the tree.
+                if (view === "library" && !chosen) setTrail([]);
+                go("library");
               }}
+            >
+              <NavList.LeadingVisual>
+                <ImageIcon />
+              </NavList.LeadingVisual>
+              Library
+              <NavList.TrailingVisual>
+                <CounterLabel>{context.total}</CounterLabel>
+              </NavList.TrailingVisual>
+            </NavList.Item>
+            <NavList.Item
+              href="#"
+              aria-current={view === "disk" ? "page" : false}
+              onClick={(event: React.MouseEvent) => {
+                event.preventDefault();
+                go("disk");
+              }}
+            >
+              <NavList.LeadingVisual>
+                <FileDirectoryIcon />
+              </NavList.LeadingVisual>
+              Disk
+            </NavList.Item>
+            <NavList.Item
+              href="#"
+              aria-current={view === "terms" ? "page" : false}
+              onClick={(event: React.MouseEvent) => {
+                event.preventDefault();
+                go("terms");
+              }}
+            >
+              <NavList.LeadingVisual>
+                <TagIcon />
+              </NavList.LeadingVisual>
+              Terms
+            </NavList.Item>
+            <NavList.Item
+              href="#"
+              aria-current={view === "review" ? "page" : false}
+              onClick={(event: React.MouseEvent) => {
+                event.preventDefault();
+                go("review");
+              }}
+            >
+              <NavList.LeadingVisual>
+                <CheckCircleIcon />
+              </NavList.LeadingVisual>
+              Review
+              {context.pending > 0 && (
+                <NavList.TrailingVisual>
+                  <CounterLabel scheme="primary">{context.pending}</CounterLabel>
+                </NavList.TrailingVisual>
+              )}
+            </NavList.Item>
+          </NavList>
+
+          <hr className="yk-sidebar-divider" />
+
+          {view === "library" && (
+            <FilterSidebar
+              api={api}
+              plugins={context.plugins}
+              narrowing={narrowing}
+              onNarrow={narrow}
+              onLabels={setLabels}
+              generation={generation}
             />
           )}
-          {pane === "terms" && (
+          {view === "terms" && (
             <TermList
               api={api}
               generation={generation}
               selected={term}
-              onSelect={(chosenTerm) => {
-                home();
-                setTerm(chosenTerm);
+              onSelect={(next) => {
+                setChosen(undefined);
+                setTerm(next);
               }}
             />
           )}
-          {pane === "review" && (
+          {view === "review" && (
             <ReviewList
               api={api}
               generation={generation}
               selected={reviewing}
               onSelect={(set) => {
-                home();
+                setChosen(undefined);
                 setReviewing(set);
               }}
             />
           )}
-        </Stack>
-      </PageLayout.Pane>
+          {view === "disk" && (
+            <p className="yk-muted yk-facet-note">
+              What is on disk, against what the library recorded. Choose something new to add it.
+            </p>
+          )}
+        </nav>
 
-      <PageLayout.Content>
-        {settings ? (
-          <Settings
-            api={api}
-            app={app}
-            generation={generation}
-            onTheme={(preference) => onTheme?.(preference)}
-            onChanged={refresh}
-          />
-        ) : term ? (
-          <TermPage
-            key={`${term.vocab}:${term.id}`}
-            api={api}
-            term={term}
-            generation={generation}
-            onSelect={(id) => {
-              // Opening an object from a term page is a way in; leave the
-              // term behind so the page shows the object.
-              setTerm(undefined);
-              setChosen(id);
-            }}
-          />
-        ) : reviewing !== undefined ? (
-          <ReviewPage
-            key={reviewing}
-            api={api}
-            app={app}
-            set={reviewing}
-            onApplied={() => {
-              // What was accepted is in the library now. Re-read it, and let
-              // the pane show what is still waiting.
-              setReviewing(undefined);
-              setGeneration((n) => n + 1);
-            }}
-          />
-        ) : adding ? (
-          <AddObject
-            // Keyed on the path so picking a different row starts over rather
-            // than carrying one file's half-filled forms to another.
-            key={adding.path}
-            api={api}
-            app={app}
-            at={adding}
-            plugins={context.plugins}
-            loaded={context.loaded}
-            mounts={context.mounts}
-            onAdded={(id) => {
-              setAdding(undefined);
-              // Show what was just made, and re-read the library so the
-              // browser marks it and the grid holds it.
-              setGeneration((n) => n + 1);
-              setChosen(id);
-            }}
-            onCancel={() => setAdding(undefined)}
-          />
-        ) : shown ? (
-          <Stack gap="none">
-            <Stack direction="horizontal" justify="space-between" padding="condensed">
-              <Button onClick={() => setChosen(undefined)}>Back</Button>
-              <ForgetButton
-                key={shown.id}
-                app={app}
-                object={shown.id}
-                name={shown.shared["title"]?.[0]?.value ?? fallbackTitle(shown) ?? "this object"}
-                onForgotten={changed}
-              />
-            </Stack>
-            <ObjectPage
-              api={api}
-              app={app}
-              object={shown}
-              plugins={context.plugins}
-              loaded={context.loaded}
-              mounts={context.mounts}
-              onChanged={refresh}
-            />
-          </Stack>
-        ) : chosen ? (
-          // The page is on its way; the grid would flash underneath it.
-          <Spinner aria-label="Opening the object" />
-        ) : (
-          <ObjectGrid api={api} selected={undefined} onSelect={open} generation={generation} />
-        )}
-      </PageLayout.Content>
-    </PageLayout>
+        <main className="yk-main" ref={main}>
+          <div className="yk-main-inner">
+            {report && (
+              <div className="yk-banners">
+                <Banner
+                  title={report.title}
+                  description={report.detail}
+                  variant={report.tone === "info" ? "info" : report.tone}
+                  onDismiss={() => setReport(undefined)}
+                />
+              </div>
+            )}
+
+            {shown && (
+              <div>
+                <div className="yk-page-bar">
+                  <Button leadingVisual={ArrowLeftIcon} onClick={close}>
+                    Back
+                  </Button>
+                  <ForgetButton
+                    key={shown.id}
+                    app={app}
+                    object={shown.id}
+                    name={shown.shared["title"]?.[0]?.value ?? fallbackTitle(shown) ?? "this object"}
+                    onForgotten={changed}
+                  />
+                </div>
+                <ObjectPage
+                  api={api}
+                  app={app}
+                  object={shown}
+                  plugins={context.plugins}
+                  loaded={context.loaded}
+                  mounts={context.mounts}
+                  onChanged={refresh}
+                />
+              </div>
+            )}
+            {chosen && !shown && <Spinner aria-label="Opening the object" />}
+
+            <div hidden={chosen !== undefined}>
+              {view === "library" && (
+                <ObjectGrid
+                  api={api}
+                  narrowing={narrowing}
+                  onNarrow={narrow}
+                  trail={trail}
+                  onTrail={setTrail}
+                  sort={sort}
+                  onSort={setSort}
+                  size={size}
+                  onSize={chooseSize}
+                  labels={labels}
+                  onChoose={open}
+                  current={last}
+                  generation={generation}
+                />
+              )}
+
+              {view === "disk" &&
+                (adding ? (
+                  <AddObject
+                    // Keyed on the path so picking a different row starts
+                    // over rather than carrying one file's forms to another.
+                    key={adding.path}
+                    api={api}
+                    app={app}
+                    at={adding}
+                    plugins={context.plugins}
+                    loaded={context.loaded}
+                    mounts={context.mounts}
+                    onAdded={(id) => {
+                      setAdding(undefined);
+                      refresh();
+                      open(id);
+                    }}
+                    onCancel={() => setAdding(undefined)}
+                  />
+                ) : (
+                  <DiskBrowser api={api} generation={generation} onSelect={open} onAdd={setAdding} />
+                ))}
+
+              {view === "terms" &&
+                (term ? (
+                  <TermPage key={`${term.vocab}:${term.id}`} api={api} term={term} generation={generation} onSelect={open} />
+                ) : (
+                  <Placeholder
+                    heading="Choose a term"
+                    description="Pick one from the list to see everything in the library that points at it."
+                  />
+                ))}
+
+              {view === "review" &&
+                (reviewing !== undefined ? (
+                  <ReviewPage
+                    key={reviewing}
+                    api={api}
+                    app={app}
+                    set={reviewing}
+                    onApplied={() => {
+                      // What was accepted is in the library now. Re-read it,
+                      // and let the list show what is still waiting.
+                      setReviewing(undefined);
+                      refresh();
+                    }}
+                  />
+                ) : (
+                  <Placeholder
+                    heading={context.pending > 0 ? "Choose a change set" : "Nothing to review"}
+                    description={
+                      context.pending > 0
+                        ? "Each set is a batch of proposed changes. Pick one to decide what it may write."
+                        : "When an import would overwrite something a person chose, it waits here."
+                    }
+                  />
+                ))}
+
+              {view === "settings" && (
+                <Settings
+                  api={api}
+                  app={app}
+                  generation={generation}
+                  onTheme={(preference) => onTheme?.(preference)}
+                  onChanged={refresh}
+                />
+              )}
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
   );
 }
 
-/**
- * What the installed plugins can do to the library as a whole.
- *
- * Scanning lives here rather than in the core: deciding what counts as an
- * object is domain knowledge, and `docs.yml` says the core has none. A folder
- * library, a VRChat library and a library of papers give three different
- * answers, so the answer arrives as a plugin.
- *
- * A library with no such plugin installed can still be filled by hand. It just
- * cannot be filled by walking a disk, because nothing has said what walking
- * one should produce.
- */
-export function LibraryActions({
-  plugins,
-  loaded,
-  onChanged,
-}: {
-  readonly plugins: readonly Manifest[];
-  readonly loaded: readonly Loaded[];
-  readonly onChanged: () => void;
-}): React.JSX.Element | null {
-  const [running, setRunning] = useState<string | undefined>(undefined);
-  const [result, setResult] = useState<string | undefined>(undefined);
-
-  const offered = libraryActionsOf(plugins);
-  if (offered.length === 0) return null;
-
-  const run = (plugin: string, action: string): void => {
-    setRunning(action);
-    setResult(undefined);
-
-    const owner = loaded.find((entry) => entry.manifest.id === plugin);
-    const specifier = plugins.find((p) => p.id === plugin)?.contributes
-      ?.library_action_module;
-    const fn = specifier ? libraryAction(owner?.modules.get(specifier)) : undefined;
-
-    if (!fn) {
-      setResult(`${plugin} could not be loaded`);
-      setRunning(undefined);
-      return;
-    }
-
-    // The press lends the plugin the network, for the hosts it named.
-    const manifest = plugins.find((p) => p.id === plugin);
-    fn({ api: pressedApiFor(api, app, manifest?.contributes?.hosts ?? []), action })
-      .then((outcome) => {
-        setResult(outcome.summary);
-        if (outcome.changed) onChanged();
-      })
-      .catch((error: unknown) => setResult(describe(error)))
-      .finally(() => setRunning(undefined));
-  };
-
-  // Stacked, not in a row: the pane is narrow, two actions with long names
-  // overflowed it, and the result -- the one line that says what the scan
-  // did -- was pushed out of sight.
+/** What an empty page says. */
+function Placeholder({ heading, description }: { readonly heading: string; readonly description: string }): React.JSX.Element {
   return (
-    <Stack gap="condensed">
-      <Stack direction="horizontal" gap="condensed" wrap="wrap">
-        {offered.map(({ plugin, action }) => (
-          <Button
-            key={`${plugin}:${action}`}
-            size="small"
-            disabled={running !== undefined}
-            onClick={() => run(plugin, action)}
-          >
-            {running === action ? `${action}…` : action}
-          </Button>
-        ))}
-      </Stack>
-      {result && <Text size="small">{result}</Text>}
-    </Stack>
-  );
-}
-
-/** Every library action the installed plugins offer. */
-export function libraryActionsOf(
-  plugins: readonly Manifest[],
-): Array<{ plugin: string; action: string }> {
-  return plugins.flatMap((plugin) =>
-    (plugin.contributes?.library_actions ?? []).map((action) => ({
-      plugin: plugin.id,
-      action,
-    })),
+    <div className="yk-empty">
+      <Blankslate>
+        <Blankslate.Heading>{heading}</Blankslate.Heading>
+        <Blankslate.Description>{description}</Blankslate.Description>
+      </Blankslate>
+    </div>
   );
 }
 

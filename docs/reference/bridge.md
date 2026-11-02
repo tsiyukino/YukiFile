@@ -341,9 +341,14 @@ see every object before it can say how many match; the seed library is 173
 objects, and ten times that is still milliseconds. Paging is by offset, unlike
 `object.ids`: a sort by name has no cursor an id could be.
 
-Results are flat. The tree a plugin's `contains` edges build is the grid's
-view when nothing is filtered; once something is, a match three groupings
-deep is as much a match as one at the top.
+Results are flat unless the filter says otherwise. `top` keeps what nothing
+contains and `within` keeps what one object contains, one level down, which is
+how the grid browses the tree a plugin's `contains` edges build with the same
+sort it uses for results. Once anything else is chosen the grid leaves both
+out: a match three groupings deep is as much a match as one at the top.
+
+`object.summaries` carries `children`, how many objects each one contains, so
+a card offers a way in only where there is something inside.
 
 ### Import mounts what it writes
 

@@ -208,6 +208,40 @@ pub fn all_to_terms(connection: &Connection) -> rusqlite::Result<Vec<(i64, Strin
     rows
 }
 
+/// Every `contains` edge between two objects, as (container, contained).
+///
+/// The hierarchy a plugin built, for a filter that browses one level of it
+/// with the same sort and paging it uses everywhere else.
+pub fn all_contains(connection: &Connection) -> rusqlite::Result<Vec<(i64, i64)>> {
+    let mut statement = connection.prepare(
+        "SELECT src, dst_object FROM edges WHERE kind = 'contains' AND dst_object IS NOT NULL",
+    )?;
+    let rows = statement.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?.collect();
+    rows
+}
+
+/// How many objects each of these contains. Objects containing nothing are
+/// absent from the map.
+pub fn contained_counts(
+    connection: &Connection,
+    objects: &[i64],
+) -> rusqlite::Result<std::collections::HashMap<i64, i64>> {
+    if objects.is_empty() {
+        return Ok(std::collections::HashMap::new());
+    }
+    // Built rather than bound, as `paths::first_of_each` does: the ids are
+    // i64s, so there is nothing a string could smuggle.
+    let list = objects.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(",");
+    let sql = format!(
+        "SELECT src, count(*) FROM edges
+         WHERE kind = 'contains' AND dst_object IS NOT NULL AND src IN ({list})
+         GROUP BY src"
+    );
+    let mut statement = connection.prepare(&sql)?;
+    let rows = statement.query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?.collect();
+    rows
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -450,6 +450,7 @@ pub fn object_summaries_in(
     library.with_connection(|connection| {
         let store = values::Values::new();
         let located = crate::store::paths::first_of_each(connection, &ids)?;
+        let children = crate::store::edges::contained_counts(connection, &ids)?;
         let order: Vec<String> = values::mount_order(connection)?
             .into_iter()
             .map(|m| format!("{}#{}", m.namespace, m.instance))
@@ -479,7 +480,8 @@ pub fn object_summaries_in(
                     .map(str::to_string)
             });
 
-            summaries.push(SummaryView { id, name, path, kind, cover });
+            let children = children.get(&id).copied().unwrap_or(0);
+            summaries.push(SummaryView { id, name, path, kind, cover, children });
         }
 
         Ok(summaries)
@@ -520,6 +522,9 @@ pub struct SummaryView {
     /// A stored cover's path, the person's own or the first plugin's in
     /// mount order. What a card draws.
     pub cover: Option<String>,
+    /// How many objects this one contains. A card offers to open only what
+    /// has something inside.
+    pub children: i64,
 }
 
 

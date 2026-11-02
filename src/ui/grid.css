@@ -5,56 +5,80 @@
  * screens rather than looking like a second application. Cards are square
  * covers with a name under them; density is tuned for telling things apart,
  * which was the original problem, not for fitting the most rows.
+ *
+ * `--yk-card-min` is the one knob: the size control on the grid's toolbar
+ * sets it, and the columns follow.
  */
 
 .yk-grid {
+  --yk-card-min: 176px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: var(--base-size-16, 16px);
+  grid-template-columns: repeat(auto-fill, minmax(var(--yk-card-min), 1fr));
+  gap: var(--base-size-16);
   padding: 0;
   margin: 0;
   list-style: none;
 }
 
+.yk-grid[data-size="small"] {
+  --yk-card-min: 128px;
+  gap: var(--base-size-12);
+}
+
+.yk-grid[data-size="large"] {
+  --yk-card-min: 248px;
+  gap: var(--base-size-20);
+}
+
 .yk-card {
+  position: relative;
+  min-width: 0;
+}
+
+.yk-card-main {
   display: flex;
   flex-direction: column;
-  gap: var(--base-size-8, 8px);
-  padding: var(--base-size-8, 8px);
-  border: 1px solid var(--borderColor-default, #d0d7de);
-  border-radius: var(--borderRadius-medium, 6px);
-  background: var(--bgColor-default, #fff);
+  gap: var(--base-size-8);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
   color: inherit;
   text-align: left;
   cursor: pointer;
   font: inherit;
-  width: 100%;
+  border-radius: var(--borderRadius-medium);
 }
 
-.yk-card:hover {
-  border-color: var(--borderColor-emphasis, #6e7781);
-}
-
-.yk-card:focus-visible {
-  outline: 2px solid var(--focus-outlineColor, #0969da);
-  outline-offset: 2px;
-}
-
-.yk-card[aria-current="true"] {
-  border-color: var(--borderColor-accent-emphasis, #0969da);
-  box-shadow: 0 0 0 2px var(--borderColor-accent-emphasis, #0969da);
+.yk-card-main:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 3px;
 }
 
 .yk-cover {
+  position: relative;
   aspect-ratio: 1 / 1;
   width: 100%;
-  border-radius: var(--borderRadius-small, 3px);
-  background: var(--bgColor-muted, #f6f8fa);
+  border-radius: var(--borderRadius-medium);
+  background: var(--bgColor-muted);
+  border: 1px solid var(--borderColor-muted);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--fgColor-muted, #656d76);
+  color: var(--fgColor-muted);
   overflow: hidden;
+  box-sizing: border-box;
+  transition: border-color 80ms ease, box-shadow 80ms ease;
+}
+
+.yk-card-main:hover .yk-cover {
+  border-color: var(--borderColor-emphasis);
+  box-shadow: var(--shadow-resting-small);
+}
+
+.yk-card[data-current="true"] .yk-cover {
+  border-color: var(--borderColor-accent-emphasis);
+  box-shadow: 0 0 0 2px var(--borderColor-accent-emphasis);
 }
 
 .yk-cover img {
@@ -64,10 +88,59 @@
   display: block;
 }
 
-.yk-card-name {
-  font-size: var(--text-body-size-medium, 14px);
+/*
+ * A cover nobody has picked yet, tinted by what the thing is on disk, so a
+ * freshly scanned grid still separates packages from archives from folders
+ * at a glance. Primer's display colours, which have a dark value each.
+ */
+.yk-cover[data-kind="folder"] {
+  background: color-mix(in srgb, var(--display-blue-bgColor-muted) 60%, var(--bgColor-muted));
+  color: var(--display-blue-fgColor);
+}
+.yk-cover[data-kind="package"] {
+  background: color-mix(in srgb, var(--display-purple-bgColor-muted) 60%, var(--bgColor-muted));
+  color: var(--display-purple-fgColor);
+}
+.yk-cover[data-kind="archive"] {
+  background: color-mix(in srgb, var(--display-orange-bgColor-muted) 60%, var(--bgColor-muted));
+  color: var(--display-orange-fgColor);
+}
+.yk-cover[data-kind="image"] {
+  background: color-mix(in srgb, var(--display-green-bgColor-muted) 60%, var(--bgColor-muted));
+  color: var(--display-green-fgColor);
+}
+.yk-cover[data-kind="document"] {
+  background: color-mix(in srgb, var(--display-coral-bgColor-muted) 60%, var(--bgColor-muted));
+  color: var(--display-coral-fgColor);
+}
+.yk-cover[data-kind="grouping"] {
+  background: color-mix(in srgb, var(--display-indigo-bgColor-muted) 60%, var(--bgColor-muted));
+  color: var(--display-indigo-fgColor);
+}
+
+/* What the thing is on disk, drawn quietly in the corner of a placeholder. */
+.yk-cover-kind {
+  position: absolute;
+  left: var(--base-size-8);
+  bottom: var(--base-size-8);
+  font-size: var(--text-body-size-small);
   font-weight: 600;
-  line-height: 1.3;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.yk-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-2);
+  min-width: 0;
+  padding: 0 var(--base-size-2);
+}
+
+.yk-card-name {
+  font-size: var(--text-body-size-medium);
+  font-weight: 600;
+  line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -75,17 +148,80 @@
   word-break: break-word;
 }
 
+.yk-grid[data-size="small"] .yk-card-name {
+  font-size: var(--text-body-size-small);
+}
+
 .yk-card-path {
-  font-size: var(--text-body-size-small, 12px);
-  color: var(--fgColor-muted, #656d76);
+  font-size: var(--text-body-size-small);
+  color: var(--fgColor-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.yk-card-foot {
+/* The way into a grouping: a pill on the cover, a button of its own. */
+.yk-card-open {
+  position: absolute;
+  top: var(--base-size-8);
+  right: var(--base-size-8);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--base-size-4);
+  padding: var(--base-size-2) var(--base-size-8);
+  border-radius: var(--borderRadius-full);
+  border: 1px solid var(--borderColor-default);
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  font: inherit;
+  font-size: var(--text-body-size-small);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-resting-small);
+}
+
+.yk-card-open:hover {
+  background: var(--bgColor-muted);
+}
+
+.yk-card-open:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 2px;
+}
+
+.yk-grid-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--base-size-8, 8px);
+  gap: var(--base-size-8);
+  flex-wrap: wrap;
+  margin-bottom: var(--base-size-12);
+  min-height: var(--base-size-32);
+}
+
+.yk-grid-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--base-size-8);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.yk-grid-count {
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+  white-space: nowrap;
+}
+
+.yk-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--base-size-8);
+  align-items: center;
+  margin-bottom: var(--base-size-16);
+}
+
+.yk-grid-more {
+  display: flex;
+  justify-content: center;
+  padding: var(--base-size-24) 0 var(--base-size-8);
 }

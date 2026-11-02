@@ -60,6 +60,10 @@ pub struct Filter {
     /// Terms pointed at. Several in one vocabulary mean any of them; several
     /// vocabularies mean all of them.
     pub terms: Vec<TermIs>,
+    /// Only what this object contains, one level down. An id, as ids cross.
+    pub within: Option<String>,
+    /// Only what nothing contains: the top of the tree a plugin built.
+    pub top: bool,
 }
 
 /// One field value to match. `value: None` matches objects that show nothing
@@ -86,6 +90,17 @@ impl Filter {
             && self.fields.is_empty()
             && self.terms.is_empty()
     }
+
+    /// The container asked for, if any.
+    fn container(&self) -> Result<Option<i64>, BridgeError> {
+        self.within
+            .as_deref()
+            .map(|id| {
+                id.parse::<i64>()
+                    .map_err(|_| BridgeError::BadRequest(format!("{id:?} is not an object id")))
+            })
+            .transpose()
+    }
 }
 
 /// How the matches are ordered.
@@ -96,9 +111,12 @@ pub enum Sort {
     /// grid for a thing they can name expects.
     #[default]
     Name,
-    /// Most recently made first.
+    /// Most recently made first. Ids carry the millisecond an object was
+    /// made in, so this is creation order to the millisecond; two made in
+    /// the same one are in no promised order.
     Newest,
-    /// Oldest first, which is the order the library was filled in.
+    /// Oldest first, the order the library was filled in, to the same
+    /// precision.
     Oldest,
 }
 
@@ -116,6 +134,8 @@ struct Record {
     fields: HashMap<String, Option<String>>,
     /// (vocab, term) pairs pointed at.
     terms: HashSet<(String, String)>,
+    /// What contains this object.
+    parents: Vec<i64>,
 }
 
 /// Which group's own choices to set aside when counting it.
@@ -132,7 +152,22 @@ fn words(text: &str) -> Vec<String> {
     text.split_whitespace().map(str::to_lowercase).collect()
 }
 
-fn matches(record: &Record, filter: &Filter, needles: &[String], except: Except<'_>) -> bool {
+fn matches(
+    record: &Record,
+    filter: &Filter,
+    container: Option<i64>,
+    needles: &[String],
+    except: Except<'_>,
+) -> bool {
+    if let Some(container) = container {
+        if !record.parents.contains(&container) {
+            return false;
+        }
+    }
+    if filter.top && !record.parents.is_empty() {
+        return false;
+    }
+
     if !needles.iter().all(|needle| record.haystack.contains(needle.as_str())) {
         return false;
     }
@@ -187,6 +222,11 @@ fn records(
     let mut decided = carried::all(connection)?;
 
     let mut labels: HashMap<(String, String), String> = HashMap::new();
+    let mut parents: HashMap<i64, Vec<i64>> = HashMap::new();
+    for (container, contained) in edges::all_contains(connection)? {
+        parents.entry(contained).or_default().push(container);
+    }
+
     let mut pointed: HashMap<i64, Vec<(String, String)>> = HashMap::new();
     for (src, vocabulary, term) in edges::all_to_terms(connection)? {
         if !labels.contains_key(&(vocabulary.clone(), term.clone())) {
@@ -273,6 +313,7 @@ fn records(
                 .collect(),
             fields,
             terms: terms.into_iter().collect(),
+            parents: parents.remove(&id).unwrap_or_default(),
         });
     }
 
@@ -297,11 +338,12 @@ pub fn object_query_in(
     // for everything gets a page.
     let limit = limit.clamp(1, 500) as usize;
     let needles = words(&filter.text);
+    let container = filter.container()?;
 
     library.with_connection(|connection| {
         let mut found: Vec<Record> = records(connection, registry, &fields_in(&filter))?
             .into_iter()
-            .filter(|record| matches(record, &filter, &needles, Except::Nothing))
+            .filter(|record| matches(record, &filter, container, &needles, Except::Nothing))
             .collect();
 
         match sort {
@@ -336,6 +378,7 @@ pub fn object_facets_in(
     vocabularies: Vec<String>,
 ) -> Result<FacetsView, BridgeError> {
     let needles = words(&filter.text);
+    let container = filter.container()?;
     let mut wanted = fields_in(&filter);
     wanted.extend(fields.iter().cloned());
 
@@ -344,11 +387,11 @@ pub fn object_facets_in(
 
         let total = all
             .iter()
-            .filter(|record| matches(record, &filter, &needles, Except::Nothing))
+            .filter(|record| matches(record, &filter, container, &needles, Except::Nothing))
             .count() as i64;
 
         let mut properties: BTreeMap<String, i64> = BTreeMap::new();
-        for record in all.iter().filter(|r| matches(r, &filter, &needles, Except::Properties)) {
+        for record in all.iter().filter(|r| matches(r, &filter, container, &needles, Except::Properties)) {
             for property in &record.properties {
                 *properties.entry(property.clone()).or_default() += 1;
             }
@@ -357,7 +400,7 @@ pub fn object_facets_in(
         let mut field_facets = Vec::with_capacity(fields.len());
         for field in &fields {
             let mut counts: BTreeMap<Option<String>, i64> = BTreeMap::new();
-            for record in all.iter().filter(|r| matches(r, &filter, &needles, Except::Field(field))) {
+            for record in all.iter().filter(|r| matches(r, &filter, container, &needles, Except::Field(field))) {
                 let shown = record.fields.get(field).cloned().flatten();
                 *counts.entry(shown).or_default() += 1;
             }
@@ -367,7 +410,7 @@ pub fn object_facets_in(
         let mut vocab_facets = Vec::with_capacity(vocabularies.len());
         for vocabulary in &vocabularies {
             let mut counts: BTreeMap<String, i64> = BTreeMap::new();
-            for record in all.iter().filter(|r| matches(r, &filter, &needles, Except::Vocab(vocabulary))) {
+            for record in all.iter().filter(|r| matches(r, &filter, container, &needles, Except::Vocab(vocabulary))) {
                 for (v, term) in &record.terms {
                     if v == vocabulary {
                         *counts.entry(term.clone()).or_default() += 1;
@@ -499,9 +542,9 @@ mod tests {
         let mut r = record(1);
         r.haystack = "cross maid\nclothing/cross_maid\n".into();
         let filter = Filter { text: "MAID cross".into(), ..Default::default() };
-        assert!(matches(&r, &filter, &words(&filter.text), Except::Nothing));
+        assert!(matches(&r, &filter, None, &words(&filter.text), Except::Nothing));
         let filter = Filter { text: "maid hair".into(), ..Default::default() };
-        assert!(!matches(&r, &filter, &words(&filter.text), Except::Nothing));
+        assert!(!matches(&r, &filter, None, &words(&filter.text), Except::Nothing));
     }
 
     #[test]
@@ -517,7 +560,7 @@ mod tests {
             ],
             ..Default::default()
         };
-        assert!(matches(&r, &either, &[], Except::Nothing));
+        assert!(matches(&r, &either, None, &[], Except::Nothing));
 
         let both = Filter {
             fields: vec![
@@ -526,10 +569,10 @@ mod tests {
             ],
             ..Default::default()
         };
-        assert!(!matches(&r, &both, &[], Except::Nothing));
+        assert!(!matches(&r, &both, None, &[], Except::Nothing));
         // Counting vendors sets the vendor choice aside, so this object still
         // counts toward its own vendor.
-        assert!(matches(&r, &both, &[], Except::Field("vendor")));
+        assert!(matches(&r, &both, None, &[], Except::Field("vendor")));
     }
 
     #[test]
@@ -539,7 +582,7 @@ mod tests {
             fields: vec![FieldIs { field: "category".into(), value: None }],
             ..Default::default()
         };
-        assert!(matches(&r, &unsorted, &[], Except::Nothing));
+        assert!(matches(&r, &unsorted, None, &[], Except::Nothing));
     }
 
     #[test]
@@ -553,7 +596,7 @@ mod tests {
             ],
             ..Default::default()
         };
-        assert!(matches(&r, &filter, &[], Except::Nothing));
+        assert!(matches(&r, &filter, None, &[], Except::Nothing));
     }
 
     #[test]

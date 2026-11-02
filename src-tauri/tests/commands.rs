@@ -3170,7 +3170,9 @@ fn a_category_narrows_to_what_shows_it_and_null_finds_the_unsorted() {
     assert_eq!(page.ids, [maid]);
 
     let either = r#"{"fields":[{"field":"category","value":"Clothing"},{"field":"category","value":"Hair"}]}"#;
-    let page = object_query_in(&library, None, filter(either), Sort::Oldest, 0, 50).expect("query");
+    // By name: ids carry the millisecond they were made in, and two made in
+    // the same one are not ordered by which came first.
+    let page = object_query_in(&library, None, filter(either), Sort::Name, 0, 50).expect("query");
     assert_eq!(page.ids, [maid, hair]);
 
     let unsorted = r#"{"fields":[{"field":"category","value":null}]}"#;
@@ -3285,4 +3287,35 @@ fn importing_mounts_what_it_writes_under_so_the_values_show() {
     let id = object_ids_in(&library, None, 10).expect("ids").ids[0];
     let flat = object_flat_in(&library, None, id).expect("flat");
     assert!(flat.carries.contains(&"vrchat#1".to_string()), "{:?}", flat.carries);
+}
+
+#[test]
+fn query_browses_one_level_of_the_tree_with_its_sort() {
+    use yukifile::bridge::query::{object_query_in, Sort};
+    use yukifile::store::edges;
+    let (library, _dir) = library();
+    let group = object_with(&library, &[("title", "Clothing")]);
+    let b = object_with(&library, &[("title", "B outfit")]);
+    let a = object_with(&library, &[("title", "A outfit")]);
+    library
+        .with_connection(|connection| {
+            edges::add(connection, group, "contains", &edges::Target::Object(b))?;
+            edges::add(connection, group, "contains", &edges::Target::Object(a))?;
+            Ok(())
+        })
+        .expect("edges");
+
+    let top = object_query_in(&library, None, filter(r#"{"top":true}"#), Sort::Name, 0, 50).expect("q");
+    assert_eq!(top.ids, [group]);
+
+    let inside = format!(r#"{{"within":"{group}"}}"#);
+    let page = object_query_in(&library, None, filter(&inside), Sort::Name, 0, 50).expect("q");
+    assert_eq!(page.ids, [a, b], "by name, not by the order they were contained");
+
+    let summaries = object_summaries_in(&library, vec![group, a]).expect("summaries");
+    assert_eq!(summaries[0].children, 2);
+    assert_eq!(summaries[1].children, 0);
+
+    let bad = object_query_in(&library, None, filter(r#"{"within":"not an id"}"#), Sort::Name, 0, 50);
+    assert!(matches!(bad, Err(BridgeError::BadRequest(_))));
 }

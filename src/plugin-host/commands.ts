@@ -168,6 +168,8 @@ export interface Summary {
   readonly kind: "file" | "folder" | null;
   /** A stored cover's path, when one is recorded. What a card draws. */
   readonly cover?: string | null;
+  /** How many objects this one contains. */
+  readonly children?: number;
 }
 
 /**
@@ -183,6 +185,10 @@ export interface Filter {
   readonly properties?: readonly string[];
   readonly fields?: readonly { readonly field: string; readonly value: string | null }[];
   readonly terms?: readonly { readonly vocab: string; readonly term: string }[];
+  /** Only what this object contains, one level down. */
+  readonly within?: ObjectId | null;
+  /** Only what nothing contains: the top of the tree a plugin built. */
+  readonly top?: boolean;
 }
 
 /** How matches are ordered: by name, newest first, or oldest first. */
